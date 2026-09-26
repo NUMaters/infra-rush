@@ -899,15 +899,17 @@ h1 {
   inset: 0;
   z-index: 50;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   background: #14394c75;
   backdrop-filter: blur(9px);
   padding: 20px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .dialog,
 .result-card {
+  margin: auto;
   width: min(620px, 100%);
   background: #fffef7;
   border: 3px solid #fff;
@@ -1290,6 +1292,38 @@ h1 {
   .primary {
     min-height: 61px;
     font-size: 16px;
+  }
+}
+@media (max-width: 360px) {
+  .score-top svg {
+    display: none;
+  }
+  .score-top small {
+    font-size: 9px;
+  }
+  .resource-bar {
+    left: 50%;
+    width: calc(100% - 20px);
+    justify-content: center;
+    gap: 5px;
+  }
+  .resource {
+    min-width: 0;
+    flex: 1;
+    justify-content: center;
+    padding: 6px 4px;
+    gap: 3px;
+  }
+  .resource span {
+    gap: 4px;
+  }
+  .resource b {
+    min-width: 0;
+    font-size: 18px;
+  }
+  .utilities {
+    top: 130px;
+    right: 8px;
   }
 }
 @media (max-height: 700px) and (min-width: 801px) {
