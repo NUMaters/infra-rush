@@ -35,7 +35,13 @@ export class World {
   private particleMaterials = new Map<number, T.MeshStandardMaterial>();
   private actors = new Map<
     string,
-    { bot: T.Group; rig: T.Group | null; kind: string; ring: T.Mesh }
+    {
+      bot: T.Group;
+      rig: T.Group | null;
+      kind: string;
+      ring: T.Mesh;
+      walkBlend: number;
+    }
   >();
   private bridges = new Map<
     string,
@@ -589,7 +595,7 @@ export class World {
     );
     ring.rotation.x = -Math.PI / 2;
     ring.visible = false;
-    a = { bot, rig: null, kind: "", ring };
+    a = { bot, rig: null, kind: "", ring, walkBlend: 0 };
     this.actors.set(b.id, a);
     return a;
   }
@@ -765,19 +771,35 @@ export class World {
       else if (b.id === this.selected)
         scale = 1 + Math.sin(this.clock * 5) * 0.025;
       a.bot.scale.setScalar(scale);
-      if (moving)
-        a.bot.position.y += Math.abs(Math.sin(this.clock * 11 + b.index)) * 0.1;
-      for (const [name, sign] of [
-        ["leg_left", 1],
-        ["leg_right", -1],
-        ["arm_left", -1],
-        ["arm_right", 1],
-      ] as const) {
-        const part = rigPart(a.bot, name);
-        if (part)
-          part.rotation.x = moving
-            ? Math.sin(this.clock * 11) * 0.4 * sign
-            : Math.sin(this.clock * 2) * 0.04;
+      a.walkBlend = T.MathUtils.damp(
+        a.walkBlend,
+        moving && !kind ? 1 : 0,
+        14,
+        dt,
+      );
+      const phase =
+        this.clock * 13 + b.index * 1.7 + (b.team === "red" ? 0.8 : 0);
+      const step = Math.sin(phase);
+      a.bot.position.y += Math.abs(step) * 0.065 * a.walkBlend;
+      a.bot.rotation.z = step * 0.055 * a.walkBlend;
+      for (const sideName of ["left", "right"] as const) {
+        const side = sideName === "left" ? 1 : -1;
+        const footLift = Math.max(0, step * side) * a.walkBlend;
+        const leg = rigPart(a.bot, `leg_${sideName}`);
+        if (leg) {
+          leg.rotation.x = step * side * 0.85 * a.walkBlend;
+          leg.rotation.z = -side * (0.08 * a.walkBlend + footLift * 0.48);
+          leg.position.x = side * (0.145 + footLift * 0.07);
+          leg.position.y = 0.16 - 0.08 * a.walkBlend + footLift * 0.14;
+        }
+        const arm = rigPart(a.bot, `arm_${sideName}`);
+        if (arm) {
+          arm.rotation.x = -step * side * 0.95 * a.walkBlend;
+          arm.rotation.z =
+            -side *
+            (0.07 * a.walkBlend +
+              Math.max(0, -step * side) * a.walkBlend * 0.62);
+        }
       }
       if (a.rig) {
         a.rig.position.copy(a.bot.position);

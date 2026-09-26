@@ -38,6 +38,7 @@ test("real UI: mine, build, march, attack, return, five hits, results and restar
   await page.screenshot({ path: `docs/qa/${info.project.name}-title.png` });
   await page.getByRole("button", { name: "はじめて", exact: true }).click();
   await page.locator("#start").click();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await expect(page.locator("#bot-roster")).toHaveCount(0);
   // Direct 3D Bot hit testing, then on-screen task control.
   const p = await page.evaluate(() => window.infraQA.projectBot("blue-0"));
@@ -83,6 +84,7 @@ test("real UI: mine, build, march, attack, return, five hits, results and restar
   expect(s.teams.red.hp).toBe(0);
   await page.screenshot({ path: `docs/qa/${info.project.name}-result.png` });
   await page.locator("#restart").click();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   s = await page.evaluate(() => window.infraQA.snapshot());
   expect(s.teams.blue.resources.stone).toBe(0);
   expect(s.teams.red.hp).toBe(5);
