@@ -1,5 +1,6 @@
 import * as T from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { M } from "../game/master";
 import { side } from "../game/engine";
@@ -46,8 +47,7 @@ export class World {
   private hit = new Map<Team, number>();
   private selected: string | null = null;
   private route: T.Line;
-  private zoom = 1;
-  private target = new T.Vector3(0, 0, 0);
+  readonly controls: OrbitControls;
   private width = 1;
   private height = 1;
   fps = 60;
@@ -111,18 +111,46 @@ export class World {
       }),
     );
     this.scene.add(this.route);
+    this.camera.position.set(0, 40, -24);
+    this.controls = new OrbitControls(this.camera, this.canvas);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.12;
+    this.controls.screenSpacePanning = false;
+    this.controls.minPolarAngle = Math.PI / 9;
+    this.controls.maxPolarAngle = Math.PI / 2.6;
+    this.controls.minZoom = 0.7;
+    this.controls.maxZoom = 3.5;
+    this.controls.mouseButtons = {
+      LEFT: T.MOUSE.PAN,
+      MIDDLE: T.MOUSE.DOLLY,
+      RIGHT: T.MOUSE.ROTATE,
+    };
+    this.controls.touches = { ONE: T.TOUCH.PAN, TWO: T.TOUCH.DOLLY_ROTATE };
+    this.controls.update();
+    this.controls.saveState();
     this.resize();
     new ResizeObserver(() => this.resize()).observe(container);
-    this.canvas.addEventListener("pointerup", (e) => this.pick(e));
-    this.canvas.addEventListener(
-      "wheel",
-      (e) => {
-        e.preventDefault();
-        this.zoom = clamp(this.zoom - e.deltaY * 0.001, 0.8, 1.6);
-        this.resize();
-      },
-      { passive: false },
-    );
+    const pointers = new Map<number, { x: number; y: number }>();
+    let dragged = false;
+    this.canvas.addEventListener("pointerdown", (e) => {
+      if (!pointers.size) dragged = false;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size > 1 || e.button !== 0) dragged = true;
+    });
+    this.canvas.addEventListener("pointermove", (e) => {
+      const start = pointers.get(e.pointerId);
+      if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 7)
+        dragged = true;
+    });
+    this.canvas.addEventListener("pointerup", (e) => {
+      const tap = pointers.has(e.pointerId) && !dragged;
+      pointers.delete(e.pointerId);
+      if (tap) this.pick(e);
+    });
+    this.canvas.addEventListener("pointercancel", (e) => {
+      pointers.delete(e.pointerId);
+      dragged = true;
+    });
   }
   async load(onProgress: (n: number) => void) {
     const names = [
@@ -548,8 +576,30 @@ export class World {
     this.selected = id;
   }
   setZoom(amount: number) {
-    this.zoom = clamp(this.zoom + amount, 0.8, 1.6);
-    this.resize();
+    this.camera.zoom = clamp(
+      this.camera.zoom + amount,
+      this.controls.minZoom,
+      this.controls.maxZoom,
+    );
+    this.camera.updateProjectionMatrix();
+    this.controls.update();
+  }
+  rotateView(angle: number) {
+    this.camera.position
+      .sub(this.controls.target)
+      .applyAxisAngle(unit, angle)
+      .add(this.controls.target);
+    this.controls.update();
+  }
+  resetView() {
+    this.controls.enableDamping = false;
+    this.controls.reset();
+    this.controls.enableDamping = true;
+    this.controls.target.set(0, 0, 0);
+    this.camera.position.set(0, 40, -24);
+    this.camera.zoom = 1;
+    this.camera.updateProjectionMatrix();
+    this.controls.update();
   }
   reset() {
     this.selected = null;
@@ -557,13 +607,14 @@ export class World {
     this.particles = [];
     this.shake = 0;
     this.hit.clear();
+    this.resetView();
   }
   resize() {
     this.width = this.canvas.parentElement?.clientWidth ?? innerWidth;
     this.height = this.canvas.parentElement?.clientHeight ?? innerHeight;
     this.renderer.setSize(this.width, this.height);
     const aspect = this.width / this.height;
-    const vertical = Math.max(14.3, 15.2 / aspect) / this.zoom;
+    const vertical = Math.max(14.3, 15.2 / aspect);
     this.camera.left = -vertical * aspect;
     this.camera.right = vertical * aspect;
     this.camera.top = vertical;
@@ -650,8 +701,9 @@ export class World {
       (this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length);
     this.shake = Math.max(0, this.shake - dt);
     const jitter = this.shake > 0 ? Math.sin(this.clock * 70) * 0.12 : 0;
-    this.camera.position.set(jitter, 32, 29 + jitter);
-    this.camera.lookAt(this.target);
+    this.controls.update();
+    this.camera.position.x += jitter;
+    this.camera.position.z += jitter;
     for (const b of s.bots) {
       const a = this.actor(b);
       const active = ![
@@ -758,12 +810,17 @@ export class World {
           : 0;
       }
       const worker = s.bots.find(
-        (x) => x.target === b.id && x.state === "BUILDING_EMBANKMENT",
+        (x) =>
+          x.target === b.id &&
+          ["BUILDING_EMBANKMENT", "CLEARING_EMBANKMENT"].includes(x.state),
       );
       if (worker) {
         view.mound.visible = true;
-        view.mound.position.z = side(worker.team) * 4;
-        view.mound.scale.y = 0.15 + worker.progress / worker.duration;
+        const clearing = worker.state === "CLEARING_EMBANKMENT";
+        view.mound.position.z = b.owner === "blue" ? 4 : -4;
+        view.mound.scale.y = clearing
+          ? Math.max(0.03, 1 - worker.progress / worker.duration)
+          : 0.15 + (0.85 * worker.progress) / worker.duration;
       } else view.mound.scale.y = 1;
     }
     for (const [team, castle] of this.castles) {
@@ -795,6 +852,8 @@ export class World {
       this.route.computeLineDistances();
     }
     this.renderer.render(this.scene, this.camera);
+    this.camera.position.x -= jitter;
+    this.camera.position.z -= jitter;
   }
   metrics() {
     return {

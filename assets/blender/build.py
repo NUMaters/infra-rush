@@ -44,17 +44,18 @@ def empty(n,p=(0,0,0)):
 def bot():
  global parent
  sphere('body',(0,0,.43),(.28,.20,.32),'team')
- sphere('vest',(0,-.002,.44),(.29,.208,.205),'orange')
+ cyl('vest',(0,-.002,.455),.292,.35,'orange',24).scale.y=.73
  # broad reflective waist band and two vertical front strips
- cyl('reflective belt',(0,0,.34),.292,.055,'white').scale.y=.73
- for x in [-.17,.17]:box('reflective strip',(x,-.187,.49),(.05,.03,.25),'white',.012)
+ cyl('reflective belt',(0,0,.34),.302,.055,'white').scale.y=.73
+ for x in [-.17,.17]:box('reflective strip',(x,-.215,.47),(.055,.014,.29),'white',.005)
  box('vest zip',(0,-.216,.45),(.035,.022,.25),'orange',.007)
  sphere('head',(0,0,.73),(.272,.21,.235),'team')
- sphere('face',(0,-.189,.725),(.205,.045,.139),'white')
+ sphere('face',(0,-.189,.725),(.225,.045,.139),'white')
  for x in [-.067,.067]:sphere('eye',(x,-.231,.738),(.025,.016,.048),'black',12,8)
  sphere('helmet dome',(0,0,.88),(.3,.242,.17),'team')
  cyl('helmet brim',(0,-.013,.842),.328,.047,'team',24).scale.y=.83
- box('helmet ridge',(0,-.012,.987),(.06,.3,.047),'team',.02)
+ box('helmet ridge',(0,-.012,1.035),(.075,.28,.06),'team',.025)
+ box('helmet ridge front',(0,-.23,.872),(.10,.045,.10),'team',.022)
  for side,x in [('left',-.345),('right',.345)]:
   root=empty('arm_'+side,(x,0,.56));old=parent;parent=root
   sphere('sleeve',(0,0,-.055),(.084,.10,.14),'team');sphere('glove',(0,-.012,-.17),(.081,.087,.091),'dark');parent=old
@@ -89,7 +90,12 @@ def castle():
  for x in [-2.2,2.2]:
   for y in [-1.6,1.2]:
    for z in [.22,.64,1.06]:cyl('corner',(x,y,z),.29,.4,'stone',12)
- for x in [-1.22,1.22]:flag(x,-.91,1.7,.55)
+ # Connected perimeter courses keep the castle a compact building, not isolated posts.
+ for z in [.23,.65,1.07]:
+  for x in [-2.12,2.12]:
+   for y in [-1.0,-.35,.30,.95]:box('curtain wall',(x,y,z),(.35,.63,.40),'stone',.055)
+  for x in [-1.5,-.75,0,.75,1.5]:box('rear wall',(x,1.18,z),(.72,.35,.40),'stone',.05)
+ for x in [-1.22,1.22]:flag(x,-.94,1.25,.72)
  cyl('flagpole',(0,.65,4.15),.04,1,'steel');sphere('pole gold',(0,.65,4.65),(.095,.095,.095),'gold');flag(.42,.65,4.4,.65)
 
 def wheel(x,y,z,r=.32):
@@ -113,6 +119,11 @@ def cabin(y=.05):
  for x in [-.32,.32]:box('lamp',(x,y-.5,1.98),(.19,.10,.16),'gold',.035)
  cyl('beacon',(0,y+.12,2.12),.095,.16,'orange')
  box('seat',(0,y+.14,1.08),(.55,.4,.28),'track',.09)
+ for x in [-.48,.48]:
+  box('door lower',(x,y+.06,1.03),(.08,.79,.38),'white',.035)
+  box('mirror',(x*1.26,y-.38,1.68),(.14,.08,.29),'track',.035)
+ wheel_support=beam('steering column',(0,y-.33,.97),(0,y-.25,1.27),.065,'track')
+ bpy.ops.mesh.primitive_torus_add(major_radius=.16,minor_radius=.027,major_segments=12,minor_segments=6,location=(0,y-.27,1.29));steer=bpy.context.object;steer.rotation_euler[0]=math.radians(28);finish(steer,'steering wheel','track')
  old=globals()['parent'];pilot=empty('pilot',(0,y-.09,.9));globals()['parent']=pilot;bot();pilot.scale=(.82,.82,.82);globals()['parent']=old
  for i in range(3):box('vent',(0,y+.925,1.02+i*.12),(.57,.025,.047),'track',.014)
 
@@ -122,7 +133,8 @@ def vehicle(kind):
   for x in [-.70,.70]:
    for y in [-1.45,.35,1.0]:wheel(x,y,.4,.4)
   box('long frame',(0,-.35,.73),(.4,3.0,.25),'team');cabin(.5)
-  box('blade',(0,-.62,.28),(1.6,.24,.43),'steel');box('blade edge',(0,-.77,.08),(1.7,.06,.08),'orange')
+  box('blade',(0,-.40,.31),(2.0,.24,.52),'steel');box('blade edge',(0,-.55,.08),(2.1,.08,.10),'orange')
+  for x in [-.5,.5]:beam('blade hydraulic',(x,-.40,.75),(x,-.40,.38),.10,'orange')
  else:tracks();cabin(.2 if kind!='launcher' else .85)
  if kind in ['excavator','drill']:
   old=parent;pivot=empty('boom',(0,-.35,1.13));parent=pivot

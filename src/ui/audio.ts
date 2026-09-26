@@ -1,12 +1,61 @@
 export class Sound {
   private ctx: AudioContext | null = null;
-  muted = false;
+  private music: HTMLAudioElement | null = null;
+  private musicGain: GainNode | null = null;
+  private isMuted = false;
+  get muted() {
+    return this.isMuted;
+  }
+  set muted(value: boolean) {
+    this.isMuted = value;
+    if (this.musicGain) this.musicGain.gain.value = value ? 0 : 0.23;
+  }
   unlock() {
     this.ctx ??= new AudioContext();
     void this.ctx.resume();
   }
+  startMusic() {
+    this.unlock();
+    if (!this.music) {
+      const music = new Audio(
+        new URL(
+          `${import.meta.env.BASE_URL}audio/infra-rush-loop.mp3`,
+          document.baseURI,
+        ).href,
+      );
+      music.preload = "auto";
+      music.loop = true;
+      music.id = "bgm";
+      music.hidden = true;
+      document.body.append(music);
+      const gain = this.ctx!.createGain();
+      gain.gain.value = this.isMuted ? 0 : 0.23;
+      this.ctx!.createMediaElementSource(music).connect(gain);
+      gain.connect(this.ctx!.destination);
+      this.music = music;
+      this.musicGain = gain;
+    }
+    this.music.currentTime = 0;
+    void this.music.play().catch(() => {
+      // The user can retry by resuming the game or toggling audio.
+    });
+  }
+  pauseMusic() {
+    this.music?.pause();
+  }
+  resumeMusic() {
+    if (!this.music || !this.music.paused) return;
+    this.unlock();
+    void this.music.play().catch(() => {
+      // Keep gameplay usable when the browser declines playback.
+    });
+  }
+  stopMusic() {
+    this.music?.pause();
+    if (this.music) this.music.currentTime = 0;
+  }
   play(kind: string) {
-    if (this.muted || !this.ctx) return;
+    if (this.isMuted || !this.ctx) return;
     const c = this.ctx,
       t = c.currentTime;
     const note = (

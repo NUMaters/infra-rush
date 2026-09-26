@@ -8,6 +8,8 @@ export default ts.config(
       "node_modules/**",
       "playwright-report/**",
       "test-results/**",
+      ".qa-preview/**",
+      ".qa-legacy/**",
     ],
   },
   js.configs.recommended,

@@ -14,6 +14,8 @@ const paths: Record<string, string> = {
   iron: '<path d="M4 4h16v4h-5v8h5v4H4v-4h5V8H4z"/>',
   soil: '<path d="m2 18 6-8 4 3 3-7 7 12zM3 21h18"/>',
   crown: '<path d="m3 6 5 4 4-7 4 7 5-4-2 14H5z"/>',
+  castle:
+    '<path d="M3 21V8h4V5h3v3h4V5h3v3h4v13H3zM9 21v-5a3 3 0 0 1 6 0v5M3 12h18"/>',
   sound:
     '<path d="m3 9 5 0 5-5v16l-5-5H3zm14-1a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',

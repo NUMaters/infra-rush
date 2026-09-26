@@ -14,7 +14,8 @@ const binary = join(
   `@esbuild/${platform}-${process.arch}`,
   process.platform === "win32" ? "esbuild.exe" : "bin/esbuild",
 );
-await mkdir(`${out}/assets`, { recursive: true });
+const bundleDir = `${out}/bundle-${process.pid}`;
+await mkdir(bundleDir, { recursive: true });
 execFileSync(
   binary,
   [
@@ -22,24 +23,35 @@ execFileSync(
     "--bundle",
     "--external:three",
     "--external:three/*",
-    `--outdir=${out}/assets`,
+    `--outdir=${bundleDir}`,
     "--format=esm",
     "--target=es2022",
+    '--tsconfig-raw={"compilerOptions":{"useDefineForClassFields":true}}',
     `--define:import.meta.env.DEV=${qa}`,
+    '--define:import.meta.env.BASE_URL="./"',
     "--minify",
   ],
   { stdio: "inherit" },
 );
+await mkdir(`${out}/assets`, { recursive: true });
+for (const name of ["main.js", "main.css"])
+  await rename(`${bundleDir}/${name}`, `${out}/assets/${name}`);
 await mkdir(`${out}/vendor/addons/loaders`, { recursive: true });
 await mkdir(`${out}/vendor/addons/utils`, { recursive: true });
+await mkdir(`${out}/vendor/addons/controls`, { recursive: true });
 for (const name of ["three.module.js", "three.core.js"])
   await atomicCopy(`node_modules/three/build/${name}`, `${out}/vendor/${name}`);
 await atomicCopy("node_modules/three/LICENSE", `${out}/vendor/THREE-LICENSE`);
-for (const name of ["loaders/GLTFLoader.js", "utils/BufferGeometryUtils.js"])
+for (const name of [
+  "loaders/GLTFLoader.js",
+  "utils/BufferGeometryUtils.js",
+  "controls/OrbitControls.js",
+])
   await atomicCopy(
     `node_modules/three/examples/jsm/${name}`,
     `${out}/vendor/addons/${name}`,
   );
+await cp("public/audio", `${out}/audio`, { recursive: true });
 await cp("public/models", `${out}/models`, { recursive: true });
 await writeFile(
   `${out}/index.html`,

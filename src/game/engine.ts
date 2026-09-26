@@ -110,42 +110,41 @@ export function canCommand(
 ): string | null {
   if (s.status !== "playing") return "試合は終了しています";
   const bot = s.bots.find((b) => b.id === c.botId);
-  if (!bot || bot.team !== team) return "自分のBotを選んでください";
+  if (!bot || bot.team !== team) return "自分のBotをタップしてね";
   const mining =
     bot.action === "mine" && (bot.state === "MOVING" || bot.state === "MINING");
   if (c.action === "cancel")
-    return mining ? null : "中断できるのは採掘だけです";
-  if (bot.state !== "IDLE" && !mining)
-    return "この作業は完了までお待ちください";
-  if (c.action === "mine") return mining ? "採掘中です" : null;
+    return mining ? null : "途中でやめられるのは「掘る」だけです";
+  if (bot.state !== "IDLE" && !mining) return "この仕事が終わるまで待ってね";
+  if (c.action === "mine") return mining ? "いま掘っています" : null;
   if (c.action === "march")
-    return usable(s, team).length ? null : "通行できる自軍の橋が必要です";
+    return usable(s, team).length ? null : "渡れる橋をつくろう";
   const b = s.bridges.find((x) => x.id === c.target);
-  if (!b) return "施工する橋を選んでください";
-  if (b.lock) return "別のBotが施工中です";
+  if (!b) return "橋をタップしてね";
+  if (b.lock) return "別のBotが作業しています";
   if (c.action === "build") {
     if (b.level > 0) return "橋はすでに完成しています";
-    if (b.exclusive && b.exclusive !== team)
-      return "相手の専用橋には架橋できません";
+    if (b.exclusive && b.exclusive !== team) return "相手の橋はつくれません";
     if (
       b.id === "center" &&
       !s.bridges.some((x) => x.exclusive === team && x.level > 0)
     )
-      return "先に自軍の専用橋を完成させてください";
+      return "先に自分の城の近くに橋をつくろう";
   } else {
     if (!b.level) return "橋がありません";
     if (["upgrade", "repair", "clear"].includes(c.action) && b.owner !== team)
-      return "自軍の橋を選んでください";
+      return "自分の橋で作業しよう";
     if (["destroy", "embank"].includes(c.action) && b.owner !== other(team))
-      return "相手の橋を選んでください";
+      return "相手の橋で作業しよう";
     if (c.action === "upgrade" && (b.level < b.capacity || b.damage))
-      return "先に損傷を修繕してください";
+      return "先に橋を直そう";
     if (c.action === "upgrade" && b.capacity >= M.bridges.maxLevel)
-      return "最大強度です";
+      return "これ以上は強くできません";
     if (c.action === "repair" && b.level === b.capacity && !b.damage)
-      return "修繕の必要はありません";
-    if (c.action === "embank" && b.blockedBy) return "すでに盛土があります";
-    if (c.action === "clear" && !b.blockedBy) return "撤去する盛土がありません";
+      return "直すところがありません";
+    if (c.action === "embank" && b.blockedBy)
+      return "すでに道がふさがっています";
+    if (c.action === "clear" && !b.blockedBy) return "どける土がありません";
   }
   const cost = taskSpec(c.action, b).cost;
   for (const r of Object.keys(cost) as Resource[])
@@ -218,7 +217,7 @@ export function command(
     kind: "command",
     team: t,
     position: b.path[b.path.length - 1],
-    text: "作業開始！",
+    text: "仕事を始めるよ！",
   });
   return { ok: true };
 }
@@ -269,7 +268,7 @@ function finish(s: GameState, b: Bot) {
       kind: "attack",
       team: b.team,
       position: [...b.position],
-      text: "城に 1 ダメージ！",
+      text: "城に一撃！",
     });
     if (enemy.hp === 0) {
       s.status = "finished";
@@ -284,7 +283,7 @@ function finish(s: GameState, b: Bot) {
           bridge.owner !== b.team))
     ) {
       pay(s, b.team, b.paid, 1);
-      returning(s, b, "対象がなくなったため資源を返却");
+      returning(s, b, "作業先がなくなったので資源が戻りました");
       return;
     }
     switch (b.action) {
@@ -323,7 +322,7 @@ function finish(s: GameState, b: Bot) {
           emit(s, {
             kind: "collapse",
             position: [bridge.x, 0],
-            text: "橋が崩落！",
+            text: "橋がこわれた！",
           });
         }
         break;
@@ -334,16 +333,16 @@ function finish(s: GameState, b: Bot) {
       position: [bridge.x, 0],
       text:
         b.action === "build"
-          ? "橋が開通！"
+          ? "橋ができた！"
           : b.action === "clear"
-            ? "道路を復旧！"
-            : "施工完了！",
+            ? "道が通れるようになった！"
+            : "仕事が終わった！",
     });
   }
   returning(s, b);
 }
 export function earthquake(s: GameState) {
-  emit(s, { kind: "earthquake", text: "地震発生！ 橋の安全を確認しよう" });
+  emit(s, { kind: "earthquake", text: "地震だ！ 橋は大丈夫？" });
   for (const b of s.bridges)
     if (b.level && random(s) < M.earthquake.damageProbability[b.level]) {
       b.level = Math.max(M.earthquake.minimumLevel, b.level - 1);

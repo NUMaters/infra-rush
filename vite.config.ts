@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 export default defineConfig({
-  base: "/infra-rush/",
+  base: "./",
   server: { host: "0.0.0.0" },
   build: { target: "es2022", chunkSizeWarningLimit: 650 },
 });

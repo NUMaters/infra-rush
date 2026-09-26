@@ -3,6 +3,7 @@ import { M } from "./game/master";
 import type { Difficulty } from "./game/master";
 import { canCommand, command, createGame, taskSpec, tick } from "./game/engine";
 import { CPU } from "./game/cpu";
+import { resolveTaskTarget } from "./game/intent";
 import type { Action, Resource } from "./game/types";
 import { World } from "./render/world";
 import { Sound } from "./ui/audio";
@@ -28,13 +29,12 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span><span>音声ONがおすすめ ${icon("sound")}</span></div>
 </section>
 <section id="hud" class="hidden">
- <header class="match-header"><div class="team-score blue">${icon("crown")}<div><small>あなたの城</small><strong id="blue-hp"></strong></div></div><div class="timer"><small>INFRA RUSH</small><b id="timer">06:00</b></div><div class="team-score red"><div><small>CPUの城</small><strong id="red-hp"></strong></div>${icon("crown")}</div></header>
+ <header class="match-header"><div class="team-score blue" id="blue-score"><div class="score-top"><span>${icon("castle")}<small>あなたの城</small></span><b id="blue-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="blue-hp" role="progressbar" aria-label="あなたの城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div><div class="timer"><small>のこり時間</small><b id="timer">06:00</b></div><div class="team-score red" id="red-score"><div class="score-top"><span>${icon("castle")}<small>相手の城</small></span><b id="red-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="red-hp" role="progressbar" aria-label="相手の城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div></header>
  <div class="resource-bar" id="resources"></div>
- <div class="utilities"><button id="sound" class="circle" aria-label="音声を切り替え">${icon("sound")}</button><button id="pause" class="circle" aria-label="一時停止">${icon("pause")}</button><button class="circle help" aria-label="遊び方">?</button></div>
- <div class="zoom"><button id="zoom-in" aria-label="拡大">+</button><button id="zoom-out" aria-label="縮小">−</button></div>
+ <div class="utilities"><button id="sound" class="circle" aria-label="BGMと効果音を切り替え" aria-pressed="false">${icon("sound")}</button><button id="pause" class="circle" aria-label="一時停止">${icon("pause")}</button><button class="circle help" aria-label="遊び方">?</button></div>
  <div id="bridge-labels"></div><div id="floaters" aria-hidden="true"></div>
  <div id="toast" role="status" aria-live="polite"></div>
- <section class="crew"><div class="crew-heading"><span>${icon("helmet")} <b>YOUR CREW</b> <small>作業Botをタップ</small></span><span id="idle-count"></span></div><div id="bot-roster"></div><div id="hint"></div></section>
+ <div id="hint" class="field-hint"></div>
  <section id="task-panel" class="hidden" aria-label="Botへの作業指示"></section>
  <div class="corner-brand">INFRA <b>RUSH</b></div>
 </section>
@@ -42,38 +42,40 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
 <section id="result" class="overlay hidden"></section>`;
 let state = createGame();
 let cpu = new CPU();
+let cpuEnabled = true;
 let difficulty: Difficulty = "normal";
 let started = false,
   paused = false,
   selected: string | null = null,
-  target = "blue",
   ready = false,
   lastEvent = 0;
+let bridgeContext: string | null = null;
+let qaFrozen = false;
 const sound = new Sound();
 let world: World;
 const labels: Record<Action, string> = {
-  mine: "採掘",
-  build: "架橋",
-  upgrade: "補強",
-  repair: "修繕",
-  embank: "盛土",
-  clear: "整地",
+  mine: "掘る",
+  build: "橋をつくる",
+  upgrade: "強くする",
+  repair: "直す",
+  embank: "道をふさぐ",
+  clear: "土をどける",
   destroy: "橋を壊す",
-  march: "進軍",
+  march: "攻める",
 };
 const states: Record<string, string> = {
   IDLE: "待機中",
   MOVING: "移動中",
-  MINING: "採掘中",
-  BUILDING_BRIDGE: "架橋中",
-  UPGRADING_BRIDGE: "補強中",
-  REPAIRING_BRIDGE: "修繕中",
-  BUILDING_EMBANKMENT: "盛土中",
-  CLEARING_EMBANKMENT: "整地中",
-  DESTROYING_BRIDGE: "解体中",
-  MARCHING: "進軍中",
+  MINING: "掘っている",
+  BUILDING_BRIDGE: "橋をつくっている",
+  UPGRADING_BRIDGE: "橋を強くしている",
+  REPAIRING_BRIDGE: "橋を直している",
+  BUILDING_EMBANKMENT: "道をふさいでいる",
+  CLEARING_EMBANKMENT: "土をどけている",
+  DESTROYING_BRIDGE: "橋を壊している",
+  MARCHING: "城へ向かっている",
   ATTACKING_CASTLE: "城を攻撃！",
-  RETURNING: "帰還中",
+  RETURNING: "戻っている",
 };
 const resourceNames: Record<Resource, string> = {
   soil: "土",
@@ -82,19 +84,40 @@ const resourceNames: Record<Resource, string> = {
 };
 const botName = (i: number) => ["アオ", "ソラ", "リク", "ナギ", "ウミ"][i];
 let toastTimer: ReturnType<typeof setTimeout>;
+let shownHp: Record<"blue" | "red", number> = {
+  blue: M.castle.hp,
+  red: M.castle.hp,
+};
 function toast(text: string) {
   $("#toast").textContent = text;
   $("#toast").classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => $("#toast").classList.remove("show"), 2800);
 }
-function chooseBot(id: string) {
+function chooseBot(id: string, context: string | null = null) {
   selected = id;
+  bridgeContext = context;
   world.setSelected(id);
   sound.unlock();
   sound.play("select");
   $("#task-panel").classList.remove("hidden");
   renderUI();
+}
+function chooseBridge(id: string) {
+  if (!started || paused || state.status !== "playing") return;
+  const bot =
+    selected ??
+    state.bots.find((b) => b.team === "blue" && b.state === "IDLE")?.id ??
+    "blue-0";
+  chooseBot(bot, id === "center" ? id : null);
+}
+function positionPanel() {
+  if (!selected) return;
+  const bot = state.bots.find((b) => b.id === selected)!;
+  const point = world.project(bot.position, 1.5);
+  const panel = $("#task-panel");
+  panel.style.left = `${Math.max(12, Math.min(innerWidth - panel.offsetWidth - 12, point.x + 18))}px`;
+  panel.style.top = `${Math.max(130, Math.min(innerHeight - panel.offsetHeight - 16, point.y - panel.offsetHeight - 18))}px`;
 }
 function closePanel() {
   selected = null;
@@ -108,11 +131,14 @@ function start() {
   sound.play("complete");
   state = createGame(Date.now() >>> 0);
   cpu = new CPU(difficulty);
+  cpuEnabled = true;
   lastEvent = 0;
   started = true;
   paused = false;
   selected = null;
-  target = "blue";
+  bridgeContext = null;
+  qaFrozen = false;
+  shownHp = { blue: M.castle.hp, red: M.castle.hp };
   world.reset();
   $("#title").classList.add("hidden");
   $("#hud").classList.remove("hidden");
@@ -120,10 +146,12 @@ function start() {
   $("#modal").classList.add("hidden");
   $("#task-panel").classList.add("hidden");
   renderUI();
-  toast("まずは青いBotをタップ → 採掘！");
+  sound.startMusic();
+  toast("まずは青いBotをタップして、掘ってみよう！");
 }
 function doAction(action: Action | "cancel") {
   if (!selected) return;
+  const target = resolveTaskTarget(state, "blue", action, bridgeContext);
   const r = command(state, "blue", { botId: selected, action, target });
   if (!r.ok) {
     toast(r.reason!);
@@ -132,31 +160,47 @@ function doAction(action: Action | "cancel") {
   sound.play("command");
   toast(
     action === "cancel"
-      ? "採掘を終えて帰還します"
-      : `${botName(state.bots.find((b) => b.id === selected)!.index)}に「${labels[action]}」を指示しました`,
+      ? "掘るのをやめて戻ります"
+      : `${botName(state.bots.find((b) => b.id === selected)!.index)}が「${labels[action]}」を始めます`,
   );
   closePanel();
 }
 function costText(action: Action) {
-  const b = state.bridges.find((b) => b.id === target),
+  const b = state.bridges.find(
+      (b) => b.id === resolveTaskTarget(state, "blue", action, bridgeContext),
+    ),
     spec = taskSpec(action, b);
   const cost = Object.entries(spec.cost)
     .map(([r, n]) => `${resourceNames[r as Resource]} ${n}`)
     .join(" / ");
   return action === "mine"
-    ? "無料 · 自動で資源獲得"
+    ? "石・土・鉄"
     : action === "march"
-      ? "無料 · 敵城へ自動移動"
+      ? "相手の城へ"
       : `${cost} · ${spec.seconds}秒`;
 }
 function renderUI() {
   if (!started) return;
-  for (const team of ["blue", "red"] as const)
-    $(`#${team}-hp`).innerHTML = Array.from(
-      { length: M.castle.hp },
-      (_, i) =>
-        `<i class="heart ${i < state.teams[team].hp ? "filled" : ""}">♥</i>`,
-    ).join("");
+  for (const team of ["blue", "red"] as const) {
+    const hp = state.teams[team].hp;
+    if (hp < shownHp[team]) {
+      const score = $(`#${team}-score`);
+      score.classList.remove("damage-flash");
+      void score.offsetWidth;
+      score.classList.add("damage-flash");
+      setTimeout(() => score.classList.remove("damage-flash"), 520);
+    }
+    shownHp[team] = hp;
+    $(`#${team}-hp-count`).innerHTML = `${hp}<em>/${M.castle.hp}</em>`;
+    html(
+      `#${team}-hp`,
+      Array.from(
+        { length: M.castle.hp },
+        (_, i) => `<i class="${i < hp ? "filled" : ""}"></i>`,
+      ).join(""),
+    );
+    $(`#${team}-hp`).setAttribute("aria-valuenow", String(hp));
+  }
   const remain = Math.ceil(M.game.duration - state.time);
   $("#timer").textContent = `${Math.floor(remain / 60)
     .toString()
@@ -167,24 +211,12 @@ function renderUI() {
         `<div class="resource ${r}">${icon(r)}<span>${resourceNames[r]}<b>${state.teams.blue.resources[r]}</b></span></div>`,
     )
     .join("");
-  const bots = state.bots.filter((b) => b.team === "blue");
-  $("#idle-count").textContent =
-    `${bots.filter((b) => b.state === "IDLE").length} / 5 待機`;
-  html(
-    "#bot-roster",
-    bots
-      .map(
-        (b) =>
-          `<button class="bot-card ${selected === b.id ? "selected" : ""} ${b.state === "IDLE" ? "idle" : ""}" data-bot="${b.id}" aria-label="Bot ${b.index + 1} ${botName(b.index)} ${states[b.state]}"><span class="bot-portrait">${icon("helmet")}<i>${b.index + 1}</i></span><strong>${botName(b.index)}</strong><small>${states[b.state]}</small>${b.duration && b.state !== "RETURNING" ? `<span class="work-progress" style="width:${Math.min(100, (b.progress / b.duration) * 100)}%"></span>` : ""}</button>`,
-      )
-      .join(""),
-  );
   const bridge = state.bridges[0];
   $("#hint").innerHTML = !bridge.level
-    ? `${icon("stone")} <span>採掘で <b>石50</b> → 青専用橋を架けよう</span>`
+    ? `${icon("stone")} <span>石を50集めて、手前の橋をつくろう</span>`
     : bridge.blockedBy
-      ? `${icon("clear")} <span>道が塞がれています。<b>整地</b>で再開通！</span>`
-      : `${icon("march")} <span>道がつながった！ <b>進軍</b>で敵城へ。あと${state.teams.red.hp}回！</span>`;
+      ? `${icon("clear")} <span>道がふさがれた！ <b>土をどける</b>と通れるよ</span>`
+      : `${icon("march")} <span>橋ができた！ <b>攻める</b>で相手の城へ。あと${state.teams.red.hp}回！</span>`;
   if (selected) {
     const b = state.bots.find((x) => x.id === selected)!;
     const busy = b.state !== "IDLE" && b.action !== "mine";
@@ -193,45 +225,46 @@ function renderUI() {
       `<div class="panel-heading"><span class="panel-bot">${icon("helmet")}</span><div><small>BOT ${b.index + 1}</small><h2>${botName(b.index)} <span>${states[b.state]}</span></h2></div><button class="circle" id="close-panel" aria-label="指示パネルを閉じる">${icon("close")}</button></div>
   ${
     busy
-      ? `<div class="busy-note">${b.action ? icon(b.action) : ""}<b>${states[b.state]}</b><p>施工と進軍は、完了までおまかせ。</p><div class="busy-progress"><i style="width:${b.duration ? Math.min(100, (b.progress / b.duration) * 100) : 50}%"></i></div></div>`
-      : `<div class="target-caption">施工する橋 <span>マップの橋をタップでも選べます</span></div><div class="target-tabs">${state.bridges.map((x) => `<button data-target="${x.id}" class="${target === x.id ? "active" : ""}">${x.id === "blue" ? "青専用" : x.id === "center" ? "中央共有" : "赤専用"}<small>${x.level ? "●".repeat(x.level) + "○".repeat(3 - x.level) : "未建設"}${x.blockedBy ? " · 通行止" : ""}</small></button>`).join("")}</div><div class="actions">${(
-          Object.keys(labels) as Action[]
-        )
+      ? `<div class="busy-note">${b.action ? icon(b.action) : ""}<b>${states[b.state]}</b><p>終わったら自分で戻ってくるよ。</p><div class="busy-progress"><i style="width:${b.duration ? Math.min(100, (b.progress / b.duration) * 100) : 50}%"></i></div></div>`
+      : `<div class="actions">${(Object.keys(labels) as Action[])
           .map((a) => {
             const reason = canCommand(state, "blue", {
               botId: b.id,
               action: a,
-              target,
+              target: resolveTaskTarget(state, "blue", a, bridgeContext),
             });
             return `<button data-action="${a}" ${reason ? "disabled" : ""} title="${reason ?? labels[a]}" class="action ${a === "march" ? "rush" : ""}">${icon(a)}<span><b>${labels[a]}</b><small>${costText(a)}</small></span></button>`;
           })
           .join(
             "",
-          )}</div>${b.action === "mine" ? '<button id="cancel-mine" class="cancel-mine">採掘をやめて帰還</button>' : ""}<p class="panel-tip">${target === "red" ? "相手の橋への盛土・破壊で進軍を止めよう。" : target === "center" ? "自軍の専用橋を完成させると建設できます。" : "まず採掘。石50が集まったら、1体に架橋を指示。"}</p>`
+          )}</div>${b.action === "mine" ? '<button id="cancel-mine" class="cancel-mine">掘るのをやめる</button>' : ""}${bridgeContext === "center" ? '<p class="panel-tip">真ん中の橋で作業</p>' : ""}`
   }`,
     );
   }
 }
 function showHelp() {
   paused = true;
+  sound.pauseMusic();
   sound.unlock();
   $("#modal").classList.remove("hidden");
   $("#modal").innerHTML =
-    `<article class="dialog"><div class="eyebrow">FIELD GUIDE</div><h2>つくった道が、勝ち筋になる。</h2><p>Bot同士は戦いません。5体の作業Botを使い、<br>相手の城を合計5回たたこう。</p><div class="guide-steps"><div>${icon("mine")}<b>01 掘る</b><p>Botを選んで採掘。<br>石・土・鉄が増えます。</p></div><div>${icon("build")}<b>02 つなぐ</b><p>石50で専用橋を建設。<br>余裕があれば中央橋も。</p></div><div>${icon("march")}<b>03 進む</b><p>進軍すると自動で攻撃。<br>一発たたいて帰還！</p></div></div><p class="guide-extra">土30の盛土で敵の道をふさぎ、鉄10の整地で自分の道を復旧。鉄で補強・修繕・橋の破壊も。資源や条件が足りない作業は灰色になります。</p><p class="guide-extra">中断できるのは採掘だけ。有限作業が終わると自城へ帰還します。地震は両軍共通、時間切れは引き分けです。</p><button id="modal-close" class="primary">わかった、工事を始めよう ${icon("march")}</button><small class="keyboard-note">PC: 1〜5でBot選択 / Escで閉じる · スマホ: タップで指示</small></article>`;
+    `<article class="dialog"><div class="eyebrow">あそびかた</div><h2>橋をつくって、相手の城へ！</h2><p>5体のBotに仕事をお願いしよう。<br>相手の城に5回たどり着けば勝ち。</p><div class="guide-steps"><div>${icon("mine")}<b>01 掘る</b><p>Botをタップして「掘る」。<br>石・土・鉄を集めよう。</p></div><div>${icon("build")}<b>02 橋をつくる</b><p>石が50あれば橋をつくれる。<br>真ん中の橋は現地をタップ。</p></div><div>${icon("march")}<b>03 攻める</b><p>橋ができたら「攻める」。<br>城を一度たたいて戻るよ。</p></div></div><p class="guide-extra">土を盛って相手の道をふさいだり、重機で土をどけて自分の道を開いたりできるよ。橋を強くする・直す・壊す作業もできる。資源が足りない行動は灰色になるよ。</p><p class="guide-extra">途中でやめられるのは「掘る」だけ。地震に備えて橋を直しながら、6分以内に攻めよう。</p><button id="modal-close" class="primary">わかった！ ${icon("march")}</button><small class="keyboard-note">ドラッグで移動、ピンチ・ホイールで拡大縮小、2本指・右ドラッグで回転。PCは1〜5でBot選択、Escで閉じる。</small></article>`;
 }
 function showPause() {
   paused = true;
+  sound.pauseMusic();
   $("#modal").classList.remove("hidden");
   $("#modal").innerHTML =
     `<article class="dialog compact"><div class="eyebrow">TAKE A BREAK</div><h2>ちょっと、ひと休み。</h2><p>CPUとタイマーも停止しています。</p><button id="modal-close" class="primary">工事を再開 ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
 }
 function finish() {
+  sound.stopMusic();
   closePanel();
   const win = state.winner === "blue",
     draw = state.winner === "draw";
   $("#result").classList.remove("hidden");
   $("#result").innerHTML =
-    `<article class="result-card ${win ? "victory" : ""}"><div class="result-crown">${icon("crown")}</div><div class="eyebrow">${draw ? "TIME UP" : win ? "MISSION COMPLETE" : "NEXT CONSTRUCTION"}</div><h2>${draw ? "引き分け！" : win ? "道をつないだ。<br>勝利をつかんだ！" : "次こそ、<br>勝利への道を。"}</h2><p>${draw ? "最後まで守り切りました。次の工事で決着を。" : win ? "5体の小さなBotたちに、大きな拍手を。" : "採掘と進軍の人数、相手の道への盛土がカギ。"}</p><div class="result-score"><span class="blue">${state.teams.blue.hp}</span><small>城の残りHP</small><span class="red">${state.teams.red.hp}</span></div><div class="result-stats"><div><b>${state.teams.blue.stats.mined}</b><small>採掘した資源</small></div><div><b>${state.teams.blue.stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
+    `<article class="result-card ${win ? "victory" : ""}"><div class="result-crown">${icon("crown")}</div><div class="eyebrow">ゲーム終了</div><h2>${draw ? "引き分け！" : win ? "道をつないだ。<br>勝利をつかんだ！" : "次こそ、<br>勝利への道を。"}</h2><p>${draw ? "最後まで守り切りました。次の工事で決着を。" : win ? "5体の小さなBotたちに、大きな拍手を。" : "掘るBotと攻めるBotの配分、相手の道をふさぐタイミングがカギ。"}</p><div class="result-score"><span class="blue">${state.teams.blue.hp}</span><small>城の残り</small><span class="red">${state.teams.red.hp}</span></div><div class="result-stats"><div><b>${state.teams.blue.stats.mined}</b><small>集めた資源</small></div><div><b>${state.teams.blue.stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
       state.time % 60,
     )
       .toString()
@@ -242,6 +275,7 @@ function finish() {
   sound.play("end");
 }
 function backTitle() {
+  sound.stopMusic();
   started = false;
   paused = false;
   closePanel();
@@ -255,12 +289,7 @@ function backTitle() {
 app.addEventListener("click", (e) => {
   const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
   if (!button || button.disabled) return;
-  if (button.dataset.bot) chooseBot(button.dataset.bot);
-  else if (button.dataset.target) {
-    target = button.dataset.target;
-    sound.play("select");
-    renderUI();
-  } else if (button.dataset.action) doAction(button.dataset.action as Action);
+  if (button.dataset.action) doAction(button.dataset.action as Action);
   else if (button.dataset.difficulty) {
     difficulty = button.dataset.difficulty as Difficulty;
     document
@@ -287,6 +316,7 @@ app.addEventListener("click", (e) => {
       case "sound":
         sound.unlock();
         sound.muted = !sound.muted;
+        if (!sound.muted && !paused) sound.resumeMusic();
         button.classList.toggle("muted", sound.muted);
         button.setAttribute("aria-pressed", String(sound.muted));
         break;
@@ -296,20 +326,15 @@ app.addEventListener("click", (e) => {
       case "modal-close":
         $("#modal").classList.add("hidden");
         paused = false;
+        if (started && state.status === "playing") sound.resumeMusic();
         break;
       case "back-title":
         backTitle();
         break;
-      case "zoom-in":
-        world.setZoom(0.15);
-        break;
-      case "zoom-out":
-        world.setZoom(-0.15);
-        break;
     }
 });
 document.addEventListener("keydown", (e) => {
-  if (!started) return;
+  if (!started || paused || state.status !== "playing") return;
   if (/^[1-5]$/.test(e.key)) chooseBot(`blue-${Number(e.key) - 1}`);
   if (e.key === "Escape") closePanel();
 });
@@ -356,7 +381,7 @@ function processEvents() {
 function simulate(seconds: number) {
   const steps = Math.round(seconds / M.game.tick);
   for (let i = 0; i < steps; i++) {
-    cpu.update(state);
+    if (cpuEnabled) cpu.update(state);
     tick(state, M.game.tick);
   }
   processEvents();
@@ -366,10 +391,10 @@ function frame(now: number) {
   const elapsed = (now - last) / 1000;
   const dt = Math.min(0.1, elapsed);
   last = now;
-  if (started && !paused && state.status === "playing") {
+  if (started && !paused && !qaFrozen && state.status === "playing") {
     accumulator += dt;
     while (accumulator >= M.game.tick) {
-      cpu.update(state);
+      if (cpuEnabled) cpu.update(state);
       tick(state, M.game.tick);
       accumulator -= M.game.tick;
     }
@@ -401,11 +426,11 @@ function frame(now: number) {
         el.dataset.target = b.id;
         el.setAttribute(
           "aria-label",
-          b.id === "blue"
-            ? "青専用橋"
-            : b.id === "center"
-              ? "中央共有橋"
-              : "赤専用橋",
+          b.id === "center"
+            ? "真ん中の橋"
+            : b.id === "blue"
+              ? "自分の城につながる橋"
+              : "相手の城につながる橋",
         );
         $("#bridge-labels").append(el);
       }
@@ -413,10 +438,11 @@ function frame(now: number) {
       el.className = `bridge-label ${b.owner ?? "neutral"} ${b.blockedBy ? "blocked" : ""}`;
       el.style.left = `${p.x}px`;
       el.style.top = `${p.y}px`;
-      const markup = `<span>${b.id === "center" ? "中央共有" : b.id === "blue" ? "青専用" : "赤専用"}</span><b>${b.lock ? "施工中…" : b.blockedBy ? "通行止" : b.level ? "●".repeat(b.level) + "○".repeat(3 - b.level) : "＋ 架橋"}</b>${b.damage && b.level ? "<i>要修繕</i>" : ""}`;
+      const markup = `<b>${b.lock ? "作業中…" : b.blockedBy ? "ふさがれている" : b.damage && b.level ? "直そう" : b.level ? "渡れる" : "橋をつくる"}</b>${b.level ? `<span class="bridge-strength" aria-label="橋の強さ${b.level}段階">${"●".repeat(b.level)}${"○".repeat(3 - b.level)}</span>` : ""}`;
       if (el.innerHTML !== markup) el.innerHTML = markup;
     }
   }
+  positionPanel();
   requestAnimationFrame(frame);
 }
 try {
@@ -424,19 +450,13 @@ try {
   world.onPick = (kind, id) => {
     if (!started || paused || state.status !== "playing") return;
     if (kind === "bot") chooseBot(id);
-    else {
-      target = id;
-      if (!selected)
-        chooseBot(
-          state.bots.find((b) => b.team === "blue" && b.state === "IDLE")?.id ??
-            "blue-0",
-        );
-      renderUI();
-    }
+    else chooseBridge(id);
   };
   await Promise.race([
     world.load((n) => {
       $("#loading i").style.width = `${Math.round(n * 100)}%`;
+      $("#loading p").textContent =
+        `小さなBotたちが準備しています… ${Math.round(n * 100)}%`;
     }),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Asset load timed out")), 45000),
@@ -448,15 +468,7 @@ try {
   requestAnimationFrame(frame);
   $("#bridge-labels").addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-target]");
-    if (b) {
-      target = b.dataset.target!;
-      if (!selected)
-        chooseBot(
-          state.bots.find((b) => b.team === "blue" && b.state === "IDLE")?.id ??
-            "blue-0",
-        );
-      renderUI();
-    }
+    if (b) chooseBridge(b.dataset.target!);
   });
   if (import.meta.env.DEV && new URLSearchParams(location.search).has("qa")) {
     const qaControls = document.createElement("aside");
@@ -472,8 +484,8 @@ try {
       if (!button || !started) return;
       if (button.dataset.seconds) simulate(Number(button.dataset.seconds));
       else {
-        paused = !paused;
-        button.textContent = paused ? "時計再開" : "時計停止";
+        qaFrozen = !qaFrozen;
+        button.textContent = qaFrozen ? "時計再開" : "時計停止";
       }
     });
     document.body.append(qaControls);
@@ -484,6 +496,9 @@ try {
         metrics: () => world.metrics(),
         setCpu: (level: Difficulty) => {
           cpu = new CPU(level);
+        },
+        setCpuEnabled: (enabled: boolean) => {
+          cpuEnabled = enabled;
         },
         quake: () => {
           state.nextQuake = state.time + 1;
@@ -497,7 +512,9 @@ try {
   }
 } catch (error) {
   console.error(error);
+  const loadingFailed =
+    error instanceof Error && /fetch|load|network|timeout/i.test(error.message);
   $("#loading").innerHTML =
-    '<div class="dialog"><h2>準備中に問題が発生しました</h2><p>WebGLが利用できるブラウザで再読み込みしてください。</p><button onclick="location.reload()" class="primary">再読み込み</button></div>';
+    `<div class="dialog"><h2>準備中に問題が発生しました</h2><p>${loadingFailed ? "ゲームデータの読み込みが止まりました。通信を確認して、もう一度お試しください。" : "3D描画を開始できませんでした。WebGL対応ブラウザでお試しください。"}</p><button onclick="location.reload()" class="primary">再読み込み</button></div>`;
 }
 // QA hooks are removed from production builds by Vite.

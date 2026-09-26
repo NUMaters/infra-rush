@@ -15,7 +15,7 @@
     "assets": "/Applications/Blender.app/Contents/MacOS/Blender --background --python assets/blender/build.py",
     "build:portable": "node scripts/build-portable.mjs",
     "build:qa": "node scripts/build-portable.mjs --qa",
-    "preview:portable": "python3 -m http.server 5175 --bind 0.0.0.0 --directory dist"
+    "preview:portable": "python3 scripts/serve-preview.py --directory dist --port 5177"
   },
   "dependencies": {
     "three": "^0.180.0"
