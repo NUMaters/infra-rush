@@ -24,10 +24,11 @@ const app = $("#app");
 app.innerHTML = `<main id="world"></main><div id="vignette"></div>
 <section id="loading"><div class="mini-brand">INFRA <b>RUSH</b></div><div class="loading-track"><i></i></div><p>小さなBotたちが準備しています…</p></section>
 <section id="title" class="hidden">
- <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><button class="circle help" aria-label="遊び方">?</button></div>
+ <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+ <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
  <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><h1>勝利への道を、つくろう。</h1><p>5体のBot。3つの橋。ひとつの勝利。<br>掘って、つないで、相手の城へ。</p></div>
  <div class="start-card"><label for="difficulty">CPUの強さ</label><div class="difficulty-options"><button data-difficulty="easy">はじめて</button><button data-difficulty="normal" class="active">スタンダード</button><button data-difficulty="hard">チャレンジ</button></div><button id="start" class="primary">${icon("helmet")}<span>工事をはじめる<small>PLAYER vs CPU</small></span>${icon("march")}</button><p>1ゲーム 6分 · 先に城を5回たたけば勝ち</p></div>
- <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span><span>音声ONがおすすめ ${icon("sound")}</span></div>
+ <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span><span>音楽は右上のボタンから ${icon("sound")}</span></div>
 </section>
 <section id="hud" class="hidden">
  <header class="match-header"><div class="team-score blue" id="blue-score"><div class="score-top"><span>${icon("castle")}<small>あなたの城</small></span><b id="blue-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="blue-hp" role="progressbar" aria-label="あなたの城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div><div class="timer"><small>のこり時間</small><b id="timer">06:00</b></div><div class="team-score red" id="red-score"><div class="score-top"><span>${icon("castle")}<small>相手の城</small></span><b id="red-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="red-hp" role="progressbar" aria-label="相手の城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div></header>
@@ -52,6 +53,7 @@ let started = false,
   lastEvent = 0;
 let bridgeContext: string | null = null;
 let qaFrozen = false;
+let audioGestureSeen = false;
 const sound = new Sound();
 let world: World;
 const labels: Record<Action, string> = {
@@ -201,7 +203,8 @@ function start() {
   $("#modal").classList.add("hidden");
   $("#task-panel").classList.add("hidden");
   renderUI();
-  sound.startMusic();
+  sound.setMusicScene("game");
+  syncSoundButtons();
   toast("まずは青いBotをタップして、掘ってみよう！");
 }
 function doAction(action: Action | "cancel") {
@@ -335,13 +338,12 @@ function hideModal() {
       modal.classList.add("hidden");
       modal.classList.remove("leaving");
       paused = false;
-      if (started && state.status === "playing") sound.resumeMusic();
+      if (!started || state.status === "playing") sound.resumeMusic();
     },
     reducedMotion.matches ? 0 : 190,
   );
 }
 function finish() {
-  sound.stopMusic();
   closePanel();
   const win = state.winner === "blue",
     draw = state.winner === "draw";
@@ -356,9 +358,10 @@ function finish() {
         "0",
       )}</b><small>工事時間</small></div></div><button id="restart" class="primary">もう一戦、つくろう ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
   sound.play("end");
+  sound.setMusicScene(win ? "victory" : "retry");
 }
 function backTitle() {
-  sound.stopMusic();
+  sound.setMusicScene("title");
   started = false;
   paused = false;
   closePanel();
@@ -368,6 +371,15 @@ function backTitle() {
   $("#title").classList.remove("hidden");
   state = createGame();
   world.reset();
+  syncSoundButtons();
+}
+function syncSoundButtons() {
+  for (const id of ["sound", "title-sound"]) {
+    const button = document.getElementById(id);
+    if (!button) continue;
+    button.classList.toggle("muted", sound.muted);
+    button.setAttribute("aria-pressed", String(sound.muted));
+  }
 }
 app.addEventListener("pointerdown", (e) => {
   const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
@@ -383,10 +395,13 @@ for (const event of ["pointerup", "pointercancel", "pointerleave"]) {
 app.addEventListener("click", (e) => {
   const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
   if (!button || button.disabled || transitioning) return;
+  const firstAudioGesture = !audioGestureSeen;
+  audioGestureSeen = true;
   tapBurst(button);
   if (button.dataset.action) doAction(button.dataset.action as Action);
   else if (button.dataset.difficulty) {
     sound.unlock();
+    sound.resumeMusic();
     sound.play("ui");
     difficulty = button.dataset.difficulty as Difficulty;
     document
@@ -416,12 +431,14 @@ app.addEventListener("click", (e) => {
         doAction("cancel");
         break;
       case "sound":
+      case "title-sound": {
         sound.unlock();
-        sound.muted = !sound.muted;
+        if (button.id !== "title-sound" || !firstAudioGesture)
+          sound.muted = !sound.muted;
         if (!sound.muted && !paused) sound.resumeMusic();
-        button.classList.toggle("muted", sound.muted);
-        button.setAttribute("aria-pressed", String(sound.muted));
+        syncSoundButtons();
         break;
+      }
       case "pause":
         sound.play("ui");
         showPause();
@@ -577,6 +594,7 @@ try {
   ready = true;
   $("#loading").classList.add("hidden");
   $("#title").classList.remove("hidden");
+  sound.setMusicScene("title");
   requestAnimationFrame(frame);
   $("#bridge-labels").addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-target]");

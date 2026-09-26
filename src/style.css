@@ -110,9 +110,69 @@ button svg {
   pointer-events: auto;
 }
 .title-top {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+.title-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.title-sparks {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.title-sparks i {
+  position: absolute;
+  display: block;
+  width: 13px;
+  height: 13px;
+  background: #ffe06d;
+  filter: drop-shadow(0 2px 0 #dba331);
+  clip-path: polygon(
+    50% 0,
+    62% 38%,
+    100% 50%,
+    62% 62%,
+    50% 100%,
+    38% 62%,
+    0 50%,
+    38% 38%
+  );
+}
+.title-sparks i:nth-child(1) {
+  left: 50%;
+  top: 16%;
+}
+.title-sparks i:nth-child(2) {
+  left: 73%;
+  top: 28%;
+  background: #fff9c5;
+}
+.title-sparks i:nth-child(3) {
+  left: 89%;
+  top: 63%;
+}
+.title-sparks i:nth-child(4) {
+  left: 57%;
+  top: 70%;
+  background: #9deafe;
+}
+.title-sparks i:nth-child(5) {
+  left: 84%;
+  top: 12%;
+  background: #ffb799;
+}
+.title-sparks i:nth-child(6) {
+  left: 39%;
+  top: 42%;
+  width: 9px;
+  height: 9px;
 }
 .edition,
 .eyebrow {
@@ -123,6 +183,7 @@ button svg {
 }
 .title-copy {
   position: absolute;
+  z-index: 1;
   top: 17%;
   left: 6%;
   max-width: 420px;
@@ -171,6 +232,7 @@ h1 {
 }
 .start-card {
   position: absolute;
+  z-index: 1;
   left: 6%;
   bottom: 9%;
   width: 355px;
@@ -256,6 +318,7 @@ h1 {
 }
 .title-footer {
   position: absolute;
+  z-index: 1;
   bottom: 24px;
   left: 40px;
   right: 40px;

@@ -79,6 +79,7 @@ test("real UI: mine, build, march, attack, return, five hits, results and restar
   }
   await advance(page, 25);
   await expect(page.locator("#result")).toBeVisible();
+  await expect(page.locator("#bgm-victory")).toHaveJSProperty("paused", false);
   s = await page.evaluate(() => window.infraQA.snapshot());
   expect(s.winner).toBe("blue");
   expect(s.teams.red.hp).toBe(0);

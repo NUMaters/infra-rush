@@ -1,58 +1,119 @@
+export type MusicScene = "title" | "game" | "victory" | "retry";
+
+const musicFiles: Record<MusicScene, string> = {
+  title: "infra-rush-title.mp3",
+  game: "infra-rush-loop.mp3",
+  victory: "infra-rush-victory.mp3",
+  retry: "infra-rush-retry.mp3",
+};
+const musicVolume: Record<MusicScene, number> = {
+  title: 0.19,
+  game: 0.23,
+  victory: 0.19,
+  retry: 0.18,
+};
+
 export class Sound {
   private ctx: AudioContext | null = null;
-  private music: HTMLAudioElement | null = null;
-  private musicGain: GainNode | null = null;
+  private tracks = new Map<
+    MusicScene,
+    { music: HTMLAudioElement; gain: GainNode }
+  >();
+  private scene: MusicScene | null = null;
   private isMuted = false;
   get muted() {
     return this.isMuted;
   }
   set muted(value: boolean) {
     this.isMuted = value;
-    if (this.musicGain) this.musicGain.gain.value = value ? 0 : 0.23;
+    const now = this.ctx?.currentTime ?? 0;
+    for (const [scene, track] of this.tracks) {
+      track.gain.gain.cancelScheduledValues(now);
+      track.gain.gain.setTargetAtTime(
+        value || scene !== this.scene ? 0 : musicVolume[scene],
+        now,
+        0.06,
+      );
+    }
   }
   unlock() {
     this.ctx ??= new AudioContext();
     void this.ctx.resume();
   }
-  startMusic() {
+  private track(scene: MusicScene) {
     this.unlock();
-    if (!this.music) {
-      const music = new Audio(
-        new URL(
-          `${import.meta.env.BASE_URL}audio/infra-rush-loop.mp3`,
-          document.baseURI,
-        ).href,
-      );
-      music.preload = "auto";
-      music.loop = true;
-      music.id = "bgm";
-      music.hidden = true;
-      document.body.append(music);
-      const gain = this.ctx!.createGain();
-      gain.gain.value = this.isMuted ? 0 : 0.23;
-      this.ctx!.createMediaElementSource(music).connect(gain);
-      gain.connect(this.ctx!.destination);
-      this.music = music;
-      this.musicGain = gain;
+    const existing = this.tracks.get(scene);
+    if (existing) return existing;
+    const music = new Audio(
+      new URL(
+        `${import.meta.env.BASE_URL}audio/${musicFiles[scene]}`,
+        document.baseURI,
+      ).href,
+    );
+    music.preload = "auto";
+    music.loop = true;
+    music.id = scene === "game" ? "bgm" : `bgm-${scene}`;
+    music.hidden = true;
+    document.body.append(music);
+    const gain = this.ctx!.createGain();
+    gain.gain.value = 0;
+    this.ctx!.createMediaElementSource(music).connect(gain);
+    gain.connect(this.ctx!.destination);
+    const track = { music, gain };
+    this.tracks.set(scene, track);
+    return track;
+  }
+  setMusicScene(scene: MusicScene) {
+    if (this.scene === scene) {
+      this.resumeMusic();
+      return;
     }
-    this.music.currentTime = 0;
-    void this.music.play().catch(() => {
-      // The user can retry by resuming the game or toggling audio.
+    const previous = this.scene;
+    const oldTrack = previous ? this.tracks.get(previous) : null;
+    const next = this.track(scene);
+    const now = this.ctx!.currentTime;
+    this.scene = scene;
+    if (oldTrack) {
+      oldTrack.gain.gain.cancelScheduledValues(now);
+      oldTrack.gain.gain.setTargetAtTime(0, now, 0.09);
+      setTimeout(() => {
+        if (this.scene !== previous) {
+          oldTrack.music.pause();
+          oldTrack.music.currentTime = 0;
+        }
+      }, 450);
+    }
+    next.gain.gain.cancelScheduledValues(now);
+    next.gain.gain.setValueAtTime(0, now);
+    next.gain.gain.setTargetAtTime(
+      this.isMuted ? 0 : musicVolume[scene],
+      now,
+      0.12,
+    );
+    next.music.currentTime = 0;
+    void next.music.play().catch(() => {
+      // Browsers may wait for the first tap before allowing title music.
     });
   }
   pauseMusic() {
-    this.music?.pause();
+    if (this.scene) this.tracks.get(this.scene)?.music.pause();
   }
   resumeMusic() {
-    if (!this.music || !this.music.paused) return;
+    if (!this.scene) return;
+    const music = this.tracks.get(this.scene)?.music;
+    if (!music || !music.paused) return;
     this.unlock();
-    void this.music.play().catch(() => {
-      // Keep gameplay usable when the browser declines playback.
+    void music.play().catch(() => {
+      // Keep the screen usable when the browser declines autoplay.
     });
   }
   stopMusic() {
-    this.music?.pause();
-    if (this.music) this.music.currentTime = 0;
+    for (const track of this.tracks.values()) {
+      track.music.pause();
+      track.music.currentTime = 0;
+      track.gain.gain.value = 0;
+    }
+    this.scene = null;
   }
   play(kind: string) {
     if (this.isMuted || !this.ctx) return;
