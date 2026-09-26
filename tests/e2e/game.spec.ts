@@ -68,11 +68,21 @@ test("real UI: mine, build, march, attack, return, fifteen hits, results and res
   await advance(page, 23);
   s = await page.evaluate(() => window.infraQA.snapshot());
   expect(s.bridges[0].level).toBe(1);
-  await selectBot(page, 0);
+  const readyBot = await page.evaluate(() =>
+    window.infraQA.projectBot("blue-0"),
+  );
+  if (info.project.name === "mobile")
+    await page.touchscreen.tap(readyBot.x, readyBot.y);
+  else await page.mouse.click(readyBot.x, readyBot.y);
+  await expect(page.locator("#task-panel")).toBeVisible();
+  s = await page.evaluate(() => window.infraQA.snapshot());
+  expect(s.bots[0].action).toBeNull();
+  expect(s.teams.red.hp).toBe(15);
   await page.locator('[data-action="march"]').click();
   await advance(page, 14);
   s = await page.evaluate(() => window.infraQA.snapshot());
   expect(s.teams.red.hp).toBe(14);
+  await expect(page.locator("#impact-flash")).toHaveClass(/active/);
   expect(s.bots[0].state).toBe("IDLE");
   expect(s.bots[0].position).toEqual(s.bots[0].home);
   await page.screenshot({ path: `docs/qa/${info.project.name}-bridge.png` });

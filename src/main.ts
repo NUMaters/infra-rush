@@ -40,6 +40,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="resource-bar" id="resources"></div>
  <div class="utilities"><span id="latency" class="latency hidden" aria-label="通信遅延"></span><button id="sound" class="circle" aria-label="BGMと効果音を切り替え" aria-pressed="false">${icon("sound")}</button><button id="pause" class="circle" aria-label="一時停止">${icon("pause")}</button><button class="circle help" aria-label="遊び方">?</button></div>
  <div id="bridge-labels"></div><div id="floaters" aria-hidden="true"></div>
+ <div id="impact-flash" aria-hidden="true"></div>
  <div id="toast" role="status" aria-live="polite"></div>
  <div id="hint" class="field-hint"></div>
  <section id="task-panel" class="hidden" aria-label="Botへの作業指示"></section>
@@ -163,14 +164,27 @@ function toast(text: string) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => $("#toast").classList.remove("show"), 2800);
 }
+function worldPop(position: Point, kind: "select" | "command" | "rush") {
+  const point = world.project(position, 1.4);
+  const el = document.createElement("span");
+  el.className = `world-pop ${kind}`;
+  el.style.left = `${point.x}px`;
+  el.style.top = `${point.y}px`;
+  if (kind !== "select") el.textContent = kind === "rush" ? "GO!" : "OK!";
+  $("#floaters").append(el);
+  setTimeout(() => el.remove(), 760);
+}
 function chooseBot(id: string, context: string | null = null) {
   selected = id;
   bridgeContext = context;
   world.setSelected(id);
   sound.unlock();
   sound.play("select");
+  const bot = state.bots.find((b) => b.id === id);
+  if (bot) worldPop(bot.position, "select");
   const panel = $("#task-panel");
   clearTimeout(panelCloseTimer);
+  panel.inert = false;
   panel.classList.remove("hidden", "closing", "opening");
   void panel.offsetWidth;
   panel.classList.add("opening");
@@ -212,6 +226,7 @@ function closePanel() {
   selected = null;
   world.setSelected(null);
   const panel = $("#task-panel");
+  panel.inert = true;
   panel.classList.remove("opening");
   if (!panel.classList.contains("hidden")) {
     panel.classList.add("closing");
@@ -486,6 +501,9 @@ function doAction(action: Action | "cancel") {
     }
   }
   sound.play("command");
+  const actingBot = state.bots.find((b) => b.id === selected);
+  if (actingBot && action !== "cancel")
+    worldPop(actingBot.position, action === "march" ? "rush" : "command");
   toast(
     action === "cancel"
       ? "掘るのをやめて戻ります"
@@ -852,6 +870,15 @@ function processEvents() {
   for (const e of state.events) {
     if (e.id <= lastEvent) continue;
     world.effect(e);
+    if (e.kind === "attack" && e.team === playerTeam && e.position) {
+      const flash = $("#impact-flash");
+      const point = world.project(e.position, 1);
+      flash.style.setProperty("--impact-x", `${point.x}px`);
+      flash.style.setProperty("--impact-y", `${point.y}px`);
+      flash.classList.remove("active");
+      void flash.offsetWidth;
+      flash.classList.add("active");
+    }
     if (
       e.team === playerTeam ||
       ["earthquake", "warning", "end", "collapse"].includes(e.kind)

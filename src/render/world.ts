@@ -161,13 +161,17 @@ export class World {
         dragged = true;
     });
     this.canvas.addEventListener("pointerup", (e) => {
-      const tap = pointers.has(e.pointerId) && !dragged;
       pointers.delete(e.pointerId);
-      if (tap) this.pick(e);
     });
     this.canvas.addEventListener("pointercancel", (e) => {
       pointers.delete(e.pointerId);
       dragged = true;
+    });
+    // Pick on click, after the browser has fixed this tap's target. Opening
+    // the task panel during pointerup can place a new action under the finger
+    // and route the synthetic click to that action (a ghost command).
+    this.canvas.addEventListener("click", (e) => {
+      if (!dragged && e.button === 0) this.pick(e);
     });
   }
   async load(onProgress: (n: number) => void) {
@@ -680,7 +684,7 @@ export class World {
       y: ((1 - p.y) * this.height) / 2,
     };
   }
-  private pick(e: PointerEvent) {
+  private pick(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect(),
       p = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     let nearest: { id: string; d: number } | null = null;
@@ -710,10 +714,13 @@ export class World {
     }
     if (event.kind === "attack" && event.team) {
       this.hit.set(event.team === "blue" ? "red" : "blue", 0.7);
-      this.burst(event.position!, 0xffd658, 20);
+      this.shake = Math.max(this.shake, 0.17);
+      this.burst(event.position!, 0xffd658, 30);
     }
-    if (event.kind === "complete") this.burst(event.position!, 0xffdd58, 20);
-    if (event.kind === "collapse") this.burst(event.position!, 0xa7a8a1, 25);
+    if (event.kind === "command" && event.position)
+      this.burst(event.position, 0x9ceaff, 8);
+    if (event.kind === "complete") this.burst(event.position!, 0xffdd58, 28);
+    if (event.kind === "collapse") this.burst(event.position!, 0xa7a8a1, 32);
     if (event.kind === "return")
       this.burst(
         event.position!,
