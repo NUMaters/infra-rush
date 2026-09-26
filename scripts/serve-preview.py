@@ -1,10 +1,10 @@
 """Small static preview server. Preload once to avoid file I/O during asset requests."""
-import argparse, pathlib, mimetypes
+import argparse, pathlib, mimetypes, re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit, unquote
 parser=argparse.ArgumentParser();parser.add_argument('--directory',default='dist');parser.add_argument('--port',type=int,default=5175);parser.add_argument('--bind',default='0.0.0.0');args=parser.parse_args()
 root=pathlib.Path(args.directory).resolve()
-cache={('/'+p.relative_to(root).as_posix()):(p.read_bytes(),mimetypes.guess_type(p.name)[0] or 'application/octet-stream') for p in root.rglob('*') if p.is_file() and not p.name.startswith('.') and not any(x.startswith('bundle-') for x in p.parts)}
+cache={('/'+p.relative_to(root).as_posix()):(p.read_bytes(),mimetypes.guess_type(p.name)[0] or 'application/octet-stream') for p in root.rglob('*') if p.is_file() and not p.name.startswith('.') and not re.search(r' \d+$',p.stem) and not any(x.startswith('bundle-') for x in p.parts)}
 class Handler(BaseHTTPRequestHandler):
  def do_GET(self):
   path=unquote(urlsplit(self.path).path);path=path+'index.html' if path.endswith('/') else path

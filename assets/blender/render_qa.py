@@ -3,7 +3,7 @@ import bpy, math, pathlib
 from mathutils import Vector
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 OUT=ROOT/'docs/qa/assets';OUT.mkdir(parents=True,exist_ok=True)
-for name in ['bot','castle','excavator','dozer','grader','launcher','drill','stone-bridge','steel-bridge']:
+for name in ['bot','castle','excavator','dozer','grader','launcher','drill','stone-bridge','steel-bridge','soil','stone-resource','iron-resource','crate','minecart','flower']:
  bpy.ops.wm.read_factory_settings(use_empty=True)
  bpy.ops.import_scene.gltf(filepath=str(ROOT/'public/models'/f'{name}.glb'))
  scene=bpy.context.scene

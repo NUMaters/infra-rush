@@ -9,6 +9,14 @@ import type { Bot, GameEvent, GameState, Point, Team } from "../game/types";
 const TEAM = { blue: 0x1689ff, red: 0xf34b53 };
 const unit = new T.Vector3(0, 1, 0);
 const clamp = T.MathUtils.clamp;
+function rigPart(root: T.Object3D, name: string): T.Object3D | undefined {
+  let found: T.Object3D | undefined;
+  root.traverse((node) => {
+    if (!found && (node.name === name || node.name.startsWith(`${name}.`)))
+      found = node;
+  });
+  return found;
+}
 interface Particle {
   mesh: T.Mesh;
   velocity: T.Vector3;
@@ -33,7 +41,7 @@ export class World {
     {
       stone: T.Group;
       steel: T.Group;
-      mound: T.Mesh;
+      mound: T.Group;
       cracks: T.Group;
       debris: T.Group;
     }
@@ -112,6 +120,8 @@ export class World {
     );
     this.scene.add(this.route);
     this.camera.position.set(0, 40, -24);
+    this.camera.zoom = 1.17;
+    this.camera.updateProjectionMatrix();
     this.controls = new OrbitControls(this.camera, this.canvas);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.12;
@@ -165,6 +175,12 @@ export class World {
       "steel-bridge",
       "tree",
       "fence",
+      "soil",
+      "stone-resource",
+      "iron-resource",
+      "crate",
+      "minecart",
+      "flower",
     ];
     let loaded = 0;
     const modelBase = new URL(import.meta.env.BASE_URL, window.location.href);
@@ -338,6 +354,29 @@ export class World {
         );
         rock.scale.y = 1.3 + rand();
       }
+      const stonePile = this.model("stone-resource");
+      stonePile.position.set(qx - 1.7, 0.39, sz * 9.4);
+      stonePile.scale.setScalar(1.15);
+      const ironPile = this.model("iron-resource");
+      ironPile.position.set(qx + 1.5, 0.4, sz * 9.2);
+      ironPile.scale.setScalar(1.2);
+      const earthPile = this.model("soil");
+      earthPile.position.set(qx + 2.9, 0.35, sz * 10.6);
+      earthPile.scale.setScalar(0.8);
+      this.scene.add(stonePile, ironPile, earthPile);
+      const cart = this.model("minecart");
+      cart.position.set(qx + 0.5, 0.38, sz * 8.5);
+      cart.rotation.y = team === "red" ? Math.PI / 5 : -Math.PI / 5;
+      this.scene.add(cart);
+      for (const [cx, cz] of [
+        [qx - 2.8, sz * 9.2],
+        [M.castle[team][0] + (team === "blue" ? -3.2 : 3.2), M.castle[team][1] + sz * 1.0],
+      ]) {
+        const crate = this.model("crate");
+        crate.position.set(cx, 0.39, cz);
+        crate.rotation.y = (cx + cz) * 0.23;
+        this.scene.add(crate);
+      }
       // Timber mine entrance, props, and team wayfinding posts.
       for (const x of [qx - 0.8, qx + 0.8])
         this.solid(
@@ -388,7 +427,7 @@ export class World {
         const x = -12 + rand() * 24,
           z = center + (rand() - 0.5) * 10;
         d.position.set(x, 0.34, z);
-        d.scale.setScalar(0.04 + rand() * 0.045);
+        d.scale.setScalar(0.24 + rand() * 0.11);
         d.updateMatrix();
         flowers.push(d.matrix.clone());
       }
@@ -404,11 +443,7 @@ export class World {
       new T.MeshStandardMaterial({ color: 0xaaa8a9, flatShading: true }),
       rocks,
     );
-    this.instanceGeometry(
-      new T.SphereGeometry(1, 5, 3),
-      new T.MeshStandardMaterial({ color: 0xfff9bd }),
-      flowers,
-    );
+    this.instanceAsset("flower", flowers);
     for (const site of M.bridges.sites) {
       for (const sz of [-1, 1]) {
         this.solid(
@@ -452,15 +487,11 @@ export class World {
             o.material = (o.material as T.Material).clone();
         });
       this.scene.add(stone, steel);
-      const mound = this.solid(
-        new T.SphereGeometry(1, 10, 6),
-        0xa57b42,
-        site.x,
-        0.4,
-        site.id === "red" ? -4 : 4,
-      );
-      mound.scale.set(1.65, 1, 1);
+      const mound = this.model("soil");
+      mound.position.set(site.x, 0.33, site.id === "red" ? -4 : 4);
+      mound.scale.setScalar(1.1);
       mound.visible = false;
+      this.scene.add(mound);
       const cracks = new T.Group();
       cracks.position.set(site.x, 0.5, 0);
       cracks.visible = false;
@@ -597,7 +628,7 @@ export class World {
     this.controls.enableDamping = true;
     this.controls.target.set(0, 0, 0);
     this.camera.position.set(0, 40, -24);
-    this.camera.zoom = 1;
+    this.camera.zoom = 1.17;
     this.camera.updateProjectionMatrix();
     this.controls.update();
   }
@@ -752,7 +783,7 @@ export class World {
         ["arm_left", -1],
         ["arm_right", 1],
       ] as const) {
-        const part = a.bot.getObjectByName(name);
+        const part = rigPart(a.bot, name);
         if (part)
           part.rotation.x = moving
             ? Math.sin(this.clock * 11) * 0.4 * sign
@@ -766,14 +797,14 @@ export class World {
             ? Math.PI
             : 0;
         const work = !moving;
-        const boom = a.rig.getObjectByName("boom"),
-          arm = a.rig.getObjectByName("arm"),
-          bucket = a.rig.getObjectByName("bucket");
+        const boom = rigPart(a.rig, "boom"),
+          arm = rigPart(a.rig, "arm"),
+          bucket = rigPart(a.rig, "bucket");
         if (boom) boom.rotation.x = work ? Math.sin(this.clock * 2.4) * 0.2 : 0;
         if (arm)
           arm.rotation.x = work ? Math.sin(this.clock * 2.4 + 1) * 0.3 : 0;
         if (bucket && kind === "drill") bucket.rotation.y = this.clock * 12;
-        const girder = a.rig.getObjectByName("girder");
+        const girder = rigPart(a.rig, "girder");
         if (girder)
           girder.position.z =
             1.2 + (work ? clamp(b.progress / b.duration, 0, 1) * 3 : 0);
