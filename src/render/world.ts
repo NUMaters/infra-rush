@@ -5,6 +5,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { M } from "../game/master";
 import { side } from "../game/engine";
 import type { Bot, GameEvent, GameState, Point, Team } from "../game/types";
+import { seaMaterial, shoreGeometry, shoreMaterial } from "./water";
 
 const TEAM = { blue: 0x1689ff, red: 0xf34b53 };
 const unit = new T.Vector3(0, 1, 0);
@@ -49,7 +50,8 @@ export class World {
   private castles = new Map<Team, T.Group>();
   private particles: Particle[] = [];
   private dynamic = new T.Group();
-  private water: T.ShaderMaterial;
+  private waterTime = { value: 0 };
+  private foam: T.ShaderMaterial;
   private clock = 0;
   private shake = 0;
   private hit = new Map<Team, number>();
@@ -99,12 +101,9 @@ export class World {
     sun.shadow.bias = -0.0003;
     this.scene.add(sun);
     this.scene.add(this.dynamic);
-    this.water = new T.ShaderMaterial({
-      uniforms: { time: { value: 0 } },
-      vertexShader: `varying vec3 v;void main(){v=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-      fragmentShader: `varying vec3 v;uniform float time;void main(){float a=sin(v.x*2.4+sin(v.y*3.0+time*.4))*sin(v.y*3.2-time*.8);float b=sin(v.x*7.+v.y*4.+time);vec3 c=mix(vec3(.025,.51,.77),vec3(.07,.61,.87),a*.5+.5);c+=vec3(.11,.15,.15)*pow(max(0.,b*a),22.)*.30;gl_FragColor=vec4(c,1.);}`,
-    });
-    const sea = new T.Mesh(new T.PlaneGeometry(200, 200), this.water);
+    const water = seaMaterial(this.waterTime);
+    this.foam = shoreMaterial(this.waterTime);
+    const sea = new T.Mesh(new T.PlaneGeometry(200, 200, 96, 96), water);
     sea.rotation.x = -Math.PI / 2;
     sea.position.y = -0.7;
     this.scene.add(sea);
@@ -282,19 +281,7 @@ export class World {
       land.receiveShadow = true;
       land.castShadow = true;
       this.scene.add(land);
-      // Shoreline skirt reflects the reference's white foam around the island.
-      const shore = new T.LineLoop(
-        new T.BufferGeometry().setFromPoints(
-          points.map(
-            (p) => new T.Vector3(p[0] * 1.035, -0.61, center + p[1] * 1.07),
-          ),
-        ),
-        new T.LineBasicMaterial({
-          color: 0x95edff,
-          transparent: true,
-          opacity: 0.8,
-        }),
-      );
+      const shore = new T.Mesh(shoreGeometry(points, center), this.foam);
       this.scene.add(shore);
       const cliffM = new T.MeshStandardMaterial({
         color: 0xc39775,
@@ -370,7 +357,10 @@ export class World {
       this.scene.add(cart);
       for (const [cx, cz] of [
         [qx - 2.8, sz * 9.2],
-        [M.castle[team][0] + (team === "blue" ? -3.2 : 3.2), M.castle[team][1] + sz * 1.0],
+        [
+          M.castle[team][0] + (team === "blue" ? -3.2 : 3.2),
+          M.castle[team][1] + sz * 1.0,
+        ],
       ]) {
         const crate = this.model("crate");
         crate.position.set(cx, 0.39, cz);
@@ -724,7 +714,7 @@ export class World {
   }
   update(s: GameState, dt: number, elapsed = dt) {
     this.clock += dt;
-    this.water.uniforms.time.value = this.clock;
+    this.waterTime.value = this.clock;
     this.frameTimes.push(elapsed * 1000);
     if (this.frameTimes.length > 180) this.frameTimes.shift();
     this.fps =
@@ -791,11 +781,16 @@ export class World {
       }
       if (a.rig) {
         a.rig.position.copy(a.bot.position);
+        // The launcher's girder travels along local +Z, toward the opposite shore.
         a.rig.rotation.y = moving
           ? a.bot.rotation.y
-          : b.team === "blue"
-            ? Math.PI
-            : 0;
+          : kind === "launcher"
+            ? b.team === "blue"
+              ? 0
+              : Math.PI
+            : b.team === "blue"
+              ? Math.PI
+              : 0;
         const work = !moving;
         const boom = rigPart(a.rig, "boom"),
           arm = rigPart(a.rig, "arm"),
@@ -807,7 +802,7 @@ export class World {
         const girder = rigPart(a.rig, "girder");
         if (girder)
           girder.position.z =
-            1.2 + (work ? clamp(b.progress / b.duration, 0, 1) * 3 : 0);
+            1.2 + (work ? clamp(b.progress / b.duration, 0, 1) * 4.4 : 0);
         a.rig.traverse((o) => {
           if (o.name.startsWith("outrigger")) o.scale.y = work ? 1 : 0.5;
         });
