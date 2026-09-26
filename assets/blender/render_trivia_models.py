@@ -12,7 +12,6 @@ ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "public/ui/trivia"
 OUTPUT.mkdir(parents=True, exist_ok=True)
 ASSETS = (
-    "bot",
     "excavator",
     "dozer",
     "grader",

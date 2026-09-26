@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("result Bot presents sourced civil-engineering facts and rotates them", async ({
+test("result trivia presents sourced facts with matching models", async ({
   page,
 }) => {
   await page.goto("/?qa");
@@ -34,11 +34,10 @@ test("result Bot presents sourced civil-engineering facts and rotates them", asy
       .locator("#result-trivia .trivia-model")
       .evaluate((image) => (image as HTMLImageElement).naturalWidth),
   ).toBeGreaterThan(0);
-  expect(
-    await page
-      .locator("#result-trivia .trivia-guide")
-      .evaluate((image) => (image as HTMLImageElement).naturalWidth),
-  ).toBeGreaterThan(0);
+  await expect(page.locator("#result-trivia .trivia-guide")).toHaveCount(0);
+  await expect(page.locator("#result-trivia .trivia-top")).toContainText(
+    "土木まめちしき",
+  );
   await page.locator("#result-trivia-next").click();
   await expect(page.locator("#result-trivia h3")).toContainText("ショベル");
   await expect(page.locator("#result-trivia .trivia-model")).toHaveAttribute(
