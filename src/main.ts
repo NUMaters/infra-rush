@@ -43,6 +43,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <section id="task-panel" class="hidden" aria-label="Botへの作業指示"></section>
  <div class="corner-brand">INFRA <b>RUSH</b></div>
 </section>
+<section id="match-intro" class="hidden" aria-live="assertive" aria-label="対戦開始のカウントダウン"></section>
 <section id="modal" class="overlay hidden"></section>
 <section id="online-lobby" class="overlay hidden" aria-label="オンライン対戦"></section>
 <section id="result" class="overlay hidden"></section><div id="scene-wipe" aria-hidden="true"></div>`;
@@ -106,6 +107,11 @@ let toastTimer: ReturnType<typeof setTimeout>;
 let panelCloseTimer: ReturnType<typeof setTimeout>;
 let modalCloseTimer: ReturnType<typeof setTimeout>;
 let transitioning = false;
+const introDuration = M.game.introSeconds * 1000;
+const teamRevealDuration = (introDuration - 3600) / 2;
+let introUntil = 0;
+let introStage = -1;
+let introActive = false;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 function tapBurst(button: HTMLButtonElement) {
   if (reducedMotion.matches) return;
@@ -165,7 +171,7 @@ function chooseBot(id: string, context: string | null = null) {
   renderUI();
 }
 function chooseBridge(id: string) {
-  if (!started || paused || state.status !== "playing") return;
+  if (!started || paused || introActive || state.status !== "playing") return;
   const bot =
     selected ??
     state.bots.find((b) => b.team === playerTeam && b.state === "IDLE")?.id ??
@@ -218,14 +224,14 @@ function start() {
   visualPositions.clear();
   world.setHomeTeam("blue");
   $("#title").classList.add("hidden");
-  $("#hud").classList.remove("hidden");
+  $("#hud").classList.add("hidden");
   $("#result").classList.add("hidden");
   $("#modal").classList.add("hidden");
   $("#task-panel").classList.add("hidden");
   renderUI();
   sound.setMusicScene("game");
   syncSoundButtons();
-  toast("まずは青いBotをタップして、掘ってみよう！");
+  beginIntro(introDuration);
 }
 const htmlEntities: Record<string, string> = {
   "&": "&amp;",
@@ -236,6 +242,71 @@ const htmlEntities: Record<string, string> = {
 };
 const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (character) => htmlEntities[character]);
+function introTeamCard(team: Team, own: boolean) {
+  const name =
+    mode === "online"
+      ? (onlinePlayers[team]?.name ??
+        (team === "blue" ? "プレイヤー1" : "プレイヤー2"))
+      : own
+        ? "あなた"
+        : "CPU";
+  return `<div class="intro-card ${team}"><div class="intro-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="intro-castle">${icon("castle")}</div><div class="intro-eyebrow">${own ? "YOUR TEAM" : "RIVAL TEAM"}</div><strong>${escapeHtml(name)}</strong><div class="intro-bots" aria-label="5体のBot">${icon("helmet").repeat(5)}</div><span>${own ? "道をつくれ！" : "この城をめざせ！"}</span></div>`;
+}
+function beginIntro(remainingMs: number) {
+  introActive = remainingMs > 0;
+  introUntil = performance.now() + Math.max(0, remainingMs);
+  introStage = -1;
+  const overlay = $("#match-intro");
+  overlay.classList.toggle("hidden", !introActive);
+  $("#hud").classList.toggle("hidden", introActive);
+  if (introActive) updateIntro(performance.now());
+}
+function updateIntro(now: number) {
+  if (!introActive) return;
+  const elapsed = introDuration - Math.max(0, introUntil - now);
+  if (elapsed >= introDuration) {
+    introActive = false;
+    $("#match-intro").classList.add("hidden");
+    $("#hud").classList.remove("hidden");
+    world.setHomeTeam(playerTeam);
+    toast(
+      mode === "cpu"
+        ? "Botをタップして、掘ってみよう！"
+        : "試合開始！ Botをタップして作業を指示しよう",
+    );
+    return;
+  }
+  const stage =
+    elapsed < teamRevealDuration
+      ? 0
+      : elapsed < teamRevealDuration * 2
+        ? 1
+        : elapsed < teamRevealDuration * 2 + 1000
+          ? 2
+          : elapsed < teamRevealDuration * 2 + 2000
+            ? 3
+            : elapsed < teamRevealDuration * 2 + 3000
+              ? 4
+              : 5;
+  if (stage === introStage) return;
+  introStage = stage;
+  const team =
+    stage === 0 ? playerTeam : playerTeam === "blue" ? "red" : "blue";
+  if (stage < 2) world.focusIntro(team);
+  else if (stage === 2) world.setHomeTeam(playerTeam);
+  const overlay = $("#match-intro");
+  overlay.className = stage < 2 ? `intro-team ${team}` : "intro-count";
+  overlay.innerHTML =
+    stage < 2
+      ? introTeamCard(team, stage === 0)
+      : `<div class="intro-count-card"><span class="intro-kicker">READY TO RUSH?</span><strong>${stage === 5 ? "GO!" : 5 - stage}</strong><span class="intro-ring" aria-hidden="true"></span></div>`;
+  sound.play(stage === 5 ? "complete" : "ui");
+}
+function cancelIntro() {
+  introActive = false;
+  introStage = -1;
+  $("#match-intro").classList.add("hidden");
+}
 function renderOnlineLobby() {
   const lobby = $("#online-lobby");
   if (lobby.classList.contains("hidden")) return;
@@ -291,7 +362,7 @@ function showOnline() {
   online.connect();
   renderOnlineLobby();
 }
-function enterOnlineGame() {
+function enterOnlineGame(startAt = 0, serverNow = 0) {
   if (started) return;
   sound.unlock();
   state = createGame();
@@ -306,11 +377,12 @@ function enterOnlineGame() {
   world.setHomeTeam(playerTeam);
   $("#title").classList.add("hidden");
   $("#online-lobby").classList.add("hidden");
-  $("#hud").classList.remove("hidden");
+  $("#hud").classList.add("hidden");
   $("#latency").classList.remove("hidden");
   $("#result").classList.add("hidden");
   sound.setMusicScene("game");
   syncSoundButtons();
+  beginIntro(Math.max(0, startAt - serverNow));
 }
 function handleOnlineMessage(message: ServerMessage) {
   if (message.type === "hello") {
@@ -326,12 +398,17 @@ function handleOnlineMessage(message: ServerMessage) {
     playerTeam = message.team;
     onlinePlayers = message.players;
     onlinePhase = message.phase;
-    if (message.phase === "playing") enterOnlineGame();
+    if (message.phase === "playing")
+      enterOnlineGame(message.startAt, message.serverNow);
     else if (message.phase === "waiting" || message.phase === "ready") {
-      if (started && state.status === "finished") {
+      if (started && (introActive || state.status === "finished")) {
+        cancelIntro();
         started = false;
         $("#result").classList.add("hidden");
         $("#hud").classList.add("hidden");
+        state = createGame();
+        world.reset();
+        world.setHomeTeam(playerTeam);
         sound.setMusicScene("title");
       }
       $("#online-lobby").classList.remove("hidden");
@@ -525,6 +602,14 @@ function hideModal() {
     reducedMotion.matches ? 0 : 190,
   );
 }
+function closeOnlineLobby() {
+  online?.leave();
+  online?.close();
+  $("#online-lobby").classList.add("hidden");
+  onlinePhase = "menu";
+  onlineRoom = "";
+  mode = "cpu";
+}
 function finish() {
   if (!$("#result").classList.contains("hidden")) return;
   closePanel();
@@ -544,6 +629,7 @@ function finish() {
   sound.setMusicScene(win ? "victory" : "retry");
 }
 function backTitle() {
+  cancelIntro();
   if (mode === "online") {
     online?.leave();
     online?.close();
@@ -587,6 +673,19 @@ for (const event of ["pointerup", "pointercancel", "pointerleave"]) {
   });
 }
 app.addEventListener("click", (e) => {
+  if (e.target === $("#modal") && !$("#modal").classList.contains("hidden")) {
+    sound.play("ui");
+    hideModal();
+    return;
+  }
+  if (
+    e.target === $("#online-lobby") &&
+    !$("#online-lobby").classList.contains("hidden")
+  ) {
+    sound.play("ui");
+    closeOnlineLobby();
+    return;
+  }
   const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
   if (!button || button.disabled || transitioning) return;
   const firstAudioGesture = !audioGestureSeen;
@@ -659,12 +758,7 @@ app.addEventListener("click", (e) => {
         button.disabled = true;
         break;
       case "online-close":
-        online?.leave();
-        online?.close();
-        $("#online-lobby").classList.add("hidden");
-        onlinePhase = "menu";
-        onlineRoom = "";
-        mode = "cpu";
+        closeOnlineLobby();
         break;
       case "copy-room":
         void navigator.clipboard?.writeText(onlineRoom).then(() => {
@@ -714,7 +808,15 @@ app.addEventListener("input", (e) => {
   }
 });
 document.addEventListener("keydown", (e) => {
-  if (!started || paused || state.status !== "playing") return;
+  if (e.key === "Escape" && !$("#modal").classList.contains("hidden")) {
+    hideModal();
+    return;
+  }
+  if (e.key === "Escape" && !$("#online-lobby").classList.contains("hidden")) {
+    closeOnlineLobby();
+    return;
+  }
+  if (!started || paused || introActive || state.status !== "playing") return;
   if (/^[1-5]$/.test(e.key)) chooseBot(`${playerTeam}-${Number(e.key) - 1}`);
   if (e.key === "Escape") closePanel();
 });
@@ -771,6 +873,7 @@ function frame(now: number) {
   const elapsed = (now - last) / 1000;
   const dt = Math.min(0.1, elapsed);
   last = now;
+  updateIntro(now);
   if (mode === "online" && online?.connected && Date.now() - pingAt > 10000) {
     pingAt = Date.now();
     online.send({ type: "ping" });
@@ -779,6 +882,7 @@ function frame(now: number) {
     started &&
     mode === "cpu" &&
     !paused &&
+    !introActive &&
     !qaFrozen &&
     state.status === "playing"
   ) {
@@ -870,11 +974,12 @@ function frame(now: number) {
 try {
   world = new World($("#world"));
   world.onPick = (kind, id) => {
-    if (!started || paused || state.status !== "playing") return;
+    if (!started || paused || introActive || state.status !== "playing") return;
     if (kind === "bot") {
       if (state.bots.find((bot) => bot.id === id)?.team === playerTeam)
         chooseBot(id);
-    } else chooseBridge(id);
+    } else if (kind === "bridge") chooseBridge(id);
+    else if (selected) closePanel();
   };
   await Promise.race([
     world.load((n) => {
@@ -899,9 +1004,9 @@ try {
     const qaControls = document.createElement("aside");
     qaControls.id = "qa-controls";
     qaControls.style.cssText =
-      "position:fixed;left:8px;top:8px;z-index:100;background:#fff;padding:6px;border:2px solid #f0b640;border-radius:8px;font-size:11px";
+      "position:fixed;left:8px;top:8px;z-index:100;max-width:min(180px,45vw);background:#fff;padding:6px;border:2px solid #f0b640;border-radius:8px;font-size:11px;overflow-wrap:anywhere";
     qaControls.innerHTML =
-      '<b>QA</b> <button data-seconds="15">+15秒</button> <button data-seconds="30">+30秒</button> <button id="qa-freeze">時計停止</button><small id="qa-metrics" style="display:block;max-width:270px;font-size:8px"></small>';
+      '<b>QA</b> <button data-seconds="15">+15秒</button> <button data-seconds="30">+30秒</button> <button id="qa-freeze">時計停止</button><small id="qa-metrics" style="display:block;max-width:150px;font-size:8px;overflow-wrap:anywhere"></small>';
     qaControls.addEventListener("click", (e) => {
       const button = (e.target as HTMLElement).closest<HTMLButtonElement>(
         "button",

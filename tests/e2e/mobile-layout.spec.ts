@@ -16,6 +16,7 @@ test("small phones can read every dialog and use the HUD", async ({ page }) => {
   await page.locator("#modal-close").click();
 
   await page.locator("#start").click();
+  await expect(page.locator("#hud")).toBeVisible();
   await page.getByRole("button", { name: "時計停止", exact: true }).click();
   const hud = await page.evaluate(() => {
     const resource = document

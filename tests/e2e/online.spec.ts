@@ -33,6 +33,8 @@ test("random match starts with editable names and shared resources", async ({
     await first.locator("#online-ready").click();
     await second.locator("#online-name").fill("Sora");
     await second.locator("#online-ready").click();
+    await expect(second.locator("#match-intro")).toBeVisible();
+    expect(await second.evaluate(() => window.infraQA.snapshot().time)).toBe(0);
     await expect(first.locator("#hud")).toBeVisible();
     await expect(second.locator("#hud")).toBeVisible();
     await expect(first.locator("#blue-score .score-top small")).toHaveText(

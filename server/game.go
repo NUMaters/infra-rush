@@ -87,6 +87,7 @@ type Config struct {
 		Tick          float64 `json:"tick"`
 		ReturnSeconds float64 `json:"returnSeconds"`
 		AttackSeconds float64 `json:"attackSeconds"`
+		IntroSeconds  float64 `json:"introSeconds"`
 		Seed          uint32  `json:"seed"`
 	}
 	Resources struct {

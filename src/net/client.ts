@@ -15,6 +15,8 @@ export type ServerMessage =
       team: Team;
       phase: "waiting" | "ready" | "playing" | "finished";
       players: Partial<Record<Team, OnlinePlayer>>;
+      startAt: number;
+      serverNow: number;
     }
   | { type: "state"; state: GameState }
   | { type: "ack"; seq: number; error?: string; duplicate?: boolean }

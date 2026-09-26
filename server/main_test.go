@@ -50,6 +50,18 @@ func TestLockedRoomSequenceAndReconnect(t *testing.T) {
 		t.Fatal("did not start")
 	}
 	game := a.room.game
+	if a.room.startAt.Before(time.Now()) {
+		t.Fatal("countdown start time was not scheduled")
+	}
+	h.handle(a, incoming{Type: "command", Seq: 1, Command: Command{BotID: "blue-0", Action: "mine"}})
+	if game.bot("blue-0").Action != nil {
+		t.Fatal("command ran during countdown")
+	}
+	h.tick()
+	if game.Time != 0 {
+		t.Fatal("game clock advanced during countdown")
+	}
+	a.room.startAt = time.Now().Add(-time.Millisecond)
 	h.handle(a, incoming{Type: "command", Seq: 1, Command: Command{BotID: "blue-0", Action: "mine"}})
 	if game.bot("blue-0").Action == nil {
 		t.Fatal("command not applied")
@@ -105,5 +117,20 @@ func TestRandomQueueOnlyMatchesQueuedPlayers(t *testing.T) {
 	}
 	if c.room == a.room {
 		t.Fatal("private player joined random match")
+	}
+}
+
+func TestLeavingDuringCountdownDoesNotAwardVictory(t *testing.T) {
+	h := newHub(configForTest(t))
+	a, b := testPeer(), testPeer()
+	h.handle(a, incoming{Type: "hello"})
+	h.handle(b, incoming{Type: "hello"})
+	h.handle(a, incoming{Type: "create"})
+	h.handle(b, incoming{Type: "join", RoomID: a.room.id})
+	h.handle(a, incoming{Type: "ready", Ready: true})
+	h.handle(b, incoming{Type: "ready", Ready: true})
+	h.handle(b, incoming{Type: "leave"})
+	if a.room == nil || a.room.game != nil || a.room.running || a.ready {
+		t.Fatal("countdown exit should return the remaining player to the lobby")
 	}
 }

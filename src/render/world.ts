@@ -71,7 +71,7 @@ export class World {
   private height = 1;
   fps = 60;
   frameTimes: number[] = [];
-  onPick: (kind: "bot" | "bridge", id: string) => void = () => {};
+  onPick: (kind: "bot" | "bridge" | "empty", id: string) => void = () => {};
   constructor(container: HTMLElement) {
     this.renderer = new T.WebGLRenderer({
       antialias: true,
@@ -651,6 +651,16 @@ export class World {
       `INFRA RUSH 3Dマップ。${team === "blue" ? "青" : "赤"}いBotをタップして作業を指示`,
     );
   }
+  focusIntro(team: Team) {
+    const [x, z] = M.castle[team];
+    this.controls.enableDamping = false;
+    this.controls.target.set(x, 0, z);
+    this.camera.position.set(x, 23, z + (team === "blue" ? -13 : 13));
+    this.camera.zoom = 1.45;
+    this.camera.updateProjectionMatrix();
+    this.controls.update();
+    this.controls.enableDamping = true;
+  }
   resize() {
     this.width = this.canvas.parentElement?.clientWidth ?? innerWidth;
     this.height = this.canvas.parentElement?.clientHeight ?? innerHeight;
@@ -691,6 +701,7 @@ export class World {
         return;
       }
     }
+    this.onPick("empty", "");
   }
   effect(event: GameEvent) {
     if (event.kind === "earthquake") {

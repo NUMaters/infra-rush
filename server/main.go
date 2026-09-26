@@ -54,6 +54,7 @@ type room struct {
 	players    [2]*peer
 	game       *Game
 	running    bool
+	startAt    time.Time
 	rematch    [2]bool
 	created    time.Time
 	finishedAt time.Time
@@ -139,6 +140,10 @@ func (h *hub) roomState(r *room) {
 		phase = "finished"
 	}
 	players := map[string]playerInfo{}
+	startAt := int64(0)
+	if !r.startAt.IsZero() {
+		startAt = r.startAt.UnixMilli()
+	}
 	for i, p := range r.players {
 		if p != nil {
 			team := "blue"
@@ -150,7 +155,7 @@ func (h *hub) roomState(r *room) {
 	}
 	for _, p := range r.players {
 		if p != nil {
-			h.send(p, map[string]any{"type": "room", "roomId": r.id, "locked": r.locked, "team": p.team, "phase": phase, "players": players})
+			h.send(p, map[string]any{"type": "room", "roomId": r.id, "locked": r.locked, "team": p.team, "phase": phase, "players": players, "startAt": startAt, "serverNow": time.Now().UnixMilli()})
 		}
 	}
 }
@@ -204,7 +209,16 @@ func (h *hub) leave(p *peer) {
 	if r == nil {
 		return
 	}
-	if r.running && r.game != nil && r.game.Status == "playing" {
+	if r.running && time.Now().Before(r.startAt) {
+		r.running = false
+		r.game = nil
+		r.startAt = time.Time{}
+		for _, other := range r.players {
+			if other != nil {
+				other.ready = false
+			}
+		}
+	} else if r.running && r.game != nil && r.game.Status == "playing" {
 		r.game.Status = "finished"
 		winner := own(p.team)
 		r.game.Winner = &winner
@@ -241,6 +255,7 @@ func (h *hub) tryStart(r *room) {
 	}
 	r.game = newGame(h.config, uint32(time.Now().UnixNano()))
 	r.running = true
+	r.startAt = time.Now().Add(time.Duration(h.config.Game.IntroSeconds * float64(time.Second)))
 	r.rematch = [2]bool{}
 	r.finishedAt = time.Time{}
 	for _, p := range r.players {
@@ -359,6 +374,10 @@ func (h *hub) handle(p *peer, m incoming) {
 		if p.room == nil || !p.room.running || p.room.game == nil {
 			return
 		}
+		if time.Now().Before(p.room.startAt) {
+			h.send(p, map[string]any{"type": "ack", "seq": m.Seq, "error": "カウントダウン中です"})
+			return
+		}
 		if time.Since(p.commandWindow) >= time.Second {
 			p.commandWindow = time.Now()
 			p.commandCount = 0
@@ -392,6 +411,7 @@ func (h *hub) handle(p *peer, m incoming) {
 		if r.players[0] != nil && r.players[1] != nil && r.rematch[0] && r.rematch[1] {
 			r.game = nil
 			r.running = false
+			r.startAt = time.Time{}
 			for _, slot := range r.players {
 				slot.ready = false
 			}
@@ -431,7 +451,7 @@ func (h *hub) tick() {
 				h.leave(p)
 			}
 		}
-		if r.running && r.game != nil {
+		if r.running && r.game != nil && !now.Before(r.startAt) {
 			r.game.tick(h.config.Game.Tick)
 			if r.game.Status == "finished" {
 				r.running = false
