@@ -1,0 +1,10 @@
+.git
+node_modules
+dist
+.qa-preview
+test-results
+playwright-report
+assets
+docs
+tests
+*.blend

@@ -38,6 +38,8 @@ test("real UI: mine, build, march, attack, return, five hits, results and restar
   await page.screenshot({ path: `docs/qa/${info.project.name}-title.png` });
   await page.getByRole("button", { name: "はじめて", exact: true }).click();
   await page.locator("#start").click();
+  await expect(page.locator("#hud")).toBeVisible();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await expect(page.locator("#bot-roster")).toHaveCount(0);
   // Direct 3D Bot hit testing, then on-screen task control.
@@ -104,6 +106,8 @@ test("pause freezes clock, help resumes, sound and bridge targeting respond", as
   await page.locator("#start").click();
   await expect(page.locator("#hud")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
+  await expect(page.locator("#hud")).toBeVisible();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await page.locator("#pause").click();
   const before = await page.evaluate(() => window.infraQA.snapshot().time);
   await page.waitForTimeout(500);
@@ -140,6 +144,8 @@ test("civil works: reinforcement, earthquake, repair, embankment, CPU clearance 
   await page.goto("/?qa");
   await expect(page.locator("#start")).toBeVisible({ timeout: 60000 });
   await page.locator("#start").click();
+  await expect(page.locator("#hud")).toBeVisible();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await page.getByRole("button", { name: "時計停止", exact: true }).click();
   for (let i = 0; i < 5; i++) {
     await selectBot(page, i);
@@ -215,6 +221,8 @@ test("camera: own team in foreground, gesture controls and compact direct comman
   await page.goto("/?qa");
   await expect(page.locator("#start")).toBeVisible({ timeout: 60000 });
   await page.locator("#start").click();
+  await expect(page.locator("#hud")).toBeVisible();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await page.getByRole("button", { name: "時計停止", exact: true }).click();
   const project = (id: string) =>
     page.evaluate((id) => window.infraQA.projectBot(id), id);
@@ -238,6 +246,8 @@ test("camera: own team in foreground, gesture controls and compact direct comman
   await expect(page.locator("#task-panel")).toBeHidden();
   await page.reload();
   await page.locator("#start").click();
+  await expect(page.locator("#hud")).toBeVisible();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await page.getByRole("button", { name: "時計停止", exact: true }).click();
   const a = await project("blue-0"),
     b = await project("blue-4");
@@ -299,6 +309,8 @@ test("camera: own team in foreground, gesture controls and compact direct comman
   }
   await page.reload();
   await page.locator("#start").click();
+  await expect(page.locator("#hud")).toBeVisible();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await page.getByRole("button", { name: "時計停止", exact: true }).click();
   await expect
     .poll(async () => {
@@ -307,8 +319,10 @@ test("camera: own team in foreground, gesture controls and compact direct comman
     })
     .toBeLessThan(5);
   await selectBot(page, 0);
+  await expect
+    .poll(async () => (await page.locator("#task-panel").boundingBox())?.width)
+    .toBeLessThanOrEqual(281);
   const panel = await page.locator("#task-panel").boundingBox();
-  expect(panel!.width).toBeLessThanOrEqual(281);
   expect(panel!.height).toBeLessThan(400);
   expect(panel!.x).toBeGreaterThanOrEqual(0);
   expect(panel!.x + panel!.width).toBeLessThanOrEqual(viewport.width);

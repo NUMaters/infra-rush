@@ -5,10 +5,13 @@ import type { Difficulty } from "./game/master";
 import { canCommand, command, createGame, taskSpec, tick } from "./game/engine";
 import { CPU } from "./game/cpu";
 import { resolveTaskTarget } from "./game/intent";
-import type { Action, Resource } from "./game/types";
+import type { Action, Point, Resource } from "./game/types";
 import { World } from "./render/world";
 import { Sound } from "./ui/audio";
 import { icon } from "./ui/icons";
+import { OnlineClient } from "./net/client";
+import type { OnlinePlayer, ServerMessage } from "./net/client";
+import type { Team } from "./game/types";
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) =>
   document.querySelector<T>(selector)!;
@@ -27,13 +30,13 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
  <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><h1>勝利への道を、つくろう。</h1><p>5体のBot。3つの橋。ひとつの勝利。<br>掘って、つないで、相手の城へ。</p></div>
- <div class="start-card"><label for="difficulty">CPUの強さ</label><div class="difficulty-options"><button data-difficulty="easy">はじめて</button><button data-difficulty="normal" class="active">スタンダード</button><button data-difficulty="hard">チャレンジ</button></div><button id="start" class="primary">${icon("helmet")}<span>工事をはじめる<small>PLAYER vs CPU</small></span>${icon("march")}</button><p>1ゲーム 6分 · 先に城を5回たたけば勝ち</p></div>
+ <div class="start-card"><label for="difficulty">CPUの強さ</label><div class="difficulty-options"><button data-difficulty="easy">はじめて</button><button data-difficulty="normal" class="active">スタンダード</button><button data-difficulty="hard">チャレンジ</button></div><button id="start" class="primary">${icon("helmet")}<span>工事をはじめる<small>PLAYER vs CPU</small></span>${icon("march")}</button><button id="online-start" class="secondary online-entry">マルチプレイ ${icon("march")}</button><p>1ゲーム 6分 · 先に城を5回たたけば勝ち</p></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span><span>音楽は右上のボタンから ${icon("sound")}</span></div>
 </section>
 <section id="hud" class="hidden">
  <header class="match-header"><div class="team-score blue" id="blue-score"><div class="score-top"><span>${icon("castle")}<small>あなたの城</small></span><b id="blue-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="blue-hp" role="progressbar" aria-label="あなたの城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div><div class="timer"><small>のこり時間</small><b id="timer">06:00</b></div><div class="team-score red" id="red-score"><div class="score-top"><span>${icon("castle")}<small>相手の城</small></span><b id="red-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="red-hp" role="progressbar" aria-label="相手の城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div></header>
  <div class="resource-bar" id="resources"></div>
- <div class="utilities"><button id="sound" class="circle" aria-label="BGMと効果音を切り替え" aria-pressed="false">${icon("sound")}</button><button id="pause" class="circle" aria-label="一時停止">${icon("pause")}</button><button class="circle help" aria-label="遊び方">?</button></div>
+ <div class="utilities"><span id="latency" class="latency hidden" aria-label="通信遅延"></span><button id="sound" class="circle" aria-label="BGMと効果音を切り替え" aria-pressed="false">${icon("sound")}</button><button id="pause" class="circle" aria-label="一時停止">${icon("pause")}</button><button class="circle help" aria-label="遊び方">?</button></div>
  <div id="bridge-labels"></div><div id="floaters" aria-hidden="true"></div>
  <div id="toast" role="status" aria-live="polite"></div>
  <div id="hint" class="field-hint"></div>
@@ -41,6 +44,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="corner-brand">INFRA <b>RUSH</b></div>
 </section>
 <section id="modal" class="overlay hidden"></section>
+<section id="online-lobby" class="overlay hidden" aria-label="オンライン対戦"></section>
 <section id="result" class="overlay hidden"></section><div id="scene-wipe" aria-hidden="true"></div>`;
 let state = createGame();
 let cpu = new CPU();
@@ -54,6 +58,18 @@ let started = false,
 let bridgeContext: string | null = null;
 let qaFrozen = false;
 let audioGestureSeen = false;
+let mode: "cpu" | "online" = "cpu";
+let playerTeam: Team = "blue";
+let online: OnlineClient | null = null;
+let onlineRoom = "";
+let onlinePlayers: Partial<Record<Team, OnlinePlayer>> = {};
+let onlinePhase:
+  "menu" | "queueing" | "waiting" | "ready" | "playing" | "finished" = "menu";
+let onlineStatus = "";
+let nameDraft = "";
+let joinDraft = "";
+let pingAt = 0;
+const visualPositions = new Map<string, Point>();
 const sound = new Sound();
 let world: World;
 const labels: Record<Action, string> = {
@@ -152,8 +168,8 @@ function chooseBridge(id: string) {
   if (!started || paused || state.status !== "playing") return;
   const bot =
     selected ??
-    state.bots.find((b) => b.team === "blue" && b.state === "IDLE")?.id ??
-    "blue-0";
+    state.bots.find((b) => b.team === playerTeam && b.state === "IDLE")?.id ??
+    `${playerTeam}-0`;
   chooseBot(bot, id === "center" ? id : null);
 }
 function positionPanel() {
@@ -184,6 +200,8 @@ function closePanel() {
 }
 function start() {
   if (!ready) return;
+  mode = "cpu";
+  playerTeam = "blue";
   sound.unlock();
   sound.play("complete");
   state = createGame(Date.now() >>> 0);
@@ -197,6 +215,8 @@ function start() {
   qaFrozen = false;
   shownHp = { blue: M.castle.hp, red: M.castle.hp };
   world.reset();
+  visualPositions.clear();
+  world.setHomeTeam("blue");
   $("#title").classList.add("hidden");
   $("#hud").classList.remove("hidden");
   $("#result").classList.add("hidden");
@@ -207,13 +227,161 @@ function start() {
   syncSoundButtons();
   toast("まずは青いBotをタップして、掘ってみよう！");
 }
+const htmlEntities: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+const escapeHtml = (value: string) =>
+  value.replace(/[&<>"']/g, (character) => htmlEntities[character]);
+function renderOnlineLobby() {
+  const lobby = $("#online-lobby");
+  if (lobby.classList.contains("hidden")) return;
+  const connected = online?.connected ?? false;
+  const status =
+    onlineStatus || (connected ? "オンライン" : "サーバーに接続中…");
+  let content = "";
+  if (onlinePhase === "menu") {
+    content = `<h2>マルチプレイ</h2><p>誰かとすぐ対戦するか、5文字の部屋IDで友だちを招待できます。</p>
+      <button id="online-random" class="primary" ${connected ? "" : "disabled"}>ランダム対戦 ${icon("march")}</button>
+      <button id="online-create" class="secondary" ${connected ? "" : "disabled"}>部屋をロックして招待</button>
+      <div class="room-join"><label for="room-id-input">部屋IDで参加</label><div><input id="room-id-input" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCDE" value="${escapeHtml(joinDraft)}"><button id="online-join" class="secondary" ${connected ? "" : "disabled"}>参加</button></div></div>`;
+  } else if (onlinePhase === "queueing") {
+    content = `<div class="match-spinner" aria-hidden="true"></div><h2>相手を探しています</h2><p>ランダム対戦を選んだ人とマッチングします。</p>`;
+  } else if (onlinePhase === "waiting") {
+    content = `<div class="eyebrow">招待する</div><h2>友だちを待っています</h2><p>この5文字の部屋IDを伝えてください。</p><button id="copy-room" class="room-code" aria-label="部屋IDをコピー">${onlineRoom}</button><p>相手が「部屋IDで参加」から入力するとマッチします。</p>`;
+  } else if (onlinePhase === "ready") {
+    const me = onlinePlayers[playerTeam];
+    const opponent = onlinePlayers[playerTeam === "blue" ? "red" : "blue"];
+    content = `<div class="eyebrow">対戦相手が見つかりました</div><h2>まもなく工事開始！</h2><div class="match-players"><span>${escapeHtml(onlinePlayers.blue?.name ?? "プレイヤー1")}</span><b>VS</b><span>${escapeHtml(onlinePlayers.red?.name ?? "プレイヤー2")}</span></div>
+      <label for="online-name">あなたの名前</label><input id="online-name" maxlength="16" autocomplete="nickname" value="${escapeHtml(nameDraft || me?.name || (playerTeam === "blue" ? "プレイヤー1" : "プレイヤー2"))}">
+      <p class="ready-status">${opponent?.ready ? "相手は準備OK！" : "相手の準備を待っています"}</p><button id="online-ready" class="primary" ${me?.ready || !connected ? "disabled" : ""}>${me?.ready ? "準備OK · 相手を待っています" : "準備OK！ 試合へ"}</button>`;
+  }
+  lobby.innerHTML = `<article class="dialog online-dialog"><button id="online-close" class="circle close-online" aria-label="オンライン対戦を閉じる">${icon("close")}</button>${content}<small class="online-status">${escapeHtml(status)}</small></article>`;
+}
+function showOnline() {
+  mode = "online";
+  onlinePhase = "menu";
+  onlineStatus = "サーバーに接続中…";
+  $("#online-lobby").classList.remove("hidden");
+  if (!online) {
+    online = new OnlineClient();
+    online.onStatus = (status) => {
+      onlineStatus =
+        status === "connected"
+          ? "サーバーに接続しました"
+          : status === "reconnecting"
+            ? "再接続中… サーバーを確認してください"
+            : "接続していません";
+      renderOnlineLobby();
+      if (mode === "online" && started && status === "reconnecting")
+        toast("通信が切れました。再接続しています…");
+      if (status === "connected") {
+        pingAt = Date.now();
+        online?.send({ type: "ping" });
+      }
+    };
+    online.onMessage = handleOnlineMessage;
+  }
+  online.connect();
+  renderOnlineLobby();
+}
+function enterOnlineGame() {
+  if (started) return;
+  sound.unlock();
+  state = createGame();
+  lastEvent = 0;
+  started = true;
+  paused = false;
+  selected = null;
+  bridgeContext = null;
+  shownHp = { blue: M.castle.hp, red: M.castle.hp };
+  world.reset();
+  visualPositions.clear();
+  world.setHomeTeam(playerTeam);
+  $("#title").classList.add("hidden");
+  $("#online-lobby").classList.add("hidden");
+  $("#hud").classList.remove("hidden");
+  $("#latency").classList.remove("hidden");
+  $("#result").classList.add("hidden");
+  sound.setMusicScene("game");
+  syncSoundButtons();
+}
+function handleOnlineMessage(message: ServerMessage) {
+  if (message.type === "hello") {
+    if (mode === "online" && started && !message.resumed) {
+      backTitle();
+      toast("試合への復帰時間が過ぎました");
+    }
+  } else if (message.type === "queueing") {
+    onlinePhase = "queueing";
+    renderOnlineLobby();
+  } else if (message.type === "room") {
+    onlineRoom = message.roomId;
+    playerTeam = message.team;
+    onlinePlayers = message.players;
+    onlinePhase = message.phase;
+    if (message.phase === "playing") enterOnlineGame();
+    else if (message.phase === "waiting" || message.phase === "ready") {
+      if (started && state.status === "finished") {
+        started = false;
+        $("#result").classList.add("hidden");
+        $("#hud").classList.add("hidden");
+        sound.setMusicScene("title");
+      }
+      $("#online-lobby").classList.remove("hidden");
+      renderOnlineLobby();
+    }
+    if (started) renderUI();
+  } else if (message.type === "state") {
+    if (mode !== "online") return;
+    enterOnlineGame();
+    state = message.state;
+    processEvents();
+    renderUI();
+    if (
+      state.status === "finished" &&
+      $("#result").classList.contains("hidden")
+    )
+      finish();
+  } else if (message.type === "ack" && message.error) {
+    toast(message.error);
+    sound.play("warning");
+  } else if (message.type === "error") {
+    onlineStatus = message.message;
+    renderOnlineLobby();
+    toast(message.message);
+  } else if (message.type === "opponent_disconnected") {
+    toast("相手が切断されました。30秒間、復帰を待ちます");
+  } else if (message.type === "rematch") {
+    toast("相手の再戦を待っています");
+  } else if (message.type === "pong") {
+    const latency = document.getElementById("latency");
+    if (latency && pingAt) latency.textContent = `${Date.now() - pingAt}ms`;
+  } else if (message.type === "left" && mode === "online" && !started) {
+    onlinePhase = "menu";
+    onlineRoom = "";
+    renderOnlineLobby();
+  }
+}
 function doAction(action: Action | "cancel") {
   if (!selected) return;
-  const target = resolveTaskTarget(state, "blue", action, bridgeContext);
-  const r = command(state, "blue", { botId: selected, action, target });
-  if (!r.ok) {
-    toast(r.reason!);
-    return;
+  const target = resolveTaskTarget(state, playerTeam, action, bridgeContext);
+  const request = { botId: selected, action, target };
+  if (mode === "online") {
+    if (!online?.connected) {
+      toast("サーバーへ再接続中です");
+      return;
+    }
+    online.command(request);
+  } else {
+    const r = command(state, playerTeam, request);
+    if (!r.ok) {
+      toast(r.reason!);
+      return;
+    }
   }
   sound.play("command");
   toast(
@@ -225,7 +393,8 @@ function doAction(action: Action | "cancel") {
 }
 function costText(action: Action) {
   const b = state.bridges.find(
-      (b) => b.id === resolveTaskTarget(state, "blue", action, bridgeContext),
+      (b) =>
+        b.id === resolveTaskTarget(state, playerTeam, action, bridgeContext),
     ),
     spec = taskSpec(action, b);
   const cost = Object.entries(spec.cost)
@@ -239,6 +408,16 @@ function costText(action: Action) {
 }
 function renderUI() {
   if (!started) return;
+  for (const team of ["blue", "red"] as const) {
+    const label = $(`#${team}-score .score-top small`);
+    label.textContent =
+      mode === "online"
+        ? (onlinePlayers[team]?.name ??
+          (team === "blue" ? "プレイヤー1" : "プレイヤー2"))
+        : team === "blue"
+          ? "あなたの城"
+          : "相手の城";
+  }
   for (const team of ["blue", "red"] as const) {
     const hp = state.teams[team].hp;
     if (hp < shownHp[team]) {
@@ -266,16 +445,16 @@ function renderUI() {
   $("#resources").innerHTML = (["soil", "stone", "iron"] as const)
     .map(
       (r) =>
-        `<div class="resource ${r}">${icon(r)}<span>${resourceNames[r]}<b>${state.teams.blue.resources[r]}</b></span></div>`,
+        `<div class="resource ${r}">${icon(r)}<span>${resourceNames[r]}<b>${state.teams[playerTeam].resources[r]}</b></span></div>`,
     )
     .join("");
-  const bridge = state.bridges[0];
+  const bridge = state.bridges.find((b) => b.exclusive === playerTeam)!;
   const bridgeReady =
     !bridge.level &&
     state.bots.some(
       (bot) =>
-        bot.team === "blue" &&
-        canCommand(state, "blue", {
+        bot.team === playerTeam &&
+        canCommand(state, playerTeam, {
           botId: bot.id,
           action: "build",
           target: bridge.id,
@@ -286,7 +465,7 @@ function renderUI() {
     ? `${icon("stone")} <span>石を50集めて、手前の橋をつくろう</span>`
     : bridge.blockedBy
       ? `${icon("clear")} <span>道がふさがれた！ <b>土をどける</b>と通れるよ</span>`
-      : `${icon("march")} <span>橋ができた！ <b>攻める</b>で相手の城へ。あと${state.teams.red.hp}回！</span>`;
+      : `${icon("march")} <span>橋ができた！ <b>攻める</b>で相手の城へ。あと${state.teams[playerTeam === "blue" ? "red" : "blue"].hp}回！</span>`;
   if (selected) {
     const b = state.bots.find((x) => x.id === selected)!;
     const busy = b.state !== "IDLE" && b.action !== "mine";
@@ -298,10 +477,10 @@ function renderUI() {
       ? `<div class="busy-note">${b.action ? icon(b.action) : ""}<b>${states[b.state]}</b><p>終わったら自分で戻ってくるよ。</p><div class="busy-progress"><i style="width:${b.duration ? Math.min(100, (b.progress / b.duration) * 100) : 50}%"></i></div></div>`
       : `<div class="actions">${(Object.keys(labels) as Action[])
           .map((a) => {
-            const reason = canCommand(state, "blue", {
+            const reason = canCommand(state, playerTeam, {
               botId: b.id,
               action: a,
-              target: resolveTaskTarget(state, "blue", a, bridgeContext),
+              target: resolveTaskTarget(state, playerTeam, a, bridgeContext),
             });
             return `<button data-action="${a}" ${reason ? "disabled" : ""} title="${reason ?? labels[a]}" class="action ${a === "march" ? "rush" : ""}">${icon(a)}<span><b>${labels[a]}</b><small>${costText(a)}</small></span></button>`;
           })
@@ -327,7 +506,7 @@ function showPause() {
   clearTimeout(modalCloseTimer);
   $("#modal").classList.remove("hidden", "leaving");
   $("#modal").innerHTML =
-    `<article class="dialog compact"><div class="eyebrow">TAKE A BREAK</div><h2>ちょっと、ひと休み。</h2><p>CPUとタイマーも停止しています。</p><button id="modal-close" class="primary">工事を再開 ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
+    `<article class="dialog compact"><div class="eyebrow">TAKE A BREAK</div><h2>ちょっと、ひと休み。</h2><p>${mode === "online" ? "オンラインの試合は進行中です。" : "CPUとタイマーも停止しています。"}</p><button id="modal-close" class="primary">工事を再開 ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
 }
 function hideModal() {
   const modal = $("#modal");
@@ -344,23 +523,29 @@ function hideModal() {
   );
 }
 function finish() {
+  if (!$("#result").classList.contains("hidden")) return;
   closePanel();
-  const win = state.winner === "blue",
+  const win = state.winner === playerTeam,
     draw = state.winner === "draw";
   $("#result").classList.remove("hidden");
   $("#result").innerHTML =
-    `<article class="result-card ${win ? "victory" : ""}"><div class="result-crown">${icon("crown")}</div><div class="eyebrow">ゲーム終了</div><h2>${draw ? "引き分け！" : win ? "道をつないだ。<br>勝利をつかんだ！" : "次こそ、<br>勝利への道を。"}</h2><p>${draw ? "最後まで守り切りました。次の工事で決着を。" : win ? "5体の小さなBotたちに、大きな拍手を。" : "掘るBotと攻めるBotの配分、相手の道をふさぐタイミングがカギ。"}</p><div class="result-score"><span class="blue">${state.teams.blue.hp}</span><small>城の残り</small><span class="red">${state.teams.red.hp}</span></div><div class="result-stats"><div><b>${state.teams.blue.stats.mined}</b><small>集めた資源</small></div><div><b>${state.teams.blue.stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
+    `<article class="result-card ${win ? "victory" : ""}"><div class="result-crown">${icon("crown")}</div><div class="eyebrow">ゲーム終了</div><h2>${draw ? "引き分け！" : win ? "道をつないだ。<br>勝利をつかんだ！" : "次こそ、<br>勝利への道を。"}</h2><p>${draw ? "最後まで守り切りました。次の工事で決着を。" : win ? "5体の小さなBotたちに、大きな拍手を。" : "掘るBotと攻めるBotの配分、相手の道をふさぐタイミングがカギ。"}</p><div class="result-score"><span class="blue">${state.teams.blue.hp}</span><small>城の残り</small><span class="red">${state.teams.red.hp}</span></div><div class="result-stats"><div><b>${state.teams[playerTeam].stats.mined}</b><small>集めた資源</small></div><div><b>${state.teams[playerTeam].stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
       state.time % 60,
     )
       .toString()
       .padStart(
         2,
         "0",
-      )}</b><small>工事時間</small></div></div><button id="restart" class="primary">もう一戦、つくろう ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
+      )}</b><small>工事時間</small></div></div><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一戦、つくろう"} ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
   sound.play("end");
   sound.setMusicScene(win ? "victory" : "retry");
 }
 function backTitle() {
+  if (mode === "online") online?.leave();
+  mode = "cpu";
+  playerTeam = "blue";
+  onlineRoom = "";
+  onlinePhase = "menu";
   sound.setMusicScene("title");
   started = false;
   paused = false;
@@ -368,9 +553,12 @@ function backTitle() {
   $("#result").classList.add("hidden");
   $("#modal").classList.add("hidden");
   $("#hud").classList.add("hidden");
+  $("#latency").classList.add("hidden");
   $("#title").classList.remove("hidden");
   state = createGame();
   world.reset();
+  visualPositions.clear();
+  world.setHomeTeam("blue");
   syncSoundButtons();
 }
 function syncSoundButtons() {
@@ -419,10 +607,63 @@ app.addEventListener("click", (e) => {
   } else {
     switch (button.id) {
       case "start":
-      case "restart":
         sound.unlock();
         sound.play("ui");
         sceneTransition(button, start);
+        break;
+      case "restart":
+        sound.play("ui");
+        if (mode === "online") {
+          online?.send({ type: "rematch" });
+          button.disabled = true;
+          button.textContent = "相手の再戦を待っています…";
+        } else sceneTransition(button, start);
+        break;
+      case "online-start":
+        sound.unlock();
+        sound.play("ui");
+        showOnline();
+        break;
+      case "online-random":
+        onlinePhase = "queueing";
+        online?.send({ type: "queue" });
+        renderOnlineLobby();
+        break;
+      case "online-create":
+        online?.send({ type: "create" });
+        break;
+      case "online-join":
+        joinDraft = (
+          document.querySelector<HTMLInputElement>("#room-id-input")?.value ??
+          joinDraft
+        )
+          .toUpperCase()
+          .trim();
+        if (!/^[A-Z0-9]{5}$/.test(joinDraft)) {
+          onlineStatus = "部屋IDは5文字で入力してください";
+          renderOnlineLobby();
+        } else online?.send({ type: "join", roomId: joinDraft });
+        break;
+      case "online-ready":
+        nameDraft = (
+          document.querySelector<HTMLInputElement>("#online-name")?.value ?? ""
+        ).trim();
+        online?.send({ type: "name", name: nameDraft });
+        online?.send({ type: "ready", ready: true });
+        button.disabled = true;
+        break;
+      case "online-close":
+        online?.leave();
+        $("#online-lobby").classList.add("hidden");
+        onlinePhase = "menu";
+        onlineRoom = "";
+        mode = "cpu";
+        break;
+      case "copy-room":
+        void navigator.clipboard?.writeText(onlineRoom).then(() => {
+          onlineStatus = "部屋IDをコピーしました";
+          renderOnlineLobby();
+        });
         break;
       case "close-panel":
         closePanel();
@@ -454,9 +695,20 @@ app.addEventListener("click", (e) => {
     }
   }
 });
+app.addEventListener("input", (e) => {
+  const input = e.target as HTMLInputElement;
+  if (input.id === "online-name") nameDraft = input.value;
+  if (input.id === "room-id-input") {
+    input.value = input.value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 5);
+    joinDraft = input.value;
+  }
+});
 document.addEventListener("keydown", (e) => {
   if (!started || paused || state.status !== "playing") return;
-  if (/^[1-5]$/.test(e.key)) chooseBot(`blue-${Number(e.key) - 1}`);
+  if (/^[1-5]$/.test(e.key)) chooseBot(`${playerTeam}-${Number(e.key) - 1}`);
   if (e.key === "Escape") closePanel();
 });
 document.addEventListener("visibilitychange", () => {
@@ -470,7 +722,7 @@ function processEvents() {
     if (e.id <= lastEvent) continue;
     world.effect(e);
     if (
-      e.team === "blue" ||
+      e.team === playerTeam ||
       ["earthquake", "warning", "end", "collapse"].includes(e.kind)
     )
       sound.play(e.kind);
@@ -478,12 +730,12 @@ function processEvents() {
       e.kind === "earthquake" ||
       e.kind === "warning" ||
       e.kind === "collapse" ||
-      (e.team === "blue" && e.kind === "complete")
+      (e.team === playerTeam && e.kind === "complete")
     )
       toast(e.text);
     if (
       e.position &&
-      e.team === "blue" &&
+      e.team === playerTeam &&
       ["resource", "attack", "complete"].includes(e.kind)
     ) {
       const p = world.project(e.position, 2),
@@ -512,7 +764,17 @@ function frame(now: number) {
   const elapsed = (now - last) / 1000;
   const dt = Math.min(0.1, elapsed);
   last = now;
-  if (started && !paused && !qaFrozen && state.status === "playing") {
+  if (mode === "online" && online?.connected && Date.now() - pingAt > 10000) {
+    pingAt = Date.now();
+    online.send({ type: "ping" });
+  }
+  if (
+    started &&
+    mode === "cpu" &&
+    !paused &&
+    !qaFrozen &&
+    state.status === "playing"
+  ) {
     accumulator += dt;
     while (accumulator >= M.game.tick) {
       if (cpuEnabled) cpu.update(state);
@@ -521,7 +783,31 @@ function frame(now: number) {
     }
     processEvents();
   }
-  world.update(state, dt, elapsed);
+  let displayState = state;
+  if (mode === "online" && started) {
+    const alpha = Math.min(1, dt * 15);
+    displayState = {
+      ...state,
+      bots: state.bots.map((bot) => {
+        let position: Point = visualPositions.get(bot.id) ?? [...bot.position];
+        if (
+          Math.hypot(
+            position[0] - bot.position[0],
+            position[1] - bot.position[1],
+          ) > 5
+        )
+          position = [...bot.position];
+        else
+          position = [
+            position[0] + (bot.position[0] - position[0]) * alpha,
+            position[1] + (bot.position[1] - position[1]) * alpha,
+          ];
+        visualPositions.set(bot.id, position);
+        return { ...bot, position };
+      }),
+    };
+  }
+  world.update(displayState, dt, elapsed);
   uiClock += dt;
   if (uiClock > 0.15) {
     renderUI();
@@ -553,17 +839,17 @@ function frame(now: number) {
         empty &&
         state.bots.some(
           (bot) =>
-            bot.team === "blue" &&
-            canCommand(state, "blue", {
+            bot.team === playerTeam &&
+            canCommand(state, playerTeam, {
               botId: bot.id,
               action: "build",
               target: b.id,
             }) === null,
         );
-      el.className = `bridge-label ${b.owner ?? "neutral"} ${b.blockedBy ? "blocked" : ""} ${empty ? "empty" : ""} ${buildable ? "available" : ""} ${empty && b.exclusive === "red" ? "unavailable" : ""}`;
+      el.className = `bridge-label ${b.owner ?? "neutral"} ${b.blockedBy ? "blocked" : ""} ${empty ? "empty" : ""} ${buildable ? "available" : ""} ${empty && b.exclusive && b.exclusive !== playerTeam ? "unavailable" : ""}`;
       el.setAttribute(
         "aria-label",
-        `${b.id === "center" ? "真ん中の橋" : b.id === "blue" ? "自分の城につながる橋" : "相手の城につながる橋"}${buildable ? "、つくれる" : ""}`,
+        `${b.id === "center" ? "真ん中の橋" : b.id === playerTeam ? "自分の城につながる橋" : "相手の城につながる橋"}${buildable ? "、つくれる" : ""}`,
       );
       el.style.left = `${p.x}px`;
       el.style.top = `${p.y}px`;
@@ -578,8 +864,10 @@ try {
   world = new World($("#world"));
   world.onPick = (kind, id) => {
     if (!started || paused || state.status !== "playing") return;
-    if (kind === "bot") chooseBot(id);
-    else chooseBridge(id);
+    if (kind === "bot") {
+      if (state.bots.find((bot) => bot.id === id)?.team === playerTeam)
+        chooseBot(id);
+    } else chooseBridge(id);
   };
   await Promise.race([
     world.load((n) => {

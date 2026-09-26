@@ -636,6 +636,17 @@ export class World {
     this.hit.clear();
     this.resetView();
   }
+  setHomeTeam(team: Team) {
+    this.controls.target.set(0, 0, 0);
+    this.camera.position.set(0, 40, team === "blue" ? -24 : 24);
+    this.camera.zoom = 1.17;
+    this.camera.updateProjectionMatrix();
+    this.controls.update();
+    this.canvas.setAttribute(
+      "aria-label",
+      `INFRA RUSH 3Dマップ。${team === "blue" ? "青" : "赤"}いBotをタップして作業を指示`,
+    );
+  }
   resize() {
     this.width = this.canvas.parentElement?.clientWidth ?? innerWidth;
     this.height = this.canvas.parentElement?.clientHeight ?? innerHeight;

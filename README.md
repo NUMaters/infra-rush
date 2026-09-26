@@ -61,6 +61,17 @@ npm run assets
 BlenderのパスはMacの標準インストールを使用。別環境では`blender --background --threads 2 --python assets/blender/build.py`。
 正式資料12枚の出典は`docs/references/manifest.json`。比較で残っている形状・色・質感の差分はQA記録に記載します。
 
-## Phase 2
+## オンライン対戦
 
-まだ着手していません。Phase 1の全条件を満たした後、Go authoritative server / WebSocket / room / reconnect / command sequence / snapshotを実装する方針です。
+ユーザーの指示を受け、Goサーバーによる1対1対戦を追加しました。CPU対戦も従来どおり遊べます。ビルド後、プロジェクトのルートでサーバーを起動します。
+
+```sh
+npm run build:portable
+go run ./server -addr :8080 -static dist -master master
+```
+
+`http://localhost:8080/` を2ブラウザで開き、「マルチプレイ」を選びます。「ランダム対戦」同士は自動で組み合わされます。「部屋をロックして招待」では5文字の部屋IDを表示し、相手は同じ画面からIDを入力して参加できます。双方が名前を確定して「準備OK！」を押すと開始します。未変更の場合は「プレイヤー1」「プレイヤー2」です。試合後の再戦には双方の同意が必要です。
+
+既存の `http://localhost:5177/` から遊ぶ場合も、上記Goサーバーを8080番で起動してください。LAN内の他端末は同じホストのIPアドレスで画面にアクセスできます。公開インターネットで対戦するにはGoサーバーを公開ホストへ配置し、HTTPS/WSSを設定する必要があります。プロトコルと補完判断は[オンライン対戦の設計記録](docs/decisions/005-online-matchmaking.md)を参照してください。
+
+Goのルール・部屋・連番・再接続テストは `go test ./server`、2ブラウザの操作テストはサーバー起動後に `npx playwright test tests/e2e/online.spec.ts --project=desktop` で実行します。
