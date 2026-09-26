@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 const onlineTestURL =
-  process.env.ONLINE_TEST_URL ?? "http://localhost:8080/?qa";
+  (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process?.env?.ONLINE_TEST_URL ?? "http://localhost:8080/?qa";
 
 test("random match starts with editable names and shared resources", async ({
   browser,
