@@ -74,6 +74,6 @@ go run ./server -addr :8080 -static dist -master master
 
 既存の `http://localhost:5177/` から遊ぶ場合も、上記Goサーバーを8080番で起動してください。LAN内の他端末は同じホストのIPアドレスで画面にアクセスできます。公開インターネットで対戦するにはGoサーバーを公開ホストへ配置し、HTTPS/WSSを設定する必要があります。プロトコルと補完判断は[オンライン対戦の設計記録](docs/decisions/005-online-matchmaking.md)を参照してください。
 
-**GitHub Pages の画面だけでは対戦できません。** Pages から使う Go サーバーの公開と WebSocket 接続先の設定は [公開対戦の配置手順](docs/ONLINE_DEPLOYMENT.md) を参照してください。
+**GitHub Pages の画面だけでは対戦できません。** 現在の公開版は Fly.io 上の Go サーバーへ接続するよう設定済みです。[公開ゲーム](https://numaters.github.io/infra-rush/)から対戦できます。配置と運用は [公開対戦の配置手順](docs/ONLINE_DEPLOYMENT.md) を参照してください。
 
 Goのルール・部屋・連番・再接続テストは `go test ./server`、2ブラウザの操作テストはサーバー起動後に `npx playwright test tests/e2e/online.spec.ts --project=desktop` で実行します。
