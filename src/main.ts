@@ -14,6 +14,7 @@ import { icon } from "./ui/icons";
 import { OnlineClient } from "./net/client";
 import type { OnlinePlayer, ServerMessage } from "./net/client";
 import type { Team } from "./game/types";
+import { civilTrivia } from "./content/trivia";
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) =>
   document.querySelector<T>(selector)!;
@@ -141,6 +142,8 @@ type TutorialStage =
 let tutorialStage: TutorialStage | null = null;
 let tutorialMarchBot: string | null = null;
 let tutorialCompleteTimer: ReturnType<typeof setTimeout>;
+const triviaStorageKey = "infra-rush-last-trivia";
+let resultTriviaIndex = -1;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 function tapBurst(button: HTMLButtonElement) {
   if (reducedMotion.matches) return;
@@ -869,6 +872,33 @@ function closeOnlineLobby() {
   onlineRoom = "";
   mode = "cpu";
 }
+function showResultTrivia(index: number) {
+  resultTriviaIndex = index;
+  try {
+    localStorage.setItem(triviaStorageKey, String(index));
+  } catch {
+    // Private browsing may block storage; the current result still works.
+  }
+  const fact = civilTrivia[index];
+  $("#result-trivia").innerHTML =
+    `<div class="trivia-top"><span>Botの土木まめちしき</span><small>${index + 1}/${civilTrivia.length}</small></div><div class="trivia-content"><img src="${import.meta.env.BASE_URL}ui/result-bot.png" alt="ヘルメットと安全ベストを着たBot"><div class="trivia-bubble"><small>${fact.topic}</small><h3>${fact.title}</h3><p>${fact.text}</p></div></div><div class="trivia-bottom"><a href="${fact.source}" target="_blank" rel="noopener noreferrer">出典：${fact.sourceLabel} ↗</a><button id="result-trivia-next" type="button">次の話を聞く ${icon("march")}</button></div>`;
+}
+function firstResultTrivia() {
+  let previous = resultTriviaIndex;
+  try {
+    const saved = localStorage.getItem(triviaStorageKey);
+    if (
+      saved !== null &&
+      Number.isInteger(Number(saved)) &&
+      Number(saved) >= 0 &&
+      Number(saved) < civilTrivia.length
+    )
+      previous = Number(saved);
+  } catch {
+    // The in-memory index still advances between matches.
+  }
+  showResultTrivia((previous + 1) % civilTrivia.length);
+}
 function finish() {
   if (!$("#result").classList.contains("hidden")) return;
   closePanel();
@@ -876,14 +906,15 @@ function finish() {
     draw = state.winner === "draw";
   $("#result").classList.remove("hidden");
   $("#result").innerHTML =
-    `<article class="result-card ${win ? "victory" : ""}"><div class="result-crown">${icon("crown")}</div><div class="eyebrow">ゲーム終了</div><h2>${draw ? "引き分け！" : win ? "道をつないだ。<br>勝利をつかんだ！" : "次こそ、<br>勝利への道を。"}</h2><p>${draw ? "最後まで守り切りました。次の工事で決着を。" : win ? "5体の小さなBotたちに、大きな拍手を。" : "掘るBotと攻めるBotの配分、相手の道をふさぐタイミングがカギ。"}</p><div class="result-score"><span class="blue">${state.teams.blue.hp}</span><small>城の残り</small><span class="red">${state.teams.red.hp}</span></div><div class="result-stats"><div><b>${state.teams[playerTeam].stats.mined}</b><small>集めた資源</small></div><div><b>${state.teams[playerTeam].stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
+    `<article class="result-card ${win ? "victory" : ""}"><div class="result-main"><div class="result-crown">${icon("crown")}</div><div class="eyebrow">ゲーム終了</div><h2>${draw ? "引き分け！" : win ? "道をつないだ。<br>勝利をつかんだ！" : "次こそ、<br>勝利への道を。"}</h2><p>${draw ? "最後まで守り切りました。次の工事で決着を。" : win ? "5体の小さなBotたちに、大きな拍手を。" : "掘るBotと攻めるBotの配分、相手の道をふさぐタイミングがカギ。"}</p><div class="result-score"><span class="blue">${state.teams.blue.hp}</span><small>城の残り</small><span class="red">${state.teams.red.hp}</span></div><div class="result-stats"><div><b>${state.teams[playerTeam].stats.mined}</b><small>集めた資源</small></div><div><b>${state.teams[playerTeam].stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
       state.time % 60,
     )
       .toString()
       .padStart(
         2,
         "0",
-      )}</b><small>工事時間</small></div></div><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一戦、つくろう"} ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
+      )}</b><small>工事時間</small></div></div></div><section id="result-trivia" class="result-trivia" aria-label="土木まめちしき"></section><div class="result-actions"><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一戦、つくろう"} ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></div></article>`;
+  firstResultTrivia();
   sound.play("end");
   sound.setMusicScene(win ? "victory" : "retry");
 }
@@ -994,6 +1025,10 @@ app.addEventListener("click", (e) => {
           button.disabled = true;
           button.textContent = "相手の再戦を待っています…";
         } else sceneTransition(button, start, 520);
+        break;
+      case "result-trivia-next":
+        sound.play("ui");
+        showResultTrivia((resultTriviaIndex + 1) % civilTrivia.length);
         break;
       case "online-start":
         sound.unlock();
