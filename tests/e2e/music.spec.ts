@@ -16,13 +16,15 @@ test("title, match and result music follow the screen and audio controls", async
   await expect(title).toHaveJSProperty("loop", true);
   await expect
     .poll(() =>
-      page.locator(".logo-dot").evaluate((element) =>
-        getComputedStyle(element).animationName,
-      ),
+      page
+        .locator(".logo-dot")
+        .evaluate((element) => getComputedStyle(element).animationName),
     )
     .toContain("title-dot-hop");
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
   ).toBe(true);
   await page.getByRole("button", { name: "はじめて", exact: true }).click();
   await expect.poll(() => paused("#bgm-title")).toBe(false);
