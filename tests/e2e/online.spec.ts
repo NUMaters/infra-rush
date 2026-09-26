@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 
+const onlineTestURL =
+  process.env.ONLINE_TEST_URL ?? "http://localhost:8080/?qa";
+
 test("random match starts with editable names and shared resources", async ({
   browser,
 }) => {
@@ -15,7 +18,7 @@ test("random match starts with editable names and shared resources", async ({
   const second = await secondContext.newPage();
   try {
     for (const page of [first, second]) {
-      await page.goto("http://localhost:8080/?qa");
+      await page.goto(onlineTestURL);
       await page.locator("#online-start").click();
       await expect(page.locator("#online-random")).toBeEnabled();
       await page
@@ -38,9 +41,17 @@ test("random match starts with editable names and shared resources", async ({
       "Sora",
     );
 
-    await first.keyboard.press("1");
+    const blueBot = await first.evaluate(() =>
+      window.infraQA.projectBot("blue-0"),
+    );
+    await first.mouse.click(blueBot.x, blueBot.y);
+    await expect(first.locator("#task-panel")).toBeVisible();
     await first.locator('[data-action="mine"]').click();
-    await second.keyboard.press("1");
+    const redBot = await second.evaluate(() =>
+      window.infraQA.projectBot("red-0"),
+    );
+    await second.touchscreen.tap(redBot.x, redBot.y);
+    await expect(second.locator("#task-panel")).toBeVisible();
     await second.locator('[data-action="mine"]').click();
     await expect
       .poll(() => first.locator(".resource.stone b").innerText(), {
@@ -81,7 +92,7 @@ test("locked room displays a five-character ID and accepts a friend", async ({
   const guest = await b.newPage();
   try {
     for (const page of [host, guest]) {
-      await page.goto("http://localhost:8080/?qa");
+      await page.goto(onlineTestURL);
       await page.locator("#online-start").click();
       await expect(page.locator("#online-create")).toBeEnabled();
       await page
@@ -116,7 +127,7 @@ test("a player can reconnect and continue issuing sequenced commands", async ({
   const guest = await b.newPage();
   try {
     for (const page of [host, guest]) {
-      await page.goto("http://localhost:8080/?qa");
+      await page.goto(onlineTestURL);
       await page.locator("#online-start").click();
       await expect(page.locator("#online-create")).toBeEnabled();
       await page

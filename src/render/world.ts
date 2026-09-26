@@ -42,6 +42,7 @@ export class World {
       kind: string;
       ring: T.Mesh;
       walkBlend: number;
+      team: Team;
     }
   >();
   private bridges = new Map<
@@ -63,6 +64,7 @@ export class World {
   private shake = 0;
   private hit = new Map<Team, number>();
   private selected: string | null = null;
+  private homeTeam: Team = "blue";
   private route: T.Line;
   readonly controls: OrbitControls;
   private width = 1;
@@ -596,7 +598,7 @@ export class World {
     );
     ring.rotation.x = -Math.PI / 2;
     ring.visible = false;
-    a = { bot, rig: null, kind: "", ring, walkBlend: 0 };
+    a = { bot, rig: null, kind: "", ring, walkBlend: 0, team: b.team };
     this.actors.set(b.id, a);
     return a;
   }
@@ -638,6 +640,7 @@ export class World {
     this.resetView();
   }
   setHomeTeam(team: Team) {
+    this.homeTeam = team;
     this.controls.target.set(0, 0, 0);
     this.camera.position.set(0, 40, team === "blue" ? -24 : 24);
     this.camera.zoom = DEFAULT_ZOOM;
@@ -672,7 +675,7 @@ export class World {
       p = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     let nearest: { id: string; d: number } | null = null;
     for (const [id, a] of this.actors) {
-      if (!id.startsWith("blue")) continue;
+      if (a.team !== this.homeTeam) continue;
       const pos = this.project([a.bot.position.x, a.bot.position.z], 1);
       const d = Math.hypot(p.x - pos.x, p.y - pos.y);
       if (d < 32 && (!nearest || d < nearest.d)) nearest = { id, d };
