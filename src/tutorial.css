@@ -1,0 +1,203 @@
+/* Guided practice stays out of the way of the island and keeps Skip reachable. */
+#tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 42;
+  pointer-events: none;
+}
+#tutorial-card {
+  position: absolute;
+  left: 50%;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: min(450px, calc(100vw - 24px));
+  translate: -50% 0;
+  pointer-events: auto;
+}
+.tutorial-card {
+  padding: 12px 16px 13px;
+  border: 3px solid #fff;
+  border-radius: 22px;
+  background: linear-gradient(160deg, #fffdf3 0%, #fff5d2 100%);
+  box-shadow:
+    0 6px 0 #9b682a,
+    0 12px 32px #173d5b8c;
+  animation: tutorial-card-enter 400ms cubic-bezier(0.17, 1.5, 0.3, 1) both;
+}
+.tutorial-card.cleared {
+  background: linear-gradient(140deg, #e8fff0, #fff5c3);
+  box-shadow:
+    0 6px 0 #4f9d62,
+    0 12px 36px #173d5b8c;
+}
+.tutorial-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.tutorial-top > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #366484;
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+}
+.tutorial-top b {
+  padding: 3px 8px;
+  color: #784509;
+  border-radius: 12px;
+  background: #ffdb62;
+  font-size: 12px;
+}
+#tutorial-skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 2px solid #bfd9e3;
+  border-radius: 12px;
+  background: #fff;
+  color: #315e76;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 3px 0 #8bb1bd;
+}
+#tutorial-skip svg {
+  width: 16px;
+  height: 16px;
+}
+.tutorial-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  margin-top: 3px;
+}
+.tutorial-emblem {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: #ffcf48;
+  color: #296286;
+  box-shadow: 0 4px 0 #db9630;
+  rotate: -7deg;
+}
+.tutorial-emblem svg {
+  width: 29px;
+  height: 29px;
+}
+.tutorial-message h2 {
+  margin: 0 0 3px;
+  color: #235271;
+  font-size: 21px;
+  line-height: 1.15;
+  font-weight: 1000;
+}
+.tutorial-message p {
+  margin: 0;
+  color: #4b6d7b;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 750;
+}
+.tutorial-progress {
+  display: flex;
+  gap: 5px;
+  margin-top: 7px;
+}
+.tutorial-progress i {
+  flex: 1;
+  height: 7px;
+  border-radius: 9px;
+  background: #d7e5e4;
+}
+.tutorial-progress i.done {
+  background: #ffbf30;
+  box-shadow: inset 0 -2px 0 #dd852b;
+}
+#tutorial-guide {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  translate: -50% -50%;
+  border: 5px solid #ffcf42;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 5px #fff,
+    0 0 24px 10px #ffd8569c;
+  animation: tutorial-guide-pulse 1.15s ease-in-out infinite;
+  pointer-events: none;
+}
+.tutorial-target {
+  outline: 4px solid #ffcf42 !important;
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 7px #fff8,
+    0 0 22px #ffca49 !important;
+  animation: tutorial-target-pulse 1s ease-in-out infinite;
+}
+@keyframes tutorial-card-enter {
+  from {
+    opacity: 0;
+    translate: 0 28px;
+    scale: 0.85;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+@keyframes tutorial-guide-pulse {
+  50% {
+    scale: 1.18;
+    opacity: 0.7;
+  }
+}
+@keyframes tutorial-target-pulse {
+  50% {
+    filter: brightness(1.12);
+  }
+}
+@media (max-width: 360px) {
+  .tutorial-card {
+    padding: 9px 11px 10px;
+    border-radius: 17px;
+  }
+  .tutorial-emblem {
+    width: 42px;
+    height: 42px;
+  }
+  .tutorial-emblem svg {
+    width: 24px;
+    height: 24px;
+  }
+  .tutorial-message {
+    gap: 8px;
+    min-height: 64px;
+  }
+  .tutorial-message h2 {
+    font-size: 18px;
+  }
+  .tutorial-message p {
+    font-size: 11px;
+  }
+  #tutorial-skip {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-card,
+  #tutorial-guide,
+  .tutorial-target {
+    animation: none;
+  }
+}

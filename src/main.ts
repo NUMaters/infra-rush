@@ -1,5 +1,6 @@
 import "./style.css";
 import "./motion.css";
+import "./tutorial.css";
 import { M } from "./game/master";
 import type { Difficulty } from "./game/master";
 import { canCommand, command, createGame, taskSpec, tick } from "./game/engine";
@@ -32,7 +33,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
  <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><h1>勝利への道を、つくろう。</h1><p>5体のBot。3つの橋。ひとつの勝利。<br>掘って、つないで、相手の城へ。</p></div>
- <div class="start-card"><label for="difficulty">CPUの強さ</label><div class="difficulty-options"><button data-difficulty="easy">はじめて</button><button data-difficulty="normal" class="active">スタンダード</button><button data-difficulty="hard">チャレンジ</button></div><button id="start" class="primary">${icon("helmet")}<span>工事をはじめる<small>PLAYER vs CPU</small></span>${icon("march")}</button><button id="online-start" class="secondary online-entry">マルチプレイ ${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div>
+ <div class="start-card"><label for="difficulty">CPUの強さ</label><div class="difficulty-options"><button data-difficulty="easy">はじめて</button><button data-difficulty="normal" class="active">スタンダード</button><button data-difficulty="hard">チャレンジ</button></div><button id="start" class="primary">${icon("helmet")}<span>工事をはじめる<small>操作を練習してからCPU戦へ</small></span>${icon("march")}</button><button id="online-start" class="secondary online-entry">マルチプレイ ${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span><span>音楽は右上のボタンから ${icon("sound")}</span></div>
 </section>
 <section id="hud" class="hidden">
@@ -47,6 +48,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="corner-brand">INFRA <b>RUSH</b></div>
 </section>
 <section id="match-intro" class="hidden" aria-live="assertive" aria-label="対戦開始のカウントダウン"></section>
+<section id="tutorial" class="hidden" aria-live="polite" aria-label="操作チュートリアル"><div id="tutorial-guide" aria-hidden="true"></div><div id="tutorial-card"></div></section>
 <section id="modal" class="overlay hidden"></section>
 <section id="online-lobby" class="overlay hidden" aria-label="オンライン対戦"></section>
 <section id="result" class="overlay hidden"></section><div id="scene-wipe" aria-hidden="true"></div>`;
@@ -115,6 +117,20 @@ const teamRevealDuration = (introDuration - 3600) / 2;
 let introUntil = 0;
 let introStage = -1;
 let introActive = false;
+type TutorialStage =
+  | "pick"
+  | "mine"
+  | "gather"
+  | "bridge"
+  | "build"
+  | "construction"
+  | "pickMarch"
+  | "march"
+  | "attack"
+  | "complete";
+let tutorialStage: TutorialStage | null = null;
+let tutorialMarchBot: string | null = null;
+let tutorialCompleteTimer: ReturnType<typeof setTimeout>;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 function tapBurst(button: HTMLButtonElement) {
   if (reducedMotion.matches) return;
@@ -175,6 +191,15 @@ function worldPop(position: Point, kind: "select" | "command" | "rush") {
   setTimeout(() => el.remove(), 760);
 }
 function chooseBot(id: string, context: string | null = null) {
+  if (tutorialStage === "pick") setTutorialStage("mine");
+  else if (tutorialStage === "pickMarch") {
+    const bot = state.bots.find((b) => b.id === id);
+    if (bot?.state !== "IDLE") {
+      toast("待機中のBotを選ぼう");
+      return;
+    }
+    setTutorialStage("march");
+  }
   selected = id;
   bridgeContext = context;
   world.setSelected(id);
@@ -194,6 +219,7 @@ function chooseBridge(id: string) {
   if (!started || paused || introActive || state.status !== "playing") return;
   const bot = bridgeBuilder(id);
   if (!bot) return;
+  if (tutorialStage === "bridge" && id === "blue") setTutorialStage("build");
   chooseBot(bot, id === "center" ? id : null);
 }
 function bridgeBuilder(id: string): string | null {
@@ -241,12 +267,14 @@ function closePanel() {
   }
   renderUI();
 }
-function start() {
+function prepareSolo() {
   if (!ready) return;
+  clearTimeout(tutorialCompleteTimer);
+  tutorialStage = null;
+  tutorialMarchBot = null;
   mode = "cpu";
   playerTeam = "blue";
   sound.unlock();
-  sound.play("complete");
   state = createGame(Date.now() >>> 0);
   cpu = new CPU(difficulty);
   cpuEnabled = true;
@@ -260,15 +288,161 @@ function start() {
   world.reset();
   visualPositions.clear();
   world.setHomeTeam("blue");
+  clearTimeout(panelCloseTimer);
   $("#title").classList.add("hidden");
   $("#hud").classList.add("hidden");
+  $("#tutorial").classList.add("hidden");
   $("#result").classList.add("hidden");
   $("#modal").classList.add("hidden");
+  $("#latency").classList.add("hidden");
   $("#task-panel").classList.add("hidden");
-  renderUI();
+  $("#task-panel").inert = true;
   sound.setMusicScene("game");
   syncSoundButtons();
+}
+function start() {
+  if (!ready) return;
+  prepareSolo();
+  sound.play("complete");
+  renderUI();
   beginIntro(introDuration);
+}
+function startTutorial() {
+  if (!ready) return;
+  prepareSolo();
+  cpuEnabled = false;
+  state.teams.blue.resources.stone = M.tasks.build.cost.stone! - 2;
+  state.nextQuake = Number.POSITIVE_INFINITY;
+  tutorialStage = "pick";
+  $("#hud").classList.remove("hidden");
+  $("#tutorial").classList.remove("hidden");
+  renderUI();
+  sound.play("complete");
+}
+const tutorialSteps: TutorialStage[] = [
+  "pick",
+  "mine",
+  "gather",
+  "bridge",
+  "build",
+  "construction",
+  "pickMarch",
+  "march",
+  "attack",
+  "complete",
+];
+function tutorialStepNumber(stage: TutorialStage) {
+  const index = tutorialSteps.indexOf(stage);
+  return index < 1 ? 1 : index < 3 ? 2 : index < 6 ? 3 : 4;
+}
+function setTutorialStage(stage: TutorialStage) {
+  if (!tutorialStage || tutorialStage === stage) return;
+  tutorialStage = stage;
+  sound.play(stage === "complete" ? "complete" : "ui");
+  renderUI();
+  if (stage === "complete")
+    tutorialCompleteTimer = setTimeout(() => {
+      if (tutorialStage === "complete") start();
+    }, 2400);
+}
+function renderTutorial() {
+  const stage = tutorialStage;
+  const tutorial = $("#tutorial");
+  tutorial.classList.toggle("hidden", !stage);
+  if (!stage) return;
+  const stone = state.teams.blue.resources.stone;
+  const descriptions: Record<TutorialStage, [string, string]> = {
+    pick: ["Botをタップ！", "手前の青いBotをタップして、仕事を選ぼう。"],
+    mine: [
+      "石を掘ろう",
+      "作業メニューの「掘る」を押そう。練習用の石はあと2個で橋をつくれるよ。",
+    ],
+    gather: [
+      "採掘中！",
+      `重機が採石場へ向かうよ。石が50になれば橋をつくれる！ ${Math.min(stone, 50)}/50`,
+    ],
+    bridge: [
+      "橋の場所をタップ！",
+      "黄色い「!」をタップして、手前の橋にBotを呼ぼう。",
+    ],
+    build: [
+      "橋をつくろう",
+      "「橋をつくる」を押して、向こう岸への道をつなごう。",
+    ],
+    construction: ["架橋中！", "架橋機が桁を送り出す様子を見てみよう。"],
+    pickMarch: ["攻めるBotを選ぼう", "手前の青いBotをもう一度タップしよう。"],
+    march: [
+      "進軍しよう！",
+      "「攻める」を押すと、Botが橋を渡って相手の城へ向かうよ。",
+    ],
+    attack: ["城へ一直線！", "Botが城を一度たたき、シュポンと帰ってくるよ。"],
+    complete: [
+      "練習クリア！",
+      "採掘、架橋、進軍ができたね！ 次はCPUとの本番だ。",
+    ],
+  };
+  const [title, description] = descriptions[stage];
+  const step = tutorialStepNumber(stage);
+  html(
+    "#tutorial-card",
+    `<article class="tutorial-card ${stage === "complete" ? "cleared" : ""}">
+    <div class="tutorial-top"><span>れんしゅう <b>${step}/4</b></span><button id="tutorial-skip" type="button">${stage === "complete" ? "今すぐ対戦" : "スキップして対戦"} ${icon("march")}</button></div>
+    <div class="tutorial-message"><span class="tutorial-emblem">${icon(stage === "mine" || stage === "gather" ? "mine" : stage === "bridge" || stage === "build" || stage === "construction" ? "build" : stage === "pick" ? "helmet" : "march")}</span><div><h2>${title}</h2><p>${description}</p></div></div>
+    <div class="tutorial-progress" aria-label="練習の進み具合 ${step}/4">${Array.from({ length: 4 }, (_, i) => `<i class="${i < step ? "done" : ""}"></i>`).join("")}</div>
+  </article>`,
+  );
+  document
+    .querySelectorAll(".tutorial-target")
+    .forEach((node) => node.classList.remove("tutorial-target"));
+  const action =
+    stage === "mine"
+      ? "mine"
+      : stage === "build"
+        ? "build"
+        : stage === "march"
+          ? "march"
+          : null;
+  if (action)
+    document
+      .querySelector(`#task-panel [data-action="${action}"]`)
+      ?.classList.add("tutorial-target");
+  if (stage === "bridge")
+    document
+      .querySelector('#bridge-labels [data-target="blue"]')
+      ?.classList.add("tutorial-target");
+  const guide = $("#tutorial-guide");
+  let point: { x: number; y: number } | null = null;
+  if (stage === "pick" || stage === "pickMarch") {
+    const bot = state.bots.find((b) => b.team === "blue" && b.state === "IDLE");
+    if (bot) point = world.project(bot.position, 1);
+  } else if (stage === "bridge" || stage === "construction") {
+    const bridge = state.bridges.find((b) => b.id === "blue")!;
+    point = world.project([bridge.x, 0], 0.5);
+  } else if (stage === "attack")
+    point = world.project([M.castle.red[0], M.castle.red[1]], 2);
+  guide.classList.toggle("hidden", !point);
+  if (point) {
+    guide.style.left = `${point.x}px`;
+    guide.style.top = `${point.y}px`;
+  }
+}
+function checkTutorialProgress() {
+  if (
+    tutorialStage === "gather" &&
+    state.teams.blue.resources.stone >= M.tasks.build.cost.stone!
+  )
+    setTutorialStage("bridge");
+  else if (
+    tutorialStage === "construction" &&
+    state.bridges.find((b) => b.id === "blue")?.level
+  )
+    setTutorialStage("pickMarch");
+  else if (
+    tutorialStage === "attack" &&
+    state.teams.blue.stats.attacks > 0 &&
+    state.bots.find((b) => b.id === tutorialMarchBot)?.state === "IDLE"
+  )
+    setTutorialStage("complete");
 }
 const htmlEntities: Record<string, string> = {
   "&": "&amp;",
@@ -485,6 +659,18 @@ function handleOnlineMessage(message: ServerMessage) {
 }
 function doAction(action: Action | "cancel") {
   if (!selected) return;
+  const tutorialAction =
+    tutorialStage === "mine"
+      ? "mine"
+      : tutorialStage === "build"
+        ? "build"
+        : tutorialStage === "march"
+          ? "march"
+          : null;
+  if (tutorialStage && action !== tutorialAction) {
+    toast("まずは下の案内の仕事をやってみよう！");
+    return;
+  }
   const target = resolveTaskTarget(state, playerTeam, action, bridgeContext);
   const request = { botId: selected, action, target };
   if (mode === "online") {
@@ -501,6 +687,12 @@ function doAction(action: Action | "cancel") {
     }
   }
   sound.play("command");
+  if (tutorialStage === "mine") setTutorialStage("gather");
+  else if (tutorialStage === "build") setTutorialStage("construction");
+  else if (tutorialStage === "march") {
+    tutorialMarchBot = selected;
+    setTutorialStage("attack");
+  }
   const actingBot = state.bots.find((b) => b.id === selected);
   if (actingBot && action !== "cancel")
     worldPop(actingBot.position, action === "march" ? "rush" : "command");
@@ -528,6 +720,8 @@ function costText(action: Action) {
 }
 function renderUI() {
   if (!started) return;
+  $("#pause").classList.toggle("hidden", !!tutorialStage);
+  $("#hud .help").classList.toggle("hidden", !!tutorialStage);
   for (const team of ["blue", "red"] as const) {
     const label = $(`#${team}-score .score-top small`);
     label.textContent =
@@ -559,9 +753,11 @@ function renderUI() {
     $(`#${team}-hp`).setAttribute("aria-valuenow", String(hp));
   }
   const remain = Math.ceil(M.game.duration - state.time);
-  $("#timer").textContent = `${Math.floor(remain / 60)
-    .toString()
-    .padStart(2, "0")}:${(remain % 60).toString().padStart(2, "0")}`;
+  $("#timer").textContent = tutorialStage
+    ? "練習中"
+    : `${Math.floor(remain / 60)
+        .toString()
+        .padStart(2, "0")}:${(remain % 60).toString().padStart(2, "0")}`;
   $("#resources").innerHTML = (["soil", "stone", "iron"] as const)
     .map(
       (r) =>
@@ -580,7 +776,7 @@ function renderUI() {
           target: bridge.id,
         }) === null,
     );
-  $("#hint").classList.toggle("hidden", bridgeReady);
+  $("#hint").classList.toggle("hidden", bridgeReady || !!tutorialStage);
   $("#hint").innerHTML = !bridge.level
     ? `${resourceIcon("stone")} <span>石を50集めて、手前の橋をつくろう</span>`
     : bridge.blockedBy
@@ -597,19 +793,32 @@ function renderUI() {
       ? `<div class="busy-note">${b.action ? icon(b.action) : ""}<b>${states[b.state]}</b><p>終わったら自分で戻ってくるよ。</p><div class="busy-progress"><i style="width:${b.duration ? Math.min(100, (b.progress / b.duration) * 100) : 50}%"></i></div></div>`
       : `<div class="actions">${(Object.keys(labels) as Action[])
           .map((a) => {
-            const reason = canCommand(state, playerTeam, {
-              botId: b.id,
-              action: a,
-              target: resolveTaskTarget(state, playerTeam, a, bridgeContext),
-            });
+            const reason =
+              canCommand(state, playerTeam, {
+                botId: b.id,
+                action: a,
+                target: resolveTaskTarget(state, playerTeam, a, bridgeContext),
+              }) ??
+              (tutorialStage &&
+              a !==
+                (tutorialStage === "mine"
+                  ? "mine"
+                  : tutorialStage === "build"
+                    ? "build"
+                    : tutorialStage === "march"
+                      ? "march"
+                      : null)
+                ? "練習の案内に進もう"
+                : null);
             return `<button data-action="${a}" ${reason ? "disabled" : ""} title="${reason ?? labels[a]}" class="action ${a === "march" ? "rush" : ""}">${icon(a)}<span><b>${labels[a]}</b><small>${costText(a)}</small></span></button>`;
           })
           .join(
             "",
-          )}</div>${b.action === "mine" ? '<button id="cancel-mine" class="cancel-mine">掘るのをやめる</button>' : ""}${bridgeContext === "center" ? '<p class="panel-tip">真ん中の橋で作業</p>' : ""}`
+          )}</div>${b.action === "mine" && !tutorialStage ? '<button id="cancel-mine" class="cancel-mine">掘るのをやめる</button>' : ""}${bridgeContext === "center" ? '<p class="panel-tip">真ん中の橋で作業</p>' : ""}`
   }`,
     );
   }
+  renderTutorial();
 }
 function showHelp() {
   paused = true;
@@ -670,6 +879,9 @@ function finish() {
 }
 function backTitle() {
   cancelIntro();
+  clearTimeout(tutorialCompleteTimer);
+  tutorialStage = null;
+  $("#tutorial").classList.add("hidden");
   if (mode === "online") {
     online?.leave();
     online?.close();
@@ -727,7 +939,12 @@ app.addEventListener("click", (e) => {
     return;
   }
   const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
-  if (!button || button.disabled || transitioning) return;
+  if (
+    !button ||
+    button.disabled ||
+    (transitioning && button.id !== "tutorial-skip")
+  )
+    return;
   const firstAudioGesture = !audioGestureSeen;
   audioGestureSeen = true;
   tapBurst(button);
@@ -754,7 +971,11 @@ app.addEventListener("click", (e) => {
       case "start":
         sound.unlock();
         sound.play("ui");
-        sceneTransition(button, start, 520);
+        sceneTransition(button, startTutorial, 520);
+        break;
+      case "tutorial-skip":
+        sound.play("ui");
+        start();
         break;
       case "restart":
         sound.play("ui");
@@ -861,7 +1082,13 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closePanel();
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && started && state.status === "playing") showPause();
+  if (
+    document.hidden &&
+    started &&
+    !tutorialStage &&
+    state.status === "playing"
+  )
+    showPause();
 });
 let accumulator = 0,
   last = performance.now(),
@@ -909,12 +1136,17 @@ function processEvents() {
     if (e.kind === "end") finish();
   }
 }
+function simulationStep() {
+  if (cpuEnabled) cpu.update(state);
+  tick(state, M.game.tick);
+  if (tutorialStage) {
+    state.time = 0;
+    checkTutorialProgress();
+  }
+}
 function simulate(seconds: number) {
   const steps = Math.round(seconds / M.game.tick);
-  for (let i = 0; i < steps; i++) {
-    if (cpuEnabled) cpu.update(state);
-    tick(state, M.game.tick);
-  }
+  for (let i = 0; i < steps; i++) simulationStep();
   processEvents();
   renderUI();
 }
@@ -937,8 +1169,7 @@ function frame(now: number) {
   ) {
     accumulator += dt;
     while (accumulator >= M.game.tick) {
-      if (cpuEnabled) cpu.update(state);
-      tick(state, M.game.tick);
+      simulationStep();
       accumulator -= M.game.tick;
     }
     processEvents();
@@ -999,6 +1230,8 @@ function frame(now: number) {
       el.disabled = !buildable;
       el.style.pointerEvents = buildable ? "auto" : "none";
       el.className = `bridge-label ${b.owner ?? "neutral"} ${b.blockedBy ? "blocked" : ""} ${empty ? "empty" : ""} ${buildable ? "available" : ""} ${empty && b.exclusive && b.exclusive !== playerTeam ? "unavailable" : ""}`;
+      if (tutorialStage === "bridge" && b.id === "blue")
+        el.classList.add("tutorial-target");
       el.setAttribute(
         "aria-label",
         `${b.id === "center" ? "真ん中の橋" : b.id === playerTeam ? "自分の城につながる橋" : "相手の城につながる橋"}${buildable ? "、つくれる" : ""}`,

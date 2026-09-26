@@ -11,12 +11,14 @@ try {
     await page.locator('#start').waitFor({timeout:60000});const loadMs=Date.now()-start;
     await page.screenshot({path:`docs/qa/${name}-production-title.png`});
     await page.locator('[data-difficulty="easy"]').click();await page.locator('#start').click();
+    await page.locator('#tutorial-skip').click();
+    await page.locator('#match-intro').waitFor({state:'hidden'});
     await page.keyboard.press("1");await page.locator('[data-action="mine"]').click();
     const performanceSample=await page.evaluate(()=>new Promise(resolve=>{
       const times=[];let previous=performance.now();const begin=previous;
       const frame=(now)=>{times.push(now-previous);previous=now;if(times.length<180 && now-begin<12000){requestAnimationFrame(frame);return;}
         const sorted=times.slice(5).sort((a,b)=>a-b);const mean=sorted.reduce((a,b)=>a+b,0)/sorted.length;
-        resolve({frames:sorted.length,fps:1000/mean,p95FrameMs:sorted[Math.floor(sorted.length*.95)],heapMB:performance.memory?.usedJSHeapSize/1048576 ?? null});};requestAnimationFrame(frame);
+        resolve({frames:sorted.length,fps:1000/mean,p95FrameMs:sorted[Math.floor(sorted.length*.95)],heapMB:(performance.memory?.usedJSHeapSize ?? null) === null ? null : performance.memory.usedJSHeapSize/1048576});};requestAnimationFrame(frame);
     }));
     await page.screenshot({path:`docs/qa/${name}-production-game.png`});
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);

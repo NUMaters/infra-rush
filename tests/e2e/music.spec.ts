@@ -46,6 +46,7 @@ test("title, match and result music follow the screen and audio controls", async
   await expect.poll(() => paused("#bgm-title")).toBe(false);
 
   await page.locator("#start").click();
+  await page.locator("#tutorial-skip").click();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await expect.poll(() => paused("#bgm")).toBe(false);
   await expect.poll(() => paused("#bgm-title")).toBe(true);
