@@ -245,6 +245,7 @@ function renderOnlineLobby() {
   let content = "";
   if (onlinePhase === "menu") {
     content = `<h2>マルチプレイ</h2><p>誰かとすぐ対戦するか、5文字の部屋IDで友だちを招待できます。</p>
+      ${status === "公開対戦サーバーの設定が必要です" ? '<p role="status">公開版の対戦サーバーは準備中です。1人プレイは遊べます。</p>' : ""}
       <button id="online-random" class="primary" ${connected ? "" : "disabled"}>ランダム対戦 ${icon("march")}</button>
       <button id="online-create" class="secondary" ${connected ? "" : "disabled"}>部屋をロックして招待</button>
       <div class="room-join"><label for="room-id-input">部屋IDで参加</label><div><input id="room-id-input" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCDE" value="${escapeHtml(joinDraft)}"><button id="online-join" class="secondary" ${connected ? "" : "disabled"}>参加</button></div></div>`;
@@ -274,7 +275,9 @@ function showOnline() {
           ? "サーバーに接続しました"
           : status === "reconnecting"
             ? "再接続中… サーバーを確認してください"
-            : "接続していません";
+            : status === "unavailable"
+              ? "公開対戦サーバーの設定が必要です"
+              : "接続していません";
       renderOnlineLobby();
       if (mode === "online" && started && status === "reconnecting")
         toast("通信が切れました。再接続しています…");

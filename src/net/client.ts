@@ -26,8 +26,9 @@ export type ServerMessage =
 
 export class OnlineClient {
   onMessage: (message: ServerMessage) => void = () => {};
-  onStatus: (status: "connected" | "reconnecting" | "offline") => void =
-    () => {};
+  onStatus: (
+    status: "connected" | "reconnecting" | "offline" | "unavailable",
+  ) => void = () => {};
   private socket: WebSocket | null = null;
   private reconnectTimer: number | null = null;
   private seq = 0;
@@ -40,11 +41,31 @@ export class OnlineClient {
   connect() {
     if (this.connected || this.socket?.readyState === WebSocket.CONNECTING)
       return;
+    const configured = import.meta.env.VITE_ONLINE_WS_URL?.trim();
+    if (configured) {
+      try {
+        const url = new URL(configured);
+        if (
+          !["ws:", "wss:"].includes(url.protocol) ||
+          (location.protocol === "https:" && url.protocol !== "wss:")
+        ) {
+          this.onStatus("unavailable");
+          return;
+        }
+      } catch {
+        this.onStatus("unavailable");
+        return;
+      }
+    }
+    if (!configured && location.hostname.endsWith(".github.io")) {
+      this.onStatus("unavailable");
+      return;
+    }
     this.active = true;
     const scheme = location.protocol === "https:" ? "wss:" : "ws:";
     const previewPort = ["5173", "5177", "5178"].includes(location.port);
     const host = previewPort ? `${location.hostname}:8080` : location.host;
-    const socket = new WebSocket(`${scheme}//${host}/ws`);
+    const socket = new WebSocket(configured || `${scheme}//${host}/ws`);
     this.socket = socket;
     socket.onopen = () => {
       this.send({ type: "hello", token: this.token });

@@ -1,12 +1,30 @@
 package main
 
 import (
+	"net/http/httptest"
 	"regexp"
 	"testing"
 	"time"
 )
 
 func testPeer() *peer { return &peer{send: make(chan []byte, 64), connected: true} }
+
+func TestWebSocketOriginForPublishedPages(t *testing.T) {
+	t.Setenv("INFRA_ALLOWED_ORIGINS", "https://numaters.github.io")
+	request := httptest.NewRequest("GET", "https://game.example/ws", nil)
+	for _, origin := range []string{"https://numaters.github.io", "https://game.example"} {
+		request.Header.Set("Origin", origin)
+		if !checkOrigin(request) {
+			t.Fatalf("rejected trusted origin %s", origin)
+		}
+	}
+	for _, origin := range []string{"https://numaters.github.io.evil.example", "https://another.example", "file://numaters.github.io"} {
+		request.Header.Set("Origin", origin)
+		if checkOrigin(request) {
+			t.Fatalf("accepted untrusted origin %s", origin)
+		}
+	}
+}
 
 func TestLockedRoomSequenceAndReconnect(t *testing.T) {
 	h := newHub(configForTest(t))

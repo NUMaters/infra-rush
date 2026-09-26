@@ -29,6 +29,7 @@ execFileSync(
     '--tsconfig-raw={"compilerOptions":{"useDefineForClassFields":true}}',
     `--define:import.meta.env.DEV=${qa}`,
     '--define:import.meta.env.BASE_URL="./"',
+    `--define:import.meta.env.VITE_ONLINE_WS_URL=${JSON.stringify(process.env.VITE_ONLINE_WS_URL ?? "")}`,
     "--minify",
   ],
   { stdio: "inherit" },

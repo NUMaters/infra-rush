@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -65,25 +66,32 @@ type hub struct {
 	config *Config
 }
 
-var upgrader = websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 4096, CheckOrigin: func(r *http.Request) bool {
+var upgrader = websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 4096, CheckOrigin: checkOrigin}
+
+func checkOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		return true
 	}
-	u, err := http.NewRequest("GET", origin, nil)
-	if err != nil {
+	u, err := url.Parse(origin)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
 		return false
 	}
-	a, _, _ := net.SplitHostPort(u.URL.Host)
+	for _, allowed := range strings.Split(os.Getenv("INFRA_ALLOWED_ORIGINS"), ",") {
+		if strings.EqualFold(strings.TrimSuffix(strings.TrimSpace(allowed), "/"), origin) {
+			return true
+		}
+	}
+	a, _, _ := net.SplitHostPort(u.Host)
 	if a == "" {
-		a = u.URL.Host
+		a = u.Hostname()
 	}
 	b, _, _ := net.SplitHostPort(r.Host)
 	if b == "" {
 		b = r.Host
 	}
 	return strings.EqualFold(a, b) || (isLoopback(a) && isLoopback(b))
-}}
+}
 
 func isLoopback(host string) bool { return host == "localhost" || host == "127.0.0.1" || host == "::1" }
 func randomCode(n int) string {
