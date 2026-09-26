@@ -170,10 +170,13 @@ function closePanel() {
   if (!panel.classList.contains("hidden")) {
     panel.classList.add("closing");
     clearTimeout(panelCloseTimer);
-    panelCloseTimer = setTimeout(() => {
-      panel.classList.add("hidden");
-      panel.classList.remove("closing");
-    }, reducedMotion.matches ? 0 : 170);
+    panelCloseTimer = setTimeout(
+      () => {
+        panel.classList.add("hidden");
+        panel.classList.remove("closing");
+      },
+      reducedMotion.matches ? 0 : 170,
+    );
   }
   renderUI();
 }
@@ -264,6 +267,18 @@ function renderUI() {
     )
     .join("");
   const bridge = state.bridges[0];
+  const bridgeReady =
+    !bridge.level &&
+    state.bots.some(
+      (bot) =>
+        bot.team === "blue" &&
+        canCommand(state, "blue", {
+          botId: bot.id,
+          action: "build",
+          target: bridge.id,
+        }) === null,
+    );
+  $("#hint").classList.toggle("hidden", bridgeReady);
   $("#hint").innerHTML = !bridge.level
     ? `${icon("stone")} <span>石を50集めて、手前の橋をつくろう</span>`
     : bridge.blockedBy
@@ -315,12 +330,15 @@ function hideModal() {
   const modal = $("#modal");
   modal.classList.add("leaving");
   clearTimeout(modalCloseTimer);
-  modalCloseTimer = setTimeout(() => {
-    modal.classList.add("hidden");
-    modal.classList.remove("leaving");
-    paused = false;
-    if (started && state.status === "playing") sound.resumeMusic();
-  }, reducedMotion.matches ? 0 : 190);
+  modalCloseTimer = setTimeout(
+    () => {
+      modal.classList.add("hidden");
+      modal.classList.remove("leaving");
+      paused = false;
+      if (started && state.status === "playing") sound.resumeMusic();
+    },
+    reducedMotion.matches ? 0 : 190,
+  );
 }
 function finish() {
   sound.stopMusic();
@@ -357,9 +375,9 @@ app.addEventListener("pointerdown", (e) => {
 });
 for (const event of ["pointerup", "pointercancel", "pointerleave"]) {
   app.addEventListener(event, () => {
-    app.querySelectorAll("button.pressing").forEach((button) =>
-      button.classList.remove("pressing"),
-    );
+    app
+      .querySelectorAll("button.pressing")
+      .forEach((button) => button.classList.remove("pressing"));
   });
 }
 app.addEventListener("click", (e) => {
@@ -510,21 +528,29 @@ function frame(now: number) {
       if (!el) {
         el = document.createElement("button");
         el.dataset.target = b.id;
-        el.setAttribute(
-          "aria-label",
-          b.id === "center"
-            ? "真ん中の橋"
-            : b.id === "blue"
-              ? "自分の城につながる橋"
-              : "相手の城につながる橋",
-        );
         $("#bridge-labels").append(el);
       }
       const p = world.project([b.x, 0], 1);
-      el.className = `bridge-label ${b.owner ?? "neutral"} ${b.blockedBy ? "blocked" : ""}`;
+      const empty = b.level === 0 && !b.lock;
+      const buildable =
+        empty &&
+        state.bots.some(
+          (bot) =>
+            bot.team === "blue" &&
+            canCommand(state, "blue", {
+              botId: bot.id,
+              action: "build",
+              target: b.id,
+            }) === null,
+        );
+      el.className = `bridge-label ${b.owner ?? "neutral"} ${b.blockedBy ? "blocked" : ""} ${empty ? "empty" : ""} ${buildable ? "available" : ""} ${empty && b.exclusive === "red" ? "unavailable" : ""}`;
+      el.setAttribute(
+        "aria-label",
+        `${b.id === "center" ? "真ん中の橋" : b.id === "blue" ? "自分の城につながる橋" : "相手の城につながる橋"}${buildable ? "、つくれる" : ""}`,
+      );
       el.style.left = `${p.x}px`;
       el.style.top = `${p.y}px`;
-      const markup = `<b>${b.lock ? "作業中…" : b.blockedBy ? "ふさがれている" : b.damage && b.level ? "直そう" : b.level ? "渡れる" : "橋をつくる"}</b>${b.level ? `<span class="bridge-strength" aria-label="橋の強さ${b.level}段階">${"●".repeat(b.level)}${"○".repeat(3 - b.level)}</span>` : ""}`;
+      const markup = `<b>${b.lock ? "作業中…" : b.blockedBy ? "ふさがれている" : b.damage && b.level ? "直そう" : b.level ? "渡れる" : buildable ? "!" : ""}</b>${b.level ? `<span class="bridge-strength" aria-label="橋の強さ${b.level}段階">${"●".repeat(b.level)}${"○".repeat(3 - b.level)}</span>` : ""}`;
       if (el.innerHTML !== markup) el.innerHTML = markup;
     }
   }

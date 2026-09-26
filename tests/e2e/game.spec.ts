@@ -15,8 +15,10 @@ declare global {
   }
 }
 async function selectBot(page: Page, index: number) {
-  if (await page.locator("#close-panel").isVisible())
-    await page.locator("#close-panel").click();
+  if (await page.locator("#close-panel").isVisible()) {
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#task-panel")).toBeHidden();
+  }
   const p = await page.evaluate(
     (i) => window.infraQA.projectBot(`blue-${i}`),
     index,
@@ -97,6 +99,8 @@ test("pause freezes clock, help resumes, sound and bridge targeting respond", as
 }) => {
   await page.goto("/?qa");
   await page.locator("#start").click();
+  await expect(page.locator("#hud")).toBeVisible();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await page.locator("#pause").click();
   const before = await page.evaluate(() => window.infraQA.snapshot().time);
   await page.waitForTimeout(500);
@@ -104,12 +108,27 @@ test("pause freezes clock, help resumes, sound and bridge targeting respond", as
     before,
   );
   await page.locator("#modal-close").click();
+  await expect(page.locator("#modal")).toBeHidden();
   await page.locator("#sound").click();
   await expect(page.locator("#sound")).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "真ん中の橋", exact: true }).click();
-  await expect(page.locator(".panel-tip")).toHaveText("真ん中の橋で作業");
-  await expect(page.locator("#task-panel [data-target]")).toHaveCount(0);
-  await expect(page.locator('[data-action="build"]')).toBeDisabled();
+  await page.locator("#qa-freeze").click();
+  await expect(page.locator(".bridge-label.empty:visible")).toHaveCount(0);
+  for (let i = 0; i < 5; i++) {
+    await selectBot(page, i);
+    await page.locator('[data-action="mine"]').click();
+  }
+  await advance(page, 32);
+  const bridge = page.getByRole("button", {
+    name: "自分の城につながる橋、つくれる",
+  });
+  await expect(bridge).toHaveText("!");
+  await expect(bridge).toBeVisible();
+  await expect(page.locator("#hint")).toBeHidden();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#task-panel")).toBeHidden();
+  await bridge.click();
+  await expect(page.locator("#task-panel")).toBeVisible();
+  await expect(page.locator('[data-action="build"]')).toBeEnabled();
 });
 
 test("civil works: reinforcement, earthquake, repair, embankment, CPU clearance and demolition", async ({

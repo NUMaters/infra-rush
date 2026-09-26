@@ -843,6 +843,46 @@ h1 {
   font-size: 11px;
   white-space: nowrap;
 }
+.bridge-label.empty {
+  min-width: 26px;
+  min-height: 26px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  background: #fffdf5a8;
+  border: 2px solid #ffffffcb;
+  box-shadow: 0 3px 8px #16384922;
+}
+.bridge-label.empty:not(.available) {
+  display: none;
+}
+.bridge-label.empty.available {
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+  background: #ffcf4c;
+  color: #274757;
+  border: 3px solid #fffef5;
+  box-shadow:
+    0 4px 0 #be8c2c,
+    0 8px 18px #173e4d36;
+}
+.bridge-label.empty.available b {
+  font-size: 27px;
+  line-height: 1;
+  font-weight: 900;
+  animation: bridge-ready 1.35s ease-in-out infinite;
+}
+.bridge-label.empty.available.neutral {
+  color: #274757;
+}
+@keyframes bridge-ready {
+  50% {
+    transform: scale(1.15);
+  }
+}
 .bridge-strength {
   font-size: 10px;
   letter-spacing: 3px;
