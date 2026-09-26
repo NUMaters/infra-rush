@@ -8,6 +8,7 @@ import type { Bot, GameEvent, GameState, Point, Team } from "../game/types";
 import { seaMaterial, shoreGeometry, shoreMaterial } from "./water";
 
 const TEAM = { blue: 0x1689ff, red: 0xf34b53 };
+const DEFAULT_ZOOM = 1.03;
 const unit = new T.Vector3(0, 1, 0);
 const clamp = T.MathUtils.clamp;
 function rigPart(root: T.Object3D, name: string): T.Object3D | undefined {
@@ -125,7 +126,7 @@ export class World {
     );
     this.scene.add(this.route);
     this.camera.position.set(0, 40, -24);
-    this.camera.zoom = 1.17;
+    this.camera.zoom = DEFAULT_ZOOM;
     this.camera.updateProjectionMatrix();
     this.controls = new OrbitControls(this.camera, this.canvas);
     this.controls.enableDamping = true;
@@ -253,15 +254,15 @@ export class World {
     const d = new T.Object3D();
     for (const team of ["blue", "red"] as const) {
       const sz = side(team),
-        center = sz * 9;
+        center = sz * 9.45;
       const shape = new T.Shape();
       const points: Point[] = [];
       for (let i = 0; i < 64; i++) {
         const a = (i / 64) * Math.PI * 2;
         const x =
-          Math.sign(Math.cos(a)) * Math.pow(Math.abs(Math.cos(a)), 0.35) * 13.5;
+          Math.sign(Math.cos(a)) * Math.pow(Math.abs(Math.cos(a)), 0.35) * 15;
         const z =
-          Math.sign(Math.sin(a)) * Math.pow(Math.abs(Math.sin(a)), 0.45) * 5.5;
+          Math.sign(Math.sin(a)) * Math.pow(Math.abs(Math.sin(a)), 0.45) * 5.95;
         points.push([x * (0.98 + rand() * 0.03), z * (0.97 + rand() * 0.04)]);
       }
       points.forEach((p, i) =>
@@ -390,8 +391,8 @@ export class World {
         sz * 11.6,
       );
       for (let i = 0; i < 65; i++) {
-        const x = -12.6 + rand() * 25.2,
-          z = center + (rand() - 0.5) * 9.9;
+        const x = -14 + rand() * 28,
+          z = center + (rand() - 0.5) * 10.7;
         if (
           (Math.abs(x - M.castle[team][0]) < 3.0 &&
             Math.abs(z - M.castle[team][1]) < 2.8) ||
@@ -407,8 +408,8 @@ export class World {
         trees.push(d.matrix.clone());
       }
       for (let i = 0; i < 35; i++) {
-        const x = -12 + rand() * 24,
-          z = center + (rand() - 0.5) * 9;
+        const x = -13.4 + rand() * 26.8,
+          z = center + (rand() - 0.5) * 9.8;
         if (Math.abs(z - center) < 1.5) continue;
         d.position.set(x, 0.42, z);
         d.scale.set(
@@ -420,14 +421,14 @@ export class World {
         rocks.push(d.matrix.clone());
       }
       for (let i = 0; i < 100; i++) {
-        const x = -12 + rand() * 24,
-          z = center + (rand() - 0.5) * 10;
+        const x = -13.4 + rand() * 26.8,
+          z = center + (rand() - 0.5) * 10.8;
         d.position.set(x, 0.34, z);
         d.scale.setScalar(0.24 + rand() * 0.11);
         d.updateMatrix();
         flowers.push(d.matrix.clone());
       }
-      for (const x of [-11.5, -3, 3, 11.5]) {
+      for (const x of [-13, -3, 3, 13]) {
         const fence = this.model("fence");
         fence.position.set(x, 0.35, sz * 12.3);
         this.scene.add(fence);
@@ -624,7 +625,7 @@ export class World {
     this.controls.enableDamping = true;
     this.controls.target.set(0, 0, 0);
     this.camera.position.set(0, 40, -24);
-    this.camera.zoom = 1.17;
+    this.camera.zoom = DEFAULT_ZOOM;
     this.camera.updateProjectionMatrix();
     this.controls.update();
   }
@@ -639,7 +640,7 @@ export class World {
   setHomeTeam(team: Team) {
     this.controls.target.set(0, 0, 0);
     this.camera.position.set(0, 40, team === "blue" ? -24 : 24);
-    this.camera.zoom = 1.17;
+    this.camera.zoom = DEFAULT_ZOOM;
     this.camera.updateProjectionMatrix();
     this.controls.update();
     this.canvas.setAttribute(
