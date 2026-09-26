@@ -66,6 +66,8 @@ export class World {
   private hit = new Map<Team, number>();
   private selected: string | null = null;
   private homeTeam: Team = "blue";
+  private followBot: string | null = null;
+  private siteSignals = new Map<string, T.Mesh>();
   private route: T.Line;
   readonly controls: OrbitControls;
   private width = 1;
@@ -152,6 +154,7 @@ export class World {
     const pointers = new Map<number, { x: number; y: number }>();
     let dragged = false;
     this.canvas.addEventListener("pointerdown", (e) => {
+      this.followBot = null;
       if (!pointers.size) dragged = false;
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size > 1 || e.button !== 0) dragged = true;
@@ -167,6 +170,9 @@ export class World {
     this.canvas.addEventListener("pointercancel", (e) => {
       pointers.delete(e.pointerId);
       dragged = true;
+    });
+    this.canvas.addEventListener("wheel", () => (this.followBot = null), {
+      passive: true,
     });
     // Pick on click, after the browser has fixed this tap's target. Opening
     // the task panel during pointerup can place a new action under the finger
@@ -305,10 +311,15 @@ export class World {
       const cliff = new T.InstancedMesh(cliffG, cliffM, points.length);
       points.forEach((p, i) => {
         d.position.set(p[0], -0.22, center + p[1]);
-        d.scale.set(0.48, 0.67, 0.4);
+        const roughness = 0.78 + rand() * 0.52;
+        d.scale.set(0.48 * roughness, 0.67 * roughness, 0.4 * roughness);
         d.rotation.y = rand() * 6;
         d.updateMatrix();
         cliff.setMatrixAt(i, d.matrix);
+        cliff.setColorAt(
+          i,
+          new T.Color().setHSL(0.075, 0.22, 0.68 + rand() * 0.14),
+        );
       });
       cliff.castShadow = cliff.receiveShadow = true;
       this.scene.add(cliff);
@@ -333,6 +344,16 @@ export class World {
           new T.Vector3(8, 0.43, center),
         ]),
         0.85,
+      );
+      // The quarry spur makes the work route legible from either castle.
+      this.path(
+        new T.CatmullRomCurve3([
+          new T.Vector3(M.castle[team][0], 0.43, center),
+          new T.Vector3(0, 0.43, center - sz * 0.9),
+          new T.Vector3(team === "blue" ? 5 : -5, 0.43, center - sz * 0.5),
+          new T.Vector3(team === "blue" ? 8 : -8, 0.43, sz * 9.1),
+        ]),
+        0.72,
       );
       const qx = team === "blue" ? 8 : -8;
       this.solid(
@@ -369,6 +390,11 @@ export class World {
       cart.position.set(qx + 0.5, 0.38, sz * 8.5);
       cart.rotation.y = team === "red" ? Math.PI / 5 : -Math.PI / 5;
       this.scene.add(cart);
+      const excavator = this.model("excavator", team);
+      excavator.position.set(qx - 1.4, 0.39, sz * 10.35);
+      excavator.rotation.y = team === "blue" ? 1.1 : -2.05;
+      excavator.scale.setScalar(0.84);
+      this.scene.add(excavator);
       for (const [cx, cz] of [
         [qx - 2.8, sz * 9.2],
         [
@@ -448,32 +474,110 @@ export class World {
       rocks,
     );
     this.instanceAsset("flower", flowers);
+    // Small reefs break up the straight sea margin without obscuring a route.
+    for (const [x, z, size] of [
+      [-17.1, -3.1, 1.0],
+      [17.3, 2.4, 0.85],
+      [-18.2, 2.6, 0.68],
+      [18.4, -2.7, 0.7],
+    ] as const) {
+      const reef = this.solid(
+        new T.DodecahedronGeometry(size, 0),
+        0xb1a69a,
+        x,
+        -0.47,
+        z,
+      );
+      reef.scale.y = 0.5;
+      const cap = this.solid(
+        new T.DodecahedronGeometry(size * 0.61, 0),
+        0x83b977,
+        x - size * 0.12,
+        -0.11,
+        z,
+      );
+      cap.scale.y = 0.31;
+    }
     for (const site of M.bridges.sites) {
       for (const sz of [-1, 1]) {
+        // Three timber landing stages are visible even before construction.
         this.solid(
-          new T.BoxGeometry(3.1, 0.2, 0.65),
-          0xd6b480,
+          new T.BoxGeometry(3.4, 0.2, 1.35),
+          0x986a43,
           site.x,
-          0.28,
-          sz * 3.2,
+          0.2,
+          sz * 3.65,
         );
+        for (let i = -2; i <= 2; i++)
+          this.solid(
+            new T.BoxGeometry(0.59, 0.12, 1.27),
+            i % 2 ? 0xe1b87a : 0xf1cb87,
+            site.x + i * 0.64,
+            0.36,
+            sz * 3.65,
+          );
         for (const dx of [-1.3, 1.3]) {
           this.solid(
             new T.CylinderGeometry(0.15, 0.18, 1, 8),
             0xbd883f,
             site.x + dx,
-            0.5,
-            sz * 3.3,
+            0.67,
+            sz * 3.9,
+          );
+          this.solid(
+            new T.CylinderGeometry(0.165, 0.165, 0.36, 8),
+            sz === -1 ? TEAM.blue : TEAM.red,
+            site.x + dx,
+            0.88,
+            sz * 3.9,
           );
           this.solid(
             new T.SphereGeometry(0.17, 8, 6),
             0xffd65c,
             site.x + dx,
-            1.05,
-            sz * 3.3,
+            1.22,
+            sz * 3.9,
           );
         }
+        const flagX = site.x + (sz === -1 ? -1.48 : 1.48);
+        this.solid(
+          new T.CylinderGeometry(0.065, 0.09, 1.85, 7),
+          0xf8ecce,
+          flagX,
+          1.26,
+          sz * 4.42,
+        );
+        const flag = new T.BufferGeometry();
+        flag.setAttribute(
+          "position",
+          new T.Float32BufferAttribute(
+            [
+              flagX,
+              2.13,
+              sz * 4.42,
+              flagX + (sz === -1 ? 0.72 : -0.72),
+              1.94,
+              sz * 4.42,
+              flagX,
+              1.75,
+              sz * 4.42,
+            ],
+            3,
+          ),
+        );
+        flag.computeVertexNormals();
+        this.solid(flag, sz === -1 ? TEAM.blue : TEAM.red, 0, 0, 0);
       }
+      const signal = this.solid(
+        new T.TorusGeometry(0.72, 0.075, 5, 20),
+        0xffe36d,
+        site.x,
+        0.57,
+        this.homeTeam === "blue" ? -3.65 : 3.65,
+      );
+      signal.rotation.x = -Math.PI / 2;
+      signal.visible = false;
+      this.siteSignals.set(site.id, signal);
       const stone = this.model(
         "stone-bridge",
         site.id === "red" ? "red" : "blue",
@@ -530,6 +634,15 @@ export class World {
     }
   }
   private path(curve: T.CatmullRomCurve3, width: number) {
+    this.pathLayer(curve, width + 0.22, 0xd2a76c, -0.012);
+    this.pathLayer(curve, width, 0xf1d49b, 0);
+  }
+  private pathLayer(
+    curve: T.CatmullRomCurve3,
+    width: number,
+    color: number,
+    offset: number,
+  ) {
     const points = curve.getPoints(40);
     const vertices: number[] = [];
     const edges = points.map((p, i) => {
@@ -552,14 +665,14 @@ export class World {
         edges[i][1],
         edges[i + 1][1],
       ])
-        vertices.push(v.x, v.y, v.z);
+        vertices.push(v.x, v.y + offset, v.z);
     }
     const geo = new T.BufferGeometry();
     geo.setAttribute("position", new T.Float32BufferAttribute(vertices, 3));
     geo.computeVertexNormals();
     const path = new T.Mesh(
       geo,
-      new T.MeshStandardMaterial({ color: 0xeac68a, side: T.DoubleSide }),
+      new T.MeshStandardMaterial({ color, side: T.DoubleSide }),
     );
     path.receiveShadow = true;
     this.scene.add(path);
@@ -610,6 +723,13 @@ export class World {
   setSelected(id: string | null) {
     this.selected = id;
   }
+  followMarch(id: string) {
+    if (this.width < 700) this.followBot = id;
+  }
+  setSiteAvailability(ids: string[]) {
+    for (const [id, signal] of this.siteSignals)
+      signal.visible = ids.includes(id);
+  }
   setZoom(amount: number) {
     this.camera.zoom = clamp(
       this.camera.zoom + amount,
@@ -627,14 +747,11 @@ export class World {
     this.controls.update();
   }
   resetView() {
+    this.followBot = null;
     this.controls.enableDamping = false;
     this.controls.reset();
     this.controls.enableDamping = true;
-    this.controls.target.set(0, 0, 0);
-    this.camera.position.set(0, 40, -24);
-    this.camera.zoom = DEFAULT_ZOOM;
-    this.camera.updateProjectionMatrix();
-    this.controls.update();
+    this.setHomeTeam(this.homeTeam);
   }
   reset() {
     this.selected = null;
@@ -646,11 +763,20 @@ export class World {
   }
   setHomeTeam(team: Team) {
     this.homeTeam = team;
-    this.controls.target.set(0, 0, 0);
-    this.camera.position.set(0, 40, team === "blue" ? -24 : 24);
-    this.camera.zoom = DEFAULT_ZOOM;
+    this.followBot = null;
+    const home = this.width < 700;
+    const targetZ = home ? -side(team) * 2.2 : 0;
+    this.controls.target.set(0, 0, targetZ);
+    this.camera.position.set(
+      0,
+      home ? 34 : 40,
+      targetZ + side(team) * (home ? 18 : 24),
+    );
+    this.camera.zoom = home ? 1.3 : DEFAULT_ZOOM;
     this.camera.updateProjectionMatrix();
     this.controls.update();
+    for (const signal of this.siteSignals.values())
+      signal.position.z = team === "blue" ? -3.65 : 3.65;
     this.canvas.setAttribute(
       "aria-label",
       `INFRA RUSH 3Dマップ。${team === "blue" ? "青" : "赤"}いBotをタップして作業を指示`,
@@ -762,6 +888,33 @@ export class World {
       (this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length);
     this.shake = Math.max(0, this.shake - dt);
     const jitter = this.shake > 0 ? Math.sin(this.clock * 70) * 0.12 : 0;
+    if (this.followBot) {
+      const tracked = s.bots.find((bot) => bot.id === this.followBot);
+      if (!tracked) this.followBot = null;
+      else if (tracked.state === "IDLE") this.setHomeTeam(this.homeTeam);
+      else if (tracked.state === "RETURNING") {
+        const targetZ = -side(this.homeTeam) * 2.2;
+        const homeTarget = new T.Vector3(0, 0, targetZ);
+        const homeCamera = new T.Vector3(
+          0,
+          34,
+          targetZ + side(this.homeTeam) * 18,
+        );
+        this.controls.target.lerp(homeTarget, Math.min(1, dt * 3.5));
+        this.camera.position.lerp(homeCamera, Math.min(1, dt * 3.5));
+      } else {
+        const target = new T.Vector3(
+          tracked.position[0],
+          0,
+          tracked.position[1],
+        );
+        const shift = target
+          .sub(this.controls.target)
+          .multiplyScalar(Math.min(1, dt * 1.35));
+        this.controls.target.add(shift);
+        this.camera.position.add(shift);
+      }
+    }
     this.controls.update();
     this.camera.position.x += jitter;
     this.camera.position.z += jitter;
@@ -869,6 +1022,11 @@ export class World {
     }
     for (const b of s.bridges) {
       const view = this.bridges.get(b.id)!;
+      const signal = this.siteSignals.get(b.id);
+      if (signal) {
+        signal.visible = signal.visible && b.level === 0 && !b.lock;
+        signal.scale.setScalar(1 + Math.sin(this.clock * 4) * 0.13);
+      }
       view.stone.visible = b.level === 1;
       view.steel.visible = b.level >= 2;
       view.debris.visible = b.level === 0 && b.damage > 0;

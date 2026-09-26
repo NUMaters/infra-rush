@@ -709,6 +709,7 @@ function doAction(action: Action | "cancel") {
   const actingBot = state.bots.find((b) => b.id === selected);
   if (actingBot && action !== "cancel")
     worldPop(actingBot.position, action === "march" ? "rush" : "command");
+  if (action === "march") world.followMarch(selected);
   toast(
     action === "cancel"
       ? "掘るのをやめて戻ります"
@@ -1276,6 +1277,7 @@ function frame(now: number) {
     uiClock = 0;
   }
   if (started) {
+    const availableSites: string[] = [];
     for (const b of state.bridges) {
       let el = document.querySelector<HTMLButtonElement>(
         `#bridge-labels [data-target="${b.id}"]`,
@@ -1288,6 +1290,7 @@ function frame(now: number) {
       const p = world.project([b.x, 0], 1);
       const empty = b.level === 0 && !b.lock;
       const buildable = empty && bridgeBuilder(b.id) !== null;
+      if (buildable) availableSites.push(b.id);
       el.disabled = !buildable;
       el.style.pointerEvents = buildable ? "auto" : "none";
       el.className = `bridge-label ${b.owner ?? "neutral"} ${b.blockedBy ? "blocked" : ""} ${empty ? "empty" : ""} ${buildable ? "available" : ""} ${empty && b.exclusive && b.exclusive !== playerTeam ? "unavailable" : ""}`;
@@ -1302,6 +1305,7 @@ function frame(now: number) {
       const markup = `<b>${b.lock ? "作業中…" : b.blockedBy ? "ふさがれている" : b.damage && b.level ? "直そう" : b.level ? "渡れる" : buildable ? "!" : ""}</b>${b.level ? `<span class="bridge-strength" aria-label="橋の強さ${b.level}段階">${"●".repeat(b.level)}${"○".repeat(3 - b.level)}</span>` : ""}`;
       if (el.innerHTML !== markup) el.innerHTML = markup;
     }
+    world.setSiteAvailability(availableSites);
   }
   positionPanel();
   requestAnimationFrame(frame);
