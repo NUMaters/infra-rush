@@ -139,9 +139,12 @@ export class World {
       "fence",
     ];
     let loaded = 0;
+    const modelBase = new URL(import.meta.env.BASE_URL, window.location.href);
     await Promise.all(
       names.map(async (n) => {
-        const gltf = await new GLTFLoader().loadAsync(`/models/${n}.glb`);
+        const gltf = await new GLTFLoader().loadAsync(
+          new URL(`models/${n}.glb`, modelBase).href,
+        );
         this.templates.set(n, gltf.scene);
         onProgress(++loaded / names.length);
       }),
