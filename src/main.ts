@@ -6,9 +6,10 @@ import type { Difficulty } from "./game/master";
 import { canCommand, command, createGame, taskSpec, tick } from "./game/engine";
 import { CPU } from "./game/cpu";
 import { resolveTaskTarget } from "./game/intent";
-import type { Action, Point, Resource } from "./game/types";
+import type { Action, BotState, Point, Resource } from "./game/types";
 import { World } from "./render/world";
 import { Sound } from "./ui/audio";
+import type { WorkSound } from "./ui/audio";
 import { icon } from "./ui/icons";
 import { OnlineClient } from "./net/client";
 import type { OnlinePlayer, ServerMessage } from "./net/client";
@@ -101,6 +102,15 @@ const states: Record<string, string> = {
   MARCHING: "城へ向かっている",
   ATTACKING_CASTLE: "城を攻撃！",
   RETURNING: "戻っている",
+};
+const workSoundByState: Partial<Record<BotState, WorkSound>> = {
+  MINING: "mine",
+  BUILDING_BRIDGE: "build",
+  UPGRADING_BRIDGE: "build",
+  REPAIRING_BRIDGE: "build",
+  BUILDING_EMBANKMENT: "embank",
+  CLEARING_EMBANKMENT: "clear",
+  DESTROYING_BRIDGE: "destroy",
 };
 const resourceNames: Record<Resource, string> = {
   soil: "土",
@@ -1174,6 +1184,17 @@ function frame(now: number) {
     }
     processEvents();
   }
+  sound.updateWork(
+    state.bots
+      .filter((bot) => bot.team === playerTeam)
+      .map((bot) => workSoundByState[bot.state])
+      .filter((cue): cue is WorkSound => !!cue),
+    started &&
+      !paused &&
+      !introActive &&
+      !qaFrozen &&
+      state.status === "playing",
+  );
   let displayState = state;
   if (mode === "online" && started) {
     const alpha = Math.min(1, dt * 15);
