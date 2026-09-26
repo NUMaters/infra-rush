@@ -1,8 +1,8 @@
 import type { Action, GameState, Team } from "./types";
 import { other } from "./engine";
 
-// Ordinary Bot commands use the corresponding team's dedicated bridge.
-// Tapping the central bridge directly retains access to the contested route.
+// Prefer the dedicated route, but use the contested bridge when it is the
+// actionable route. This keeps sabotage and clearance usable without a picker.
 export function resolveTaskTarget(
   state: GameState,
   team: Team,
@@ -16,5 +16,33 @@ export function resolveTaskTarget(
       state.bridges.find((b) => b.id === "center")?.owner === other(team))
   )
     return "center";
-  return sabotage ? other(team) : team;
+  if (sabotage) {
+    const targets = [other(team), "center"];
+    return (
+      targets.find((id) => {
+        const bridge = state.bridges.find((b) => b.id === id);
+        return (
+          bridge &&
+          bridge.owner === other(team) &&
+          bridge.level > 0 &&
+          !bridge.lock &&
+          (action !== "embank" || !bridge.blockedBy)
+        );
+      }) ?? other(team)
+    );
+  }
+  if (action === "clear") {
+    return (
+      [team, "center"].find((id) => {
+        const bridge = state.bridges.find((b) => b.id === id);
+        return (
+          bridge?.owner === team &&
+          bridge.level > 0 &&
+          bridge.blockedBy &&
+          !bridge.lock
+        );
+      }) ?? team
+    );
+  }
+  return team;
 }

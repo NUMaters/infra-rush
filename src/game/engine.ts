@@ -210,7 +210,13 @@ export function command(
     ];
   } else {
     target!.lock = b.id;
-    b.path = [[target!.x, sz * 4.6]];
+    b.path =
+      c.action === "clear"
+        ? [
+            [target!.x, sz * 4.6],
+            [target!.x, -sz * 3.8],
+          ]
+        : [[target!.x, sz * 4.6]];
   }
   b.state = c.action === "march" ? "MARCHING" : "MOVING";
   emit(s, {

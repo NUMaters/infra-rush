@@ -15,6 +15,8 @@ import type { Team } from "./game/types";
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) =>
   document.querySelector<T>(selector)!;
+const resourceIcon = (resource: Resource) =>
+  `<img class="resource-art" src="${import.meta.env.BASE_URL}ui/resources/${resource}.png" alt="" aria-hidden="true">`;
 const htmlCache = new WeakMap<HTMLElement, string>();
 function html(selector: string, markup: string) {
   const el = $(selector);
@@ -30,11 +32,11 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
  <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><h1>勝利への道を、つくろう。</h1><p>5体のBot。3つの橋。ひとつの勝利。<br>掘って、つないで、相手の城へ。</p></div>
- <div class="start-card"><label for="difficulty">CPUの強さ</label><div class="difficulty-options"><button data-difficulty="easy">はじめて</button><button data-difficulty="normal" class="active">スタンダード</button><button data-difficulty="hard">チャレンジ</button></div><button id="start" class="primary">${icon("helmet")}<span>工事をはじめる<small>PLAYER vs CPU</small></span>${icon("march")}</button><button id="online-start" class="secondary online-entry">マルチプレイ ${icon("march")}</button><p>1ゲーム 6分 · 先に城を5回たたけば勝ち</p></div>
+ <div class="start-card"><label for="difficulty">CPUの強さ</label><div class="difficulty-options"><button data-difficulty="easy">はじめて</button><button data-difficulty="normal" class="active">スタンダード</button><button data-difficulty="hard">チャレンジ</button></div><button id="start" class="primary">${icon("helmet")}<span>工事をはじめる<small>PLAYER vs CPU</small></span>${icon("march")}</button><button id="online-start" class="secondary online-entry">マルチプレイ ${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span><span>音楽は右上のボタンから ${icon("sound")}</span></div>
 </section>
 <section id="hud" class="hidden">
- <header class="match-header"><div class="team-score blue" id="blue-score"><div class="score-top"><span>${icon("castle")}<small>あなたの城</small></span><b id="blue-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="blue-hp" role="progressbar" aria-label="あなたの城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div><div class="timer"><small>のこり時間</small><b id="timer">06:00</b></div><div class="team-score red" id="red-score"><div class="score-top"><span>${icon("castle")}<small>相手の城</small></span><b id="red-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="red-hp" role="progressbar" aria-label="相手の城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div></header>
+ <header class="match-header"><div class="team-score blue" id="blue-score"><div class="score-top"><span>${icon("castle")}<small>あなたの城</small></span><b id="blue-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="blue-hp" style="--castle-hp:${M.castle.hp}" role="progressbar" aria-label="あなたの城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div><div class="timer"><small>のこり時間</small><b id="timer">06:00</b></div><div class="team-score red" id="red-score"><div class="score-top"><span>${icon("castle")}<small>相手の城</small></span><b id="red-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="red-hp" style="--castle-hp:${M.castle.hp}" role="progressbar" aria-label="相手の城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div></header>
  <div class="resource-bar" id="resources"></div>
  <div class="utilities"><span id="latency" class="latency hidden" aria-label="通信遅延"></span><button id="sound" class="circle" aria-label="BGMと効果音を切り替え" aria-pressed="false">${icon("sound")}</button><button id="pause" class="circle" aria-label="一時停止">${icon("pause")}</button><button class="circle help" aria-label="遊び方">?</button></div>
  <div id="bridge-labels"></div><div id="floaters" aria-hidden="true"></div>
@@ -172,11 +174,27 @@ function chooseBot(id: string, context: string | null = null) {
 }
 function chooseBridge(id: string) {
   if (!started || paused || introActive || state.status !== "playing") return;
-  const bot =
-    selected ??
-    state.bots.find((b) => b.team === playerTeam && b.state === "IDLE")?.id ??
-    `${playerTeam}-0`;
+  const bot = bridgeBuilder(id);
+  if (!bot) return;
   chooseBot(bot, id === "center" ? id : null);
+}
+function bridgeBuilder(id: string): string | null {
+  const bridge = state.bridges.find((b) => b.id === id);
+  if (!bridge || bridge.level || bridge.lock) return null;
+  const candidates = [
+    ...state.bots.filter((b) => b.id === selected),
+    ...state.bots.filter((b) => b.id !== selected && b.team === playerTeam),
+  ];
+  return (
+    candidates.find(
+      (bot) =>
+        canCommand(state, playerTeam, {
+          botId: bot.id,
+          action: "build",
+          target: id,
+        }) === null,
+    )?.id ?? null
+  );
 }
 function positionPanel() {
   if (!selected) return;
@@ -525,7 +543,7 @@ function renderUI() {
   $("#resources").innerHTML = (["soil", "stone", "iron"] as const)
     .map(
       (r) =>
-        `<div class="resource ${r}">${icon(r)}<span>${resourceNames[r]}<b>${state.teams[playerTeam].resources[r]}</b></span></div>`,
+        `<div class="resource ${r}">${resourceIcon(r)}<span>${resourceNames[r]}<b>${state.teams[playerTeam].resources[r]}</b></span></div>`,
     )
     .join("");
   const bridge = state.bridges.find((b) => b.exclusive === playerTeam)!;
@@ -542,7 +560,7 @@ function renderUI() {
     );
   $("#hint").classList.toggle("hidden", bridgeReady);
   $("#hint").innerHTML = !bridge.level
-    ? `${icon("stone")} <span>石を50集めて、手前の橋をつくろう</span>`
+    ? `${resourceIcon("stone")} <span>石を50集めて、手前の橋をつくろう</span>`
     : bridge.blockedBy
       ? `${icon("clear")} <span>道がふさがれた！ <b>土をどける</b>と通れるよ</span>`
       : `${icon("march")} <span>橋ができた！ <b>攻める</b>で相手の城へ。あと${state.teams[playerTeam === "blue" ? "red" : "blue"].hp}回！</span>`;
@@ -578,7 +596,7 @@ function showHelp() {
   clearTimeout(modalCloseTimer);
   $("#modal").classList.remove("hidden", "leaving");
   $("#modal").innerHTML =
-    `<article class="dialog"><div class="eyebrow">あそびかた</div><h2>橋をつくって、相手の城へ！</h2><p>5体のBotに仕事をお願いしよう。<br>相手の城に5回たどり着けば勝ち。</p><div class="guide-steps"><div>${icon("mine")}<b>01 掘る</b><p>Botをタップして「掘る」。<br>石・土・鉄を集めよう。</p></div><div>${icon("build")}<b>02 橋をつくる</b><p>石が50あれば橋をつくれる。<br>真ん中の橋は現地をタップ。</p></div><div>${icon("march")}<b>03 攻める</b><p>橋ができたら「攻める」。<br>城を一度たたいて戻るよ。</p></div></div><p class="guide-extra">土を盛って相手の道をふさいだり、重機で土をどけて自分の道を開いたりできるよ。橋を強くする・直す・壊す作業もできる。資源が足りない行動は灰色になるよ。</p><p class="guide-extra">途中でやめられるのは「掘る」だけ。地震に備えて橋を直しながら、6分以内に攻めよう。</p><button id="modal-close" class="primary">わかった！ ${icon("march")}</button><small class="keyboard-note">ドラッグで移動、ピンチ・ホイールで拡大縮小、2本指・右ドラッグで回転。PCは1〜5でBot選択、Escで閉じる。</small></article>`;
+    `<article class="dialog"><div class="eyebrow">あそびかた</div><h2>橋をつくって、相手の城へ！</h2><p>5体のBotに仕事をお願いしよう。<br>相手の城に${M.castle.hp}回たどり着けば勝ち。</p><div class="guide-steps"><div>${icon("mine")}<b>01 掘る</b><p>Botをタップして「掘る」。<br>石・土・鉄を集めよう。</p></div><div>${icon("build")}<b>02 橋をつくる</b><p>石が50あれば橋をつくれる。<br>真ん中の橋は現地をタップ。</p></div><div>${icon("march")}<b>03 攻める</b><p>橋ができたら「攻める」。<br>城を一度たたいて戻るよ。</p></div></div><p class="guide-extra">土を盛って相手の道をふさいだり、重機で土をどけて自分の道を開いたりできるよ。橋を強くする・直す・壊す作業もできる。資源が足りない行動は灰色になるよ。</p><p class="guide-extra">途中でやめられるのは「掘る」だけ。地震に備えて橋を直しながら、6分以内に攻めよう。</p><button id="modal-close" class="primary">わかった！ ${icon("march")}</button><small class="keyboard-note">ドラッグで移動、ピンチ・ホイールで拡大縮小、2本指・右ドラッグで回転。PCは1〜5でBot選択、Escで閉じる。</small></article>`;
 }
 function showPause() {
   paused = true;
@@ -946,17 +964,9 @@ function frame(now: number) {
       }
       const p = world.project([b.x, 0], 1);
       const empty = b.level === 0 && !b.lock;
-      const buildable =
-        empty &&
-        state.bots.some(
-          (bot) =>
-            bot.team === playerTeam &&
-            canCommand(state, playerTeam, {
-              botId: bot.id,
-              action: "build",
-              target: b.id,
-            }) === null,
-        );
+      const buildable = empty && bridgeBuilder(b.id) !== null;
+      el.disabled = !buildable;
+      el.style.pointerEvents = buildable ? "auto" : "none";
       el.className = `bridge-label ${b.owner ?? "neutral"} ${b.blockedBy ? "blocked" : ""} ${empty ? "empty" : ""} ${buildable ? "available" : ""} ${empty && b.exclusive && b.exclusive !== playerTeam ? "unavailable" : ""}`;
       el.setAttribute(
         "aria-label",
@@ -1036,6 +1046,10 @@ try {
         projectBot: (id: string) => {
           const b = state.bots.find((b) => b.id === id)!;
           return world.project(b.position, 1);
+        },
+        projectBridge: (id: string) => {
+          const b = state.bridges.find((bridge) => bridge.id === id)!;
+          return world.project([b.x, 0], 0.4);
         },
       },
     });

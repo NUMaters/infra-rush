@@ -23,4 +23,15 @@ describe("automatic construction targets", () => {
     expect(resolveTaskTarget(s, "blue", "embank", "center")).toBe("red");
     expect(resolveTaskTarget(s, "blue", "build")).toBe("blue");
   });
+  it("uses the contested route for sabotage and clearance when it is the usable target", () => {
+    const s = createGame();
+    const center = s.bridges.find((b) => b.id === "center")!;
+    center.owner = "red";
+    center.level = 1;
+    expect(resolveTaskTarget(s, "blue", "embank")).toBe("center");
+    expect(resolveTaskTarget(s, "blue", "destroy")).toBe("center");
+    center.owner = "blue";
+    center.blockedBy = "red";
+    expect(resolveTaskTarget(s, "blue", "clear")).toBe("center");
+  });
 });

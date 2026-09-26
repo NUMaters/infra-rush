@@ -430,8 +430,8 @@ h1 {
 }
 .health-meter {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(var(--castle-hp), minmax(0, 1fr));
+  gap: 2px;
   height: 11px;
 }
 .health-meter i {
@@ -499,9 +499,11 @@ h1 {
   border-radius: 14px;
   min-width: 97px;
 }
-.resource svg {
-  width: 24px;
-  height: 24px;
+.resource img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  margin: -4px;
 }
 .resource span {
   display: flex;
@@ -657,6 +659,12 @@ h1 {
   width: 16px;
   height: 16px;
   color: #2589c5;
+}
+#hint img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex: none;
 }
 #hint b {
   color: #38566b;
@@ -1397,8 +1405,10 @@ h1 {
     padding: 7px 10px;
     gap: 6px;
   }
-  .resource svg {
-    width: 20px;
+  .resource img {
+    width: 27px;
+    height: 27px;
+    margin: -3px;
   }
   .resource span {
     font-size: 10px;

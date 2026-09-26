@@ -37,6 +37,12 @@ test("random match starts with editable names and shared resources", async ({
     expect(await second.evaluate(() => window.infraQA.snapshot().time)).toBe(0);
     await expect(first.locator("#hud")).toBeVisible();
     await expect(second.locator("#hud")).toBeVisible();
+    expect(
+      await first.evaluate(() => window.infraQA.snapshot().teams.blue.hp),
+    ).toBe(15);
+    expect(
+      await second.evaluate(() => window.infraQA.snapshot().teams.red.hp),
+    ).toBe(15);
     await expect(first.locator("#blue-score .score-top small")).toHaveText(
       "Rin",
     );

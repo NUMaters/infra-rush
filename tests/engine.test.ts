@@ -33,11 +33,11 @@ const doTask = (
   advance(s, 35);
 };
 describe("Bot state and mining", () => {
-  it("starts with five identical Bots per team, zero resources and 5 HP", () => {
+  it("starts with five identical Bots per team, zero resources and 15 HP", () => {
     const s = createGame();
     expect(s.bots).toHaveLength(10);
     expect(s.teams.blue.resources).toEqual({ soil: 0, stone: 0, iron: 0 });
-    expect(s.teams.red.hp).toBe(5);
+    expect(s.teams.red.hp).toBe(15);
     expect(s.bots.every((b) => b.state === "IDLE")).toBe(true);
   });
   it("moves to quarry before producing exactly one resource each second", () => {
@@ -157,18 +157,20 @@ describe("bridges, ownership and route validation", () => {
     const s = createGame();
     bridge(s);
     doTask(s, "march");
-    expect(s.teams.red.hp).toBe(4);
+    expect(s.teams.red.hp).toBe(14);
     expect(s.teams.blue.stats.attacks).toBe(1);
     expect(s.bots[0].position).toEqual(s.bots[0].home);
     advance(s, 10);
-    expect(s.teams.red.hp).toBe(4);
+    expect(s.teams.red.hp).toBe(14);
   });
-  it("five attacks win and all further mutations stop", () => {
+  it("fifteen attacks win and all further mutations stop", () => {
     const s = createGame();
     bridge(s);
-    for (let i = 0; i < 5; i++)
-      command(s, "blue", { botId: `blue-${i}`, action: "march" });
-    advance(s, 30);
+    for (let wave = 0; wave < 3; wave++) {
+      for (let i = 0; i < 5; i++)
+        command(s, "blue", { botId: `blue-${i}`, action: "march" });
+      advance(s, 30);
+    }
     expect(s.status).toBe("finished");
     expect(s.winner).toBe("blue");
     expect(s.teams.red.hp).toBe(0);
@@ -185,7 +187,7 @@ describe("bridges, ownership and route validation", () => {
     tick(s, 0.05);
     expect(s.bots[0].state).toBe("RETURNING");
     advance(s, 20);
-    expect(s.teams.red.hp).toBe(5);
+    expect(s.teams.red.hp).toBe(15);
   });
   it("aborts march if bridge collapses", () => {
     const s = createGame();
@@ -193,7 +195,7 @@ describe("bridges, ownership and route validation", () => {
     command(s, "blue", { botId: "blue-0", action: "march" });
     b.level = 0;
     advance(s, 20);
-    expect(s.teams.red.hp).toBe(5);
+    expect(s.teams.red.hp).toBe(15);
     expect(s.bots[0].state).toBe("IDLE");
   });
   it("upgrades to Lv3, rejects higher and repairs drill loss", () => {
@@ -226,7 +228,17 @@ describe("bridges, ownership and route validation", () => {
     expect(
       canCommand(s, "blue", { botId: "blue-0", action: "march" }),
     ).not.toBeNull();
-    doTask(s, "clear");
+    const start = command(s, "blue", {
+      botId: "blue-0",
+      action: "clear",
+      target: "blue",
+    });
+    expect(start.ok).toBe(true);
+    expect(s.bots[0].path.at(-1)).toEqual([s.bridges[0].x, 3.8]);
+    advance(s, 7);
+    expect(s.bots[0].position[1]).toBeGreaterThan(2);
+    expect(s.bots[0].state).toBe("CLEARING_EMBANKMENT");
+    advance(s, 35);
     expect(s.bridges[0].blockedBy).toBeNull();
     expect(s.teams.blue.resources.iron).toBe(490);
   });

@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -46,11 +47,13 @@ func TestServerRulesAndVictory(t *testing.T) {
 	if g.bridge("blue").Level != 1 {
 		t.Fatal("bridge did not finish")
 	}
-	for i := 0; i < 5; i++ {
-		if err := g.command("blue", Command{BotID: "blue-0", Action: "march"}); err != nil {
-			t.Fatal(err)
+	for wave := 0; wave < 3; wave++ {
+		for i := 0; i < 5; i++ {
+			if err := g.command("blue", Command{BotID: "blue-" + strconv.Itoa(i), Action: "march"}); err != nil {
+				t.Fatal(err)
+			}
 		}
-		advance(g, 35)
+		advance(g, 30)
 	}
 	if g.Status != "finished" || value(g.Winner) != "blue" || g.Teams["red"].HP != 0 {
 		t.Fatalf("unexpected victory state: %+v", g)
@@ -78,5 +81,30 @@ func TestSabotageAndRepair(t *testing.T) {
 	advance(g, 20)
 	if b.Level != 3 || b.Damage != 0 {
 		t.Fatalf("repair: level %d damage %d", b.Level, b.Damage)
+	}
+}
+
+func TestClearWorksBesideTheMound(t *testing.T) {
+	g := newGame(configForTest(t), 4)
+	b := g.bridge("blue")
+	b.Owner = str("blue")
+	b.Level = 1
+	b.Capacity = 1
+	b.BlockedBy = str("red")
+	g.Teams["blue"].Resources["iron"] = 10
+	if err := g.command("blue", Command{BotID: "blue-0", Action: "clear", Target: "blue"}); err != nil {
+		t.Fatal(err)
+	}
+	path := g.bot("blue-0").Path
+	if len(path) != 2 || path[1] != (Point{b.X, 3.8}) {
+		t.Fatalf("grader must travel to the mound: %v", path)
+	}
+	advance(g, 7)
+	if g.bot("blue-0").State != "CLEARING_EMBANKMENT" || g.bot("blue-0").Position[1] < 3 {
+		t.Fatalf("grader stopped away from mound: %+v", g.bot("blue-0"))
+	}
+	advance(g, 15)
+	if b.BlockedBy != nil {
+		t.Fatal("mound was not cleared")
 	}
 }

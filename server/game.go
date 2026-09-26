@@ -405,6 +405,9 @@ func (g *Game) command(team string, c Command) error {
 	default:
 		target.Lock = str(b.ID)
 		b.Path = []Point{{target.X, sz * 4.6}}
+		if c.Action == "clear" {
+			b.Path = append(b.Path, Point{target.X, -sz * 3.8})
+		}
 	}
 	if c.Action == "march" {
 		b.State = "MARCHING"

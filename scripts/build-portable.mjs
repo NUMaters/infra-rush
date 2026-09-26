@@ -54,6 +54,7 @@ for (const name of [
   );
 await cp("public/audio", `${out}/audio`, { recursive: true });
 await cp("public/models", `${out}/models`, { recursive: true });
+await cp("public/ui", `${out}/ui`, { recursive: true });
 await writeFile(
   `${out}/index.html`,
   '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#168cd0"><title>INFRA RUSH — 勝利への道をつくろう。</title><link rel="stylesheet" href="./assets/main.css"><script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script></head><body><div id="app"></div><script type="module" src="./assets/main.js"></script></body></html>',

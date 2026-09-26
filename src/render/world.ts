@@ -832,7 +832,7 @@ export class World {
         // The launcher's girder travels along local +Z, toward the opposite shore.
         a.rig.rotation.y = moving
           ? a.bot.rotation.y
-          : kind === "launcher"
+          : kind === "launcher" || (kind === "grader" && b.action === "clear")
             ? b.team === "blue"
               ? 0
               : Math.PI

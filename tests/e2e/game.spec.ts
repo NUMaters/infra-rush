@@ -11,6 +11,7 @@ declare global {
       setCpuEnabled: (enabled: boolean) => void;
       setCpu: (difficulty: "easy" | "normal" | "hard") => void;
       projectBot: (id: string) => { x: number; y: number };
+      projectBridge: (id: string) => { x: number; y: number };
     };
   }
 }
@@ -28,7 +29,7 @@ async function selectBot(page: Page, index: number) {
 }
 const advance = (page: Page, s: number) =>
   page.evaluate((seconds) => window.infraQA.advance(seconds), s);
-test("real UI: mine, build, march, attack, return, five hits, results and restart", async ({
+test("real UI: mine, build, march, attack, return, fifteen hits, results and restart", async ({
   page,
 }, info) => {
   const errors: string[] = [];
@@ -71,7 +72,7 @@ test("real UI: mine, build, march, attack, return, five hits, results and restar
   await page.locator('[data-action="march"]').click();
   await advance(page, 14);
   s = await page.evaluate(() => window.infraQA.snapshot());
-  expect(s.teams.red.hp).toBe(4);
+  expect(s.teams.red.hp).toBe(14);
   expect(s.bots[0].state).toBe("IDLE");
   expect(s.bots[0].position).toEqual(s.bots[0].home);
   await page.screenshot({ path: `docs/qa/${info.project.name}-bridge.png` });
@@ -80,6 +81,13 @@ test("real UI: mine, build, march, attack, return, five hits, results and restar
     await page.locator('[data-action="march"]').click();
   }
   await advance(page, 25);
+  for (let wave = 0; wave < 2; wave++) {
+    for (let i = 0; i < 5; i++) {
+      await selectBot(page, i);
+      await page.locator('[data-action="march"]').click();
+    }
+    await advance(page, 25);
+  }
   await expect(page.locator("#result")).toBeVisible();
   await expect(page.locator("#bgm-victory")).toHaveJSProperty("paused", false);
   s = await page.evaluate(() => window.infraQA.snapshot());
@@ -90,7 +98,7 @@ test("real UI: mine, build, march, attack, return, five hits, results and restar
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   s = await page.evaluate(() => window.infraQA.snapshot());
   expect(s.teams.blue.resources.stone).toBe(0);
-  expect(s.teams.red.hp).toBe(5);
+  expect(s.teams.red.hp).toBe(15);
   expect(s.bridges.every((b) => b.level === 0)).toBe(true);
   expect(errors).toEqual([]);
   expect(
@@ -120,11 +128,28 @@ test("pause freezes clock, help resumes, sound and bridge targeting respond", as
   await expect(page.locator("#sound")).toHaveAttribute("aria-pressed", "true");
   await page.locator("#qa-freeze").click();
   await expect(page.locator(".bridge-label.empty:visible")).toHaveCount(0);
+  const emptyBridge = await page.evaluate(() =>
+    window.infraQA.projectBridge("blue"),
+  );
+  await page.mouse.click(emptyBridge.x, emptyBridge.y);
+  await expect(page.locator("#task-panel")).toBeHidden();
   for (let i = 0; i < 5; i++) {
     await selectBot(page, i);
     await page.locator('[data-action="mine"]').click();
   }
   await advance(page, 32);
+  await expect(page.locator(".resource.soil img")).toHaveAttribute(
+    "src",
+    /ui\/resources\/soil.png/,
+  );
+  await expect(page.locator(".resource.stone img")).toHaveAttribute(
+    "src",
+    /ui\/resources\/stone.png/,
+  );
+  await expect(page.locator(".resource.iron img")).toHaveAttribute(
+    "src",
+    /ui\/resources\/iron.png/,
+  );
   const bridge = page.getByRole("button", {
     name: "自分の城につながる橋、つくれる",
   });
