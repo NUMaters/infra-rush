@@ -1,0 +1,12 @@
+{
+  "mine": { "cost": {}, "seconds": 0 },
+  "build": { "cost": { "stone": 50 }, "seconds": 12 },
+  "buildCenter": { "cost": { "stone": 60 }, "seconds": 15 },
+  "upgrade2": { "cost": { "iron": 35 }, "seconds": 10 },
+  "upgrade3": { "cost": { "iron": 50 }, "seconds": 12 },
+  "repair": { "cost": { "iron": 25 }, "seconds": 8 },
+  "embank": { "cost": { "soil": 30 }, "seconds": 6 },
+  "clear": { "cost": { "iron": 10 }, "seconds": 6 },
+  "destroy": { "cost": { "iron": 45 }, "seconds": 10 },
+  "march": { "cost": {}, "seconds": 0 }
+}

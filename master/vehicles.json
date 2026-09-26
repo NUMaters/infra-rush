@@ -1,0 +1,9 @@
+{
+  "mine": "excavator",
+  "build": "launcher",
+  "upgrade": "launcher",
+  "repair": "launcher",
+  "embank": "dozer",
+  "clear": "grader",
+  "destroy": "drill"
+}

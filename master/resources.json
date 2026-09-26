@@ -1,0 +1,6 @@
+{
+  "initial": { "soil": 0, "stone": 0, "iron": 0 },
+  "cycle": ["stone", "soil", "stone", "iron"],
+  "interval": 1,
+  "amount": 1
+}

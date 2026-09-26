@@ -1,0 +1,10 @@
+{
+  "maxLevel": 3,
+  "length": 6,
+  "width": 3,
+  "sites": [
+    { "id": "blue", "x": -7, "exclusive": "blue" },
+    { "id": "center", "x": 0, "exclusive": null },
+    { "id": "red", "x": 7, "exclusive": "red" }
+  ]
+}

@@ -1,0 +1,612 @@
+{
+  "results": [
+    {
+      "name": "five Bots, zero starting resources and castle HP5",
+      "passed": true
+    },
+    {
+      "name": "mining -> resources -> bridge -> attack -> return",
+      "passed": true
+    },
+    {
+      "name": "resource payment is atomic and duplicate construction rejected",
+      "passed": true
+    },
+    {
+      "name": "bridge upgrades, enemy drill, repair and resource costs",
+      "passed": true
+    },
+    {
+      "name": "embankment interrupts march; clearing restores route",
+      "passed": true
+    },
+    {
+      "name": "central bridge prerequisite, ownership and neutralization",
+      "passed": true
+    },
+    {
+      "name": "five simultaneous marches decide victory exactly at HP0",
+      "passed": true
+    },
+    {
+      "name": "earthquakes never collapse bridges, timeout is draw",
+      "passed": true
+    },
+    {
+      "name": "30 seeded CPU games finish with valid resources and legal construction",
+      "passed": true
+    }
+  ],
+  "matches": [
+    {
+      "seed": 0,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 1,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 2,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 3,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 4,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 5,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 6,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 7,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 8,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 9,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 10,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 11,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 12,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 13,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 14,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 15,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 16,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 17,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 18,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 19,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 20,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 21,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 22,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 23,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 24,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 25,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 26,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 27,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 28,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    },
+    {
+      "seed": 29,
+      "winner": "red",
+      "time": 92.69999999999688,
+      "blue": {
+        "mined": 281,
+        "built": 1,
+        "attacks": 3,
+        "repairs": 0,
+        "sabotage": 1
+      },
+      "red": {
+        "mined": 224,
+        "built": 2,
+        "attacks": 5,
+        "repairs": 0,
+        "sabotage": 1
+      }
+    }
+  ]
+}

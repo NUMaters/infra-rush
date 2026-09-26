@@ -1,0 +1,7 @@
+{
+  "meanInterval": 360,
+  "warningSeconds": 5,
+  "damageProbability": [0, 0.5, 0.3, 0.15],
+  "shakeSeconds": 1.8,
+  "minimumLevel": 1
+}

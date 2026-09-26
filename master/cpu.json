@@ -1,0 +1,29 @@
+{
+  "easy": {
+    "interval": 4,
+    "miners": 3,
+    "attackers": 1,
+    "central": false,
+    "sabotage": false,
+    "maintenance": false,
+    "initialDelay": 25
+  },
+  "normal": {
+    "interval": 1.6,
+    "miners": 2,
+    "attackers": 2,
+    "central": true,
+    "sabotage": true,
+    "maintenance": true,
+    "initialDelay": 5
+  },
+  "hard": {
+    "interval": 0.65,
+    "miners": 2,
+    "attackers": 3,
+    "central": true,
+    "sabotage": true,
+    "maintenance": true,
+    "initialDelay": 0
+  }
+}
