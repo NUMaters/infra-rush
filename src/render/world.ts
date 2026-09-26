@@ -5,6 +5,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { M } from "../game/master";
 import { side } from "../game/engine";
 import type { Bot, GameEvent, GameState, Point, Team } from "../game/types";
+import { vehicleWorkHeading } from "./vehicle-heading";
 import { seaMaterial, shoreGeometry, shoreMaterial } from "./water";
 
 const TEAM = { blue: 0x1689ff, red: 0xf34b53 };
@@ -836,16 +837,9 @@ export class World {
       }
       if (a.rig) {
         a.rig.position.copy(a.bot.position);
-        // The launcher's girder travels along local +Z, toward the opposite shore.
         a.rig.rotation.y = moving
           ? a.bot.rotation.y
-          : kind === "launcher" || (kind === "grader" && b.action === "clear")
-            ? b.team === "blue"
-              ? 0
-              : Math.PI
-            : b.team === "blue"
-              ? Math.PI
-              : 0;
+          : vehicleWorkHeading(b, s.bridges);
         const work = !moving;
         const boom = rigPart(a.rig, "boom"),
           arm = rigPart(a.rig, "arm"),
@@ -863,8 +857,11 @@ export class World {
         });
         if (work && kind === "grader")
           a.rig.position.x += Math.sin(this.clock) * 0.55;
-        if (work && kind === "dozer")
-          a.rig.position.z += Math.sin(this.clock * 1.2) * 0.35;
+        if (work && kind === "dozer") {
+          const push = Math.sin(this.clock * 1.2) * 0.35;
+          a.rig.position.x += Math.sin(a.rig.rotation.y) * push;
+          a.rig.position.z += Math.cos(a.rig.rotation.y) * push;
+        }
       }
       a.ring.visible = b.id === this.selected;
       a.ring.position.set(b.position[0], 0.4, b.position[1]);
