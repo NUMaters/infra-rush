@@ -1,0 +1,15 @@
+FROM golang:1.25-alpine AS build
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY server ./server
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /infra-rush ./server
+
+FROM alpine:3.21
+WORKDIR /app
+COPY --from=build /infra-rush /infra-rush
+COPY master ./master
+RUN adduser -D -u 10001 game
+USER game
+EXPOSE 8080
+CMD ["/infra-rush", "-static", "/app/static", "-master", "/app/master"]

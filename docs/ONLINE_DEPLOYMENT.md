@@ -11,6 +11,24 @@ GitHub Pages は静的ファイルのみ配信する。`/ws` の Go プロセス
 
 サーバーがまだない場合、Pages 上ではマルチプレイの参加操作を無効にし、設定が必要と表示する。ローカルプレビューの `5173` / `5177` / `5178` からは従来どおり同じPCの `8080` 番へ接続する。Goサーバー自身が画面を配信するときは同一ホストの `/ws` を使う。
 
+## Fly.io での低コスト配置
+
+`fly.toml` は東京リージョンの 256MB / shared CPU 1台、待機中の自動停止を指定する。`Dockerfile.fly` には対戦用Goサーバーとマスターデータだけを入れ、Pagesで配信する3Dモデルは重複配置しない。Bot・部屋・資源はプロセスのメモリにあるため、**必ず1台**にする。
+
+Fly.ioにサインインし、支払い方法と実際の料金を確認してから、次を実行する。`infra-rush-numaters` が既に使われている場合は、`fly.toml` の `app` も同じ別名に変更する。
+
+```sh
+flyctl auth login
+flyctl apps create infra-rush-numaters
+flyctl deploy --ha=false
+flyctl scale count 1
+curl https://infra-rush-numaters.fly.dev/health
+gh variable set INFRA_RUSH_WS_URL --repo NUMaters/infra-rush --body 'wss://infra-rush-numaters.fly.dev/ws'
+gh workflow run pages.yml --repo NUMaters/infra-rush
+```
+
+`/health` が `ok` を返し、Pages の再デプロイが成功したら、公開URLを2ブラウザで開いてランダム対戦と部屋IDを確認する。自動停止中の初回接続には起動待ちが生じる。無料トライアルは2 VM時間または7日で終了し、決済手段なしではその後の対戦サーバーが止まる。継続利用は従量課金で、稼働時間のほか転送量・停止中のルートファイルシステムなどが課金される。デプロイ・再起動中の試合も失われる。
+
 ## Google Cloud Run での配置例
 
 **専用の課金可能な Google Cloud プロジェクトを決めてから**実行する。既存の別サービス用プロジェクトには配置しない。公開中の WebSocket 接続は課金対象になる。まず最小インスタンス0、最大1、同時接続上限80で始める。
