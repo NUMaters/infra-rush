@@ -17,7 +17,14 @@ test("team reveal and countdown hold the match clock, and backdrops close dialog
 
   await page.locator("#start").click();
   await expect(page.locator("#match-intro .intro-card.blue")).toBeVisible();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
+  await expect(page.locator("#match-intro .intro-card.blue")).toContainText(
+    "あなた",
+  );
   await expect(page.locator("#match-intro .intro-card.red")).toBeVisible();
+  await expect(page.locator("#match-intro .intro-card.red")).toContainText(
+    "CPU",
+  );
   await expect(
     page.locator("#match-intro .intro-count-card strong"),
   ).toHaveText("3");

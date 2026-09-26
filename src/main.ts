@@ -126,7 +126,11 @@ function tapBurst(button: HTMLButtonElement) {
   app.append(burst);
   setTimeout(() => burst.remove(), 460);
 }
-function sceneTransition(button: HTMLButtonElement, action: () => void) {
+function sceneTransition(
+  button: HTMLButtonElement,
+  action: () => void,
+  actionDelay = 255,
+) {
   if (transitioning) return;
   if (reducedMotion.matches) {
     action();
@@ -140,7 +144,7 @@ function sceneTransition(button: HTMLButtonElement, action: () => void) {
   wipe.classList.remove("active");
   void wipe.offsetWidth;
   wipe.classList.add("active");
-  setTimeout(action, 255);
+  setTimeout(action, actionDelay);
   setTimeout(() => {
     wipe.classList.remove("active");
     transitioning = false;
@@ -732,7 +736,7 @@ app.addEventListener("click", (e) => {
       case "start":
         sound.unlock();
         sound.play("ui");
-        sceneTransition(button, start);
+        sceneTransition(button, start, 520);
         break;
       case "restart":
         sound.play("ui");
@@ -740,7 +744,7 @@ app.addEventListener("click", (e) => {
           online?.send({ type: "rematch" });
           button.disabled = true;
           button.textContent = "相手の再戦を待っています…";
-        } else sceneTransition(button, start);
+        } else sceneTransition(button, start, 520);
         break;
       case "online-start":
         sound.unlock();
