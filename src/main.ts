@@ -1,4 +1,5 @@
 import "./style.css";
+import "./motion.css";
 import { M } from "./game/master";
 import type { Difficulty } from "./game/master";
 import { canCommand, command, createGame, taskSpec, tick } from "./game/engine";
@@ -39,7 +40,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="corner-brand">INFRA <b>RUSH</b></div>
 </section>
 <section id="modal" class="overlay hidden"></section>
-<section id="result" class="overlay hidden"></section>`;
+<section id="result" class="overlay hidden"></section><div id="scene-wipe" aria-hidden="true"></div>`;
 let state = createGame();
 let cpu = new CPU();
 let cpuEnabled = true;
@@ -84,13 +85,51 @@ const resourceNames: Record<Resource, string> = {
 };
 const botName = (i: number) => ["アオ", "ソラ", "リク", "ナギ", "ウミ"][i];
 let toastTimer: ReturnType<typeof setTimeout>;
+let panelCloseTimer: ReturnType<typeof setTimeout>;
+let modalCloseTimer: ReturnType<typeof setTimeout>;
+let transitioning = false;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+function tapBurst(button: HTMLButtonElement) {
+  if (reducedMotion.matches) return;
+  const rect = button.getBoundingClientRect();
+  const burst = document.createElement("span");
+  burst.className = "tap-burst";
+  burst.style.left = `${rect.left + rect.width / 2}px`;
+  burst.style.top = `${rect.top + rect.height / 2}px`;
+  burst.innerHTML = "<i></i><i></i><i></i><i></i>";
+  app.append(burst);
+  setTimeout(() => burst.remove(), 460);
+}
+function sceneTransition(button: HTMLButtonElement, action: () => void) {
+  if (transitioning) return;
+  if (reducedMotion.matches) {
+    action();
+    return;
+  }
+  transitioning = true;
+  const rect = button.getBoundingClientRect();
+  const wipe = $("#scene-wipe");
+  wipe.style.setProperty("--wipe-x", `${rect.left + rect.width / 2}px`);
+  wipe.style.setProperty("--wipe-y", `${rect.top + rect.height / 2}px`);
+  wipe.classList.remove("active");
+  void wipe.offsetWidth;
+  wipe.classList.add("active");
+  setTimeout(action, 255);
+  setTimeout(() => {
+    wipe.classList.remove("active");
+    transitioning = false;
+  }, 640);
+}
 let shownHp: Record<"blue" | "red", number> = {
   blue: M.castle.hp,
   red: M.castle.hp,
 };
 function toast(text: string) {
-  $("#toast").textContent = text;
-  $("#toast").classList.add("show");
+  const message = $("#toast");
+  message.textContent = text;
+  message.classList.remove("show");
+  void message.offsetWidth;
+  message.classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => $("#toast").classList.remove("show"), 2800);
 }
@@ -100,7 +139,11 @@ function chooseBot(id: string, context: string | null = null) {
   world.setSelected(id);
   sound.unlock();
   sound.play("select");
-  $("#task-panel").classList.remove("hidden");
+  const panel = $("#task-panel");
+  clearTimeout(panelCloseTimer);
+  panel.classList.remove("hidden", "closing", "opening");
+  void panel.offsetWidth;
+  panel.classList.add("opening");
   renderUI();
 }
 function chooseBridge(id: string) {
@@ -122,7 +165,16 @@ function positionPanel() {
 function closePanel() {
   selected = null;
   world.setSelected(null);
-  $("#task-panel").classList.add("hidden");
+  const panel = $("#task-panel");
+  panel.classList.remove("opening");
+  if (!panel.classList.contains("hidden")) {
+    panel.classList.add("closing");
+    clearTimeout(panelCloseTimer);
+    panelCloseTimer = setTimeout(() => {
+      panel.classList.add("hidden");
+      panel.classList.remove("closing");
+    }, reducedMotion.matches ? 0 : 170);
+  }
   renderUI();
 }
 function start() {
@@ -246,16 +298,29 @@ function showHelp() {
   paused = true;
   sound.pauseMusic();
   sound.unlock();
-  $("#modal").classList.remove("hidden");
+  clearTimeout(modalCloseTimer);
+  $("#modal").classList.remove("hidden", "leaving");
   $("#modal").innerHTML =
     `<article class="dialog"><div class="eyebrow">あそびかた</div><h2>橋をつくって、相手の城へ！</h2><p>5体のBotに仕事をお願いしよう。<br>相手の城に5回たどり着けば勝ち。</p><div class="guide-steps"><div>${icon("mine")}<b>01 掘る</b><p>Botをタップして「掘る」。<br>石・土・鉄を集めよう。</p></div><div>${icon("build")}<b>02 橋をつくる</b><p>石が50あれば橋をつくれる。<br>真ん中の橋は現地をタップ。</p></div><div>${icon("march")}<b>03 攻める</b><p>橋ができたら「攻める」。<br>城を一度たたいて戻るよ。</p></div></div><p class="guide-extra">土を盛って相手の道をふさいだり、重機で土をどけて自分の道を開いたりできるよ。橋を強くする・直す・壊す作業もできる。資源が足りない行動は灰色になるよ。</p><p class="guide-extra">途中でやめられるのは「掘る」だけ。地震に備えて橋を直しながら、6分以内に攻めよう。</p><button id="modal-close" class="primary">わかった！ ${icon("march")}</button><small class="keyboard-note">ドラッグで移動、ピンチ・ホイールで拡大縮小、2本指・右ドラッグで回転。PCは1〜5でBot選択、Escで閉じる。</small></article>`;
 }
 function showPause() {
   paused = true;
   sound.pauseMusic();
-  $("#modal").classList.remove("hidden");
+  clearTimeout(modalCloseTimer);
+  $("#modal").classList.remove("hidden", "leaving");
   $("#modal").innerHTML =
     `<article class="dialog compact"><div class="eyebrow">TAKE A BREAK</div><h2>ちょっと、ひと休み。</h2><p>CPUとタイマーも停止しています。</p><button id="modal-close" class="primary">工事を再開 ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
+}
+function hideModal() {
+  const modal = $("#modal");
+  modal.classList.add("leaving");
+  clearTimeout(modalCloseTimer);
+  modalCloseTimer = setTimeout(() => {
+    modal.classList.add("hidden");
+    modal.classList.remove("leaving");
+    paused = false;
+    if (started && state.status === "playing") sound.resumeMusic();
+  }, reducedMotion.matches ? 0 : 190);
 }
 function finish() {
   sound.stopMusic();
@@ -286,11 +351,25 @@ function backTitle() {
   state = createGame();
   world.reset();
 }
+app.addEventListener("pointerdown", (e) => {
+  const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
+  if (button && !button.disabled) button.classList.add("pressing");
+});
+for (const event of ["pointerup", "pointercancel", "pointerleave"]) {
+  app.addEventListener(event, () => {
+    app.querySelectorAll("button.pressing").forEach((button) =>
+      button.classList.remove("pressing"),
+    );
+  });
+}
 app.addEventListener("click", (e) => {
   const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
-  if (!button || button.disabled) return;
+  if (!button || button.disabled || transitioning) return;
+  tapBurst(button);
   if (button.dataset.action) doAction(button.dataset.action as Action);
   else if (button.dataset.difficulty) {
+    sound.unlock();
+    sound.play("ui");
     difficulty = button.dataset.difficulty as Difficulty;
     document
       .querySelectorAll("[data-difficulty]")
@@ -300,12 +379,17 @@ app.addEventListener("click", (e) => {
           (x as HTMLElement).dataset.difficulty === difficulty,
         ),
       );
-  } else if (button.classList.contains("help")) showHelp();
-  else
+  } else if (button.classList.contains("help")) {
+    sound.unlock();
+    sound.play("ui");
+    showHelp();
+  } else {
     switch (button.id) {
       case "start":
       case "restart":
-        start();
+        sound.unlock();
+        sound.play("ui");
+        sceneTransition(button, start);
         break;
       case "close-panel":
         closePanel();
@@ -321,17 +405,19 @@ app.addEventListener("click", (e) => {
         button.setAttribute("aria-pressed", String(sound.muted));
         break;
       case "pause":
+        sound.play("ui");
         showPause();
         break;
       case "modal-close":
-        $("#modal").classList.add("hidden");
-        paused = false;
-        if (started && state.status === "playing") sound.resumeMusic();
+        sound.play("ui");
+        hideModal();
         break;
       case "back-title":
-        backTitle();
+        sound.play("ui");
+        sceneTransition(button, backTitle);
         break;
     }
+  }
 });
 document.addEventListener("keydown", (e) => {
   if (!started || paused || state.status !== "playing") return;

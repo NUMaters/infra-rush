@@ -94,6 +94,9 @@ export class Sound {
     else if (kind === "select") {
       note(660, 0, 0.09);
       note(880, 0.045, 0.08);
+    } else if (kind === "ui") {
+      note(480, 0, 0.07, "triangle", 0.025);
+      note(720, 0.055, 0.08, "sine", 0.018);
     } else if (kind === "warning") {
       note(440, 0, 0.2);
       note(440, 0.3, 0.2);
