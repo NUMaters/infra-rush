@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createGame } from "../src/game/engine";
+import { canCommand, createGame } from "../src/game/engine";
 import { resolveTaskTarget } from "../src/game/intent";
 describe("automatic construction targets", () => {
   it("assigns construction to own bridge and sabotage to enemy without a selector", () => {
@@ -29,6 +29,14 @@ describe("automatic construction targets", () => {
     center.owner = "red";
     center.level = 1;
     expect(resolveTaskTarget(s, "blue", "embank")).toBe("center");
+    s.teams.blue.resources.soil = 30;
+    expect(
+      canCommand(s, "blue", {
+        botId: "blue-0",
+        action: "embank",
+        target: resolveTaskTarget(s, "blue", "embank"),
+      }),
+    ).toBeNull();
     expect(resolveTaskTarget(s, "blue", "destroy")).toBe("center");
     center.owner = "blue";
     center.blockedBy = "red";
