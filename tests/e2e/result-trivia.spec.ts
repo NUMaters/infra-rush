@@ -31,7 +31,10 @@ test("result Bot presents sourced civil-engineering facts and rotates them", asy
       .evaluate((image) => (image as HTMLImageElement).naturalWidth),
   ).toBeGreaterThan(0);
   await page.locator("#result-trivia-next").click();
-  await expect(page.locator("#result-trivia h3")).toContainText("5年に1回");
+  await expect(page.locator("#result-trivia h3")).toContainText("ショベル");
+  await expect(page.locator("#result-trivia .trivia-top")).toContainText(
+    "2/12",
+  );
   expect(
     await page.evaluate(() => localStorage.getItem("infra-rush-last-trivia")),
   ).toBe("1");
@@ -39,7 +42,7 @@ test("result Bot presents sourced civil-engineering facts and rotates them", asy
   await expect(page.locator("#title")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await finishSolo();
-  await expect(page.locator("#result-trivia h3")).toContainText("Ⅱ判定");
+  await expect(page.locator("#result-trivia h3")).toContainText("ブルドーザー");
   await page.locator("#restart").scrollIntoViewIfNeeded();
   await expect(page.locator("#restart")).toBeInViewport();
   expect(
