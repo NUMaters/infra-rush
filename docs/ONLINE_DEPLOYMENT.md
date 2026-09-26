@@ -2,6 +2,8 @@
 
 GitHub Pages は静的ファイルのみ配信する。`/ws` の Go プロセスは別ホストで常時接続を受けられるようにする。画面は引き続き `https://numaters.github.io/infra-rush/` で公開する。
 
+現在の対戦サーバーは `https://infra-rush-numaters.fly.dev/`。GitHub リポジトリ変数 `INFRA_RUSH_WS_URL` は `wss://infra-rush-numaters.fly.dev/ws` に設定済み。1台の Fly Machine を東京リージョンに配置した。
+
 ## 必要な設定
 
 1. このリポジトリの `Dockerfile` から Go サーバーを HTTPS と WebSocket に対応した公開ホストへデプロイする。サーバーは `PORT` で待ち受け、`/health` と `/ws` を提供する。

@@ -544,7 +544,10 @@ function finish() {
   sound.setMusicScene(win ? "victory" : "retry");
 }
 function backTitle() {
-  if (mode === "online") online?.leave();
+  if (mode === "online") {
+    online?.leave();
+    online?.close();
+  }
   mode = "cpu";
   playerTeam = "blue";
   onlineRoom = "";
@@ -657,6 +660,7 @@ app.addEventListener("click", (e) => {
         break;
       case "online-close":
         online?.leave();
+        online?.close();
         $("#online-lobby").classList.add("hidden");
         onlinePhase = "menu";
         onlineRoom = "";

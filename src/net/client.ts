@@ -81,6 +81,7 @@ export class OnlineClient {
       this.onMessage(message);
     };
     socket.onclose = () => {
+      if (this.socket !== socket) return;
       this.onStatus(this.active ? "reconnecting" : "offline");
       if (this.active)
         this.reconnectTimer = window.setTimeout(() => this.connect(), 2000);
