@@ -5,6 +5,16 @@ export interface CivilTrivia {
   text: string;
   source: string;
   sourceLabel: string;
+  model:
+    | "stone-bridge"
+    | "steel-bridge"
+    | "excavator"
+    | "dozer"
+    | "launcher"
+    | "grader"
+    | "soil"
+    | "stone-resource";
+  modelName: string;
 }
 
 // Real-world techniques represented in the game. The game's resource costs,
@@ -17,6 +27,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     text: "道路橋の健全性Ⅲは「早期措置段階」。橋の機能に支障が出る可能性があり、早期の措置が必要。Ⅳの「緊急措置段階」とは別だよ。",
     source: "https://www.mlit.go.jp/road/sisaku/yobohozen/tenken/yobo7_23.pdf",
     sourceLabel: "国土交通省・道路橋定期点検要領",
+    model: "stone-bridge",
+    modelName: "石橋",
   },
   {
     id: "excavator-bucket",
@@ -25,6 +37,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     text: "油圧ショベルの一種、バックホウは地面を掘るのが得意。掘った土や石をダンプカーに積み込む仕事にも活躍するよ。",
     source: "https://www.thr.mlit.go.jp/narusedam/construction_equipment.html",
     sourceLabel: "国土交通省・成瀬ダム工事事務所",
+    model: "excavator",
+    modelName: "油圧ショベル",
   },
   {
     id: "bulldozer-blade",
@@ -33,6 +47,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     text: "前についた「排土板」で土や石を押し、地面のでこぼこをならす。ゲームで土を押す動きも、この仕事がモデルだよ。",
     source: "https://www.thr.mlit.go.jp/narusedam/construction_equipment.html",
     sourceLabel: "国土交通省・成瀬ダム工事事務所",
+    model: "dozer",
+    modelName: "ブルドーザー",
   },
   {
     id: "bridge-launching",
@@ -42,6 +58,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     source:
       "https://www.mlit.go.jp/tec/r08dobokukoujikyoutsuusiyousyo/honbun03_syo02_setsu13.html",
     sourceLabel: "国土交通省・土木工事共通仕様書",
+    model: "launcher",
+    modelName: "架橋機",
   },
   {
     id: "motor-grader",
@@ -50,6 +68,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     text: "モーターグレーダーは、地面を平らに切削したり、材料を敷きならして形を整えたりする車輪式の重機。道の仕上げ役だよ。",
     source: "https://www.thr.mlit.go.jp/Bumon/J76101/homepage/word/ma.html",
     sourceLabel: "国土交通省・山形河川国道事務所",
+    model: "grader",
+    modelName: "モーターグレーダー",
   },
   {
     id: "embankment-compaction",
@@ -59,6 +79,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     source:
       "https://www.mlit.go.jp/tec/r08dobokukoujikyoutsuusiyousyo/honbun01_syo02_setsu03.html",
     sourceLabel: "国土交通省・土木工事共通仕様書",
+    model: "soil",
+    modelName: "盛土",
   },
   {
     id: "bridge-crack-repair",
@@ -68,6 +90,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     source:
       "https://www.mlit.go.jp/sogoseisaku/maintenance/_pdf/manual02_pdf03.pdf",
     sourceLabel: "国土交通省・インフラメンテナンス資料",
+    model: "stone-bridge",
+    modelName: "石橋",
   },
   {
     id: "earthwork-drainage",
@@ -77,6 +101,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     source:
       "https://www.mlit.go.jp/tec/r08dobokukoujikyoutsuusiyousyo/honbun01_syo02_setsu03.html",
     sourceLabel: "国土交通省・土木工事共通仕様書",
+    model: "soil",
+    modelName: "盛土",
   },
   {
     id: "crushed-stone",
@@ -85,6 +111,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     text: "採石場の岩を砕いてつくる砕石は、舗装の下にある「路盤」にも使われる。見えないところで道を支えているよ。",
     source: "https://www.thr.mlit.go.jp/yamagata/word/ka.html",
     sourceLabel: "国土交通省・山形河川国道事務所",
+    model: "stone-resource",
+    modelName: "砕石",
   },
   {
     id: "seismic-retrofit",
@@ -93,6 +121,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     text: "地震への備えでは、橋脚を補強するほか、橋桁が落ちないよう受けや装置を設ける方法もあるよ。",
     source: "https://www.ktr.mlit.go.jp/toukoku/toukoku00027.html",
     sourceLabel: "国土交通省・東京国道事務所",
+    model: "steel-bridge",
+    modelName: "鉄橋",
   },
   {
     id: "excavated-soil-reuse",
@@ -101,6 +131,8 @@ export const civilTrivia: readonly CivilTrivia[] = [
     text: "工事で出た土は、性質や使い道を確かめて別の工事で利用することがある。土を無駄にしない工夫だよ。",
     source: "https://www.mlit.go.jp/toshi/web/content/001610448.pdf",
     sourceLabel: "国土交通省・建設発生土の有効利用",
+    model: "soil",
+    modelName: "土",
   },
   {
     id: "bridge-five-years",
@@ -109,5 +141,7 @@ export const civilTrivia: readonly CivilTrivia[] = [
     text: "道路橋は5年に1回の頻度を基本に点検するよ。近接目視、または同等に評価できる方法で、橋の状態を調べるんだ。",
     source: "https://www.mlit.go.jp/road/sisaku/yobohozen/tenken/yobo7_23.pdf",
     sourceLabel: "国土交通省・道路橋定期点検要領",
+    model: "stone-bridge",
+    modelName: "石橋",
   },
 ];

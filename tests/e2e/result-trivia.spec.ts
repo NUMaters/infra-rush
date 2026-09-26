@@ -25,13 +25,33 @@ test("result Bot presents sourced civil-engineering facts and rotates them", asy
     "href",
     /mlit\.go\.jp/,
   );
+  await expect(page.locator("#result-trivia .trivia-model")).toHaveAttribute(
+    "src",
+    /stone-bridge\.png$/,
+  );
   expect(
     await page
-      .locator("#result-trivia img")
+      .locator("#result-trivia .trivia-model")
+      .evaluate((image) => (image as HTMLImageElement).naturalWidth),
+  ).toBeGreaterThan(0);
+  expect(
+    await page
+      .locator("#result-trivia .trivia-guide")
       .evaluate((image) => (image as HTMLImageElement).naturalWidth),
   ).toBeGreaterThan(0);
   await page.locator("#result-trivia-next").click();
   await expect(page.locator("#result-trivia h3")).toContainText("ショベル");
+  await expect(page.locator("#result-trivia .trivia-model")).toHaveAttribute(
+    "src",
+    /excavator\.png$/,
+  );
+  await expect
+    .poll(() =>
+      page
+        .locator("#result-trivia .trivia-model")
+        .evaluate((image) => (image as HTMLImageElement).naturalWidth),
+    )
+    .toBeGreaterThan(0);
   await expect(page.locator("#result-trivia .trivia-top")).toContainText(
     "2/12",
   );
@@ -43,6 +63,17 @@ test("result Bot presents sourced civil-engineering facts and rotates them", asy
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await finishSolo();
   await expect(page.locator("#result-trivia h3")).toContainText("ブルドーザー");
+  await expect(page.locator("#result-trivia .trivia-model")).toHaveAttribute(
+    "src",
+    /dozer\.png$/,
+  );
+  await expect
+    .poll(() =>
+      page
+        .locator("#result-trivia .trivia-model")
+        .evaluate((image) => (image as HTMLImageElement).naturalWidth),
+    )
+    .toBeGreaterThan(0);
   await page.locator("#restart").scrollIntoViewIfNeeded();
   await expect(page.locator("#restart")).toBeInViewport();
   expect(

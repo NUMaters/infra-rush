@@ -880,8 +880,13 @@ function showResultTrivia(index: number) {
     // Private browsing may block storage; the current result still works.
   }
   const fact = civilTrivia[index];
+  const nextModel = civilTrivia[(index + 1) % civilTrivia.length].model;
+  if (nextModel !== fact.model) {
+    const preload = new Image();
+    preload.src = `${import.meta.env.BASE_URL}ui/trivia/${nextModel}.png`;
+  }
   $("#result-trivia").innerHTML =
-    `<div class="trivia-top"><span>Botの土木まめちしき</span><small>${index + 1}/${civilTrivia.length}</small></div><div class="trivia-content"><img src="${import.meta.env.BASE_URL}ui/result-bot.png" alt="ヘルメットと安全ベストを着たBot"><div class="trivia-bubble"><small>${fact.topic}</small><h3>${fact.title}</h3><p>${fact.text}</p></div></div><div class="trivia-bottom"><a href="${fact.source}" target="_blank" rel="noopener noreferrer">出典：${fact.sourceLabel} ↗</a><button id="result-trivia-next" type="button">次の話を聞く ${icon("march")}</button></div>`;
+    `<div class="trivia-top"><span>Botの土木まめちしき</span><small>${index + 1}/${civilTrivia.length}</small></div><div class="trivia-content"><div class="trivia-visual"><img class="trivia-model" src="${import.meta.env.BASE_URL}ui/trivia/${fact.model}.png" alt="${fact.modelName}のゲーム内モデル"><img class="trivia-guide" src="${import.meta.env.BASE_URL}ui/trivia/bot.png" alt=""><span class="trivia-model-name">${fact.modelName}</span></div><div class="trivia-bubble"><small>${fact.topic}</small><h3>${fact.title}</h3><p>${fact.text}</p></div></div><div class="trivia-bottom"><a href="${fact.source}" target="_blank" rel="noopener noreferrer">出典：${fact.sourceLabel} ↗</a><button id="result-trivia-next" type="button">次の話を聞く ${icon("march")}</button></div>`;
 }
 function firstResultTrivia() {
   let previous = resultTriviaIndex;
