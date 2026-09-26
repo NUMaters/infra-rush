@@ -211,6 +211,7 @@ button svg {
 }
 .logo > b {
   color: #ffce47;
+  white-space: nowrap;
   text-shadow:
     3px 3px #e89b35,
     6px 6px #b47026,
@@ -1520,7 +1521,7 @@ h1 {
     font-size: 60px;
   }
   .logo > b {
-    font-size: 73px;
+    font-size: clamp(56px, 18vw, 73px);
   }
   .title-copy h1 {
     font-size: 20px;
