@@ -1,4 +1,4 @@
-const CACHE = "infra-rush-v2";
+const CACHE = "infra-rush-v3";
 const ROOT = new URL(self.registration.scope);
 
 async function cacheOne(cache, url) {
@@ -18,7 +18,7 @@ async function cacheGameAssets() {
     ...manifest.map(({ asset }) => new URL(`models/${asset}.glb`, ROOT).href),
     ...["soil", "stone", "iron"].map((name) => new URL(`ui/resources/${name}.png`, ROOT).href),
     ...["stone-bridge", "steel-bridge", "excavator", "dozer", "launcher", "grader", "soil", "stone-resource"].map((name) => new URL(`ui/trivia/${name}.png`, ROOT).href),
-    ...["infra-rush-title", "infra-rush-loop", "infra-rush-victory", "infra-rush-retry"].map((name) => new URL(`audio/${name}.mp3`, ROOT).href),
+    ...["infra-rush-title", "infra-rush-loop", "infra-rush-urgent", "infra-rush-victory", "infra-rush-retry"].map((name) => new URL(`audio/${name}.mp3`, ROOT).href),
   ];
   for (let i = 0; i < assets.length; i += 4)
     await Promise.all(assets.slice(i, i + 4).map((url) => cacheOne(cache, url)));
