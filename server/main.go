@@ -167,7 +167,7 @@ func (h *hub) roomState(r *room) {
 	}
 	for _, p := range r.players {
 		if p != nil {
-			h.send(p, map[string]any{"type": "room", "roomId": r.id, "locked": r.locked, "team": p.team, "phase": phase, "players": players, "startAt": startAt, "serverNow": time.Now().UnixMilli()})
+			h.send(p, map[string]any{"type": "room", "roomId": r.id, "locked": r.locked, "team": p.team, "phase": phase, "players": players, "rematch": r.rematch, "startAt": startAt, "serverNow": time.Now().UnixMilli()})
 		}
 	}
 }

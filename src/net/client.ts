@@ -15,6 +15,7 @@ export type ServerMessage =
       team: Team;
       phase: "waiting" | "ready" | "playing" | "finished";
       players: Partial<Record<Team, OnlinePlayer>>;
+      rematch?: [boolean, boolean];
       startAt: number;
       serverNow: number;
     }
