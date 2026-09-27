@@ -18,9 +18,11 @@ test("result trivia presents sourced facts with matching models", async ({
   };
 
   await finishSolo();
-  await expect(page.locator("#result-trivia h3")).toContainText("Ⅲ判定");
+  await expect(page.locator("#result-trivia h3")).toContainText(
+    "橋にも健康診断",
+  );
   await expect(page.locator("#result-trivia .trivia-bubble p")).toContainText(
-    "早期措置段階",
+    "4段階",
   );
   await expect(page.locator("#result-trivia .trivia-bottom a")).toHaveAttribute(
     "href",
