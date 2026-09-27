@@ -57,7 +57,7 @@ def material(name):
     if name in {"metal", "metal_shadow"}:
         bsdf.inputs["Metallic"].default_value = .42
     if name == "glass":
-        bsdf.inputs["Alpha"].default_value = .18
+        bsdf.inputs["Alpha"].default_value = .26
         bsdf.inputs["Roughness"].default_value = .12
         mat.surface_render_method = "BLENDED"
     if name == "lamp":
@@ -181,21 +181,45 @@ def bot_in_cabin(seat):
 
 def cabin(parent, detail):
     cab = empty("Cabin", parent, (0, .13, 0))
-    # The reference has a single bulbous blue cab, not a white roof and pipe cage.
-    block("cab lower blue shell", cab, (0, 0, 1.03), (1.47, 1.25, .48), "team", .22, 8)
-    block("rounded blue rear cab", cab, (0, .48, 1.50), (1.43, .31, 1.20), "team", .16, 7)
-    block("thick blue roof", cab, (0, 0, 2.12), (1.54, 1.30, .34), "team", .16, 8)
-    for x in (-.65, .65):
-        strut("thick front cab frame", cab, (x, -.53, 1.16), (x * .88, -.48, 2.08), .20, "team", .20, .085)
-        strut("thick rear cab frame", cab, (x, .50, 1.15), (x * .9, .50, 2.06), .17, "team", .16, .07)
-        block("blue side lower door", cab, (x, -.05, 1.06), (.18, .88, .45), "team", .075)
-        block("blue side window sill", cab, (x, -.05, 1.34), (.18, .92, .12), "team", .04)
-    block("blue front lower ledge", cab, (0, -.56, 1.13), (1.23, .20, .20), "team", .08)
-    block("blue windshield header", cab, (0, -.53, 1.98), (1.30, .19, .17), "team", .07)
-    # Glass panels sit behind the body-coloured thick frames; Bot stays visible.
-    block("large curved front glass", cab, (0, -.515, 1.61), (1.12, .035, .73), "glass", .045, 4)
-    for x in (-.675, .675):
-        block("wide blue side glass", cab, (x, -.02, 1.66), (.036, .83, .64), "glass", .025, 3)
+    # Loft the blue cab as one rounded outer volume. Panoramic glass replaces
+    # faces of this skin, leaving thick curved blue corners and a domed crown.
+    count = 40
+    rings = [(.85, .58, .52), (1.02, .72, .62), (1.31, .73, .62),
+             (1.40, .72, .60), (2.00, .68, .55), (2.10, .65, .52),
+             (2.22, .54, .44), (2.28, .33, .27), (2.30, .05, .04)]
+    verts = []
+    for height, rx, ry in rings:
+        for i in range(count):
+            a = 2*math.pi*i/count
+            ca, sa = math.cos(a), math.sin(a)
+            fore = .09*max(0, height-1.4)
+            verts.append((rx*math.copysign(abs(ca)**.38, ca),
+                          ry*math.copysign(abs(sa)**.38, sa)+fore, height))
+    faces, indices = [], []
+    for j in range(len(rings)-1):
+        for i in range(count):
+            ni = (i+1)%count
+            faces.append((j*count+i, j*count+ni, (j+1)*count+ni, (j+1)*count+i))
+            a = 2*math.pi*(i+.5)/count
+            ca, sa = math.cos(a), math.sin(a)
+            glass = (sa < -.52 and abs(ca) < .70) or (abs(ca) > .84 and -.30 < sa < .60)
+            indices.append(1 if j == 3 and glass else
+                           (2 if j in (2, 4) and glass else 0))
+    faces += [tuple(reversed(range(count))),
+              tuple((len(rings)-1)*count+i for i in range(count))]
+    indices += [0, 0]
+    mesh = bpy.data.meshes.new("curved integrated cabin mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    shell = bpy.data.objects.new("one piece rounded blue cabin and panoramic glass", mesh)
+    scene.collection.objects.link(shell)
+    shell.parent = cab
+    shell.data.materials.append(material("team"))
+    shell.data.materials.append(material("glass"))
+    shell.data.materials.append(material("dark_blue"))
+    for polygon, index in zip(shell.data.polygons, indices):
+        polygon.material_index = index
+        polygon.use_smooth = True
     seat = empty("BotSeat", cab, (0, -.09, .98))
     empty("P_BotSeat", seat)
     empty("P_BotEntry", cab, (.85, -.22, .80))

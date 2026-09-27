@@ -50,7 +50,7 @@ class Kit:
         if name in {"metal", "silver"}:
             bsdf.inputs["Metallic"].default_value = .36
         if name == "glass":
-            bsdf.inputs["Alpha"].default_value = .13
+            bsdf.inputs["Alpha"].default_value = .26
             bsdf.inputs["Roughness"].default_value = .12
             mat.surface_render_method = "BLENDED"
         if name == "lamp":

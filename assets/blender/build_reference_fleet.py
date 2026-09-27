@@ -27,14 +27,31 @@ REF = {
 def bot_shape(k, parent, prefix="", scale=1):
     body = k.empty(prefix + "Body", parent)
     body.scale = (scale,) * 3
-    k.sphere(prefix + "rounded blue torso", body, (0, 0, .42), (.31, .265, .32), "team", 32, 20)
-    k.sphere(prefix + "rounded blue lower body", body, (0, .01, .30), (.33, .255, .22), "team", 32, 20)
+    k.sphere(prefix + "rounded blue torso", body, (0, 0, .42), (.31, .225, .32), "team", 32, 20)
+    k.sphere(prefix + "rounded blue lower body", body, (0, .01, .25), (.33, .238, .17), "team", 32, 20)
     k.sphere(prefix + "orange fitted safety vest", body, (0, -.018, .47), (.312, .246, .235), "orange", 32, 20)
-    for x in (-.24, .24):
-        k.box(prefix + "reflective vest vertical", body, (x, -.183, .48), (.041, .025, .25), "stripe", .012)
-    belt = k.torus(prefix + "reflective waist band", body, (0, -.012, .37), .274, .026, "stripe", "Z")
-    belt.scale.y = .86
-    k.box(prefix + "vest zipper", body, (0, -.277, .48), (.026, .015, .18), "orange_light", .008)
+    # Reflective material follows the rounded vest rather than floating as bars.
+    def vest_point(a, z):
+        radius = math.sqrt(max(.01, 1 - ((z-.47)/.235)**2))
+        return ((.312*radius+.012)*math.cos(a),
+                -.018+(.246*radius+.032)*math.sin(a), z)
+    belt_verts = []
+    for zz in (.365, .425):
+        belt_verts.extend(vest_point(2*math.pi*i/40, zz) for i in range(40))
+    belt_faces = [(i, (i+1)%40, 40+(i+1)%40, 40+i) for i in range(40)]
+    k.quad_mesh(prefix + "vest fitted reflective waist band", body,
+                belt_verts, belt_faces, "stripe")
+    for x in (-.205, .205):
+        strip = []
+        for i in range(9):
+            zz = .425 + i*(.62-.425)/8
+            for xx in (x-.022, x+.022):
+                radius = math.sqrt(max(.01, 1 - ((zz-.47)/.235)**2))
+                yy = -.018-.246*radius*math.sqrt(max(.02, 1-(xx/(.312*radius))**2))-.035
+                strip.append((xx, yy, zz))
+        k.quad_mesh(prefix + "vest fitted vertical reflector", body, strip,
+                    [(2*i, 2*i+1, 2*i+3, 2*i+2) for i in range(8)], "stripe")
+    k.box(prefix + "vest front zip", body, (0, -.264, .49), (.023, .018, .15), "orange_light", .008)
     k.sphere(prefix + "blue head", body, (0, -.016, .715), (.285, .23, .21), "team", 32, 20)
     k.sphere(prefix + "large white face", body, (0, -.208, .695), (.245, .064, .145), "face", 32, 20)
     for x in (-.079, .079):
@@ -107,6 +124,28 @@ def track_pair(k, parent, half_x=.73, y=.0, length=1.92, tall=.64):
                 k.box("separate crawler tread", track, (0, yy, z), (.48, .11, .065), "track", .025, 3)
 
 
+def swept_body(k, parent, name, stations, color, edge=.055):
+    """Loft a solid around a designed side silhouette.
+
+    Each station is (y, z, half_width, half_height). The narrowed shoulders
+    create a rounded octagonal section without flattening the side profile.
+    """
+    verts = []
+    section = [(-.74, -1), (.74, -1), (1, -.70), (1, .70),
+               (.74, 1), (-.74, 1), (-1, .70), (-1, -.70)]
+    for yy, zz, half_w, half_h in stations:
+        verts.extend((u * half_w, yy, zz + v * half_h) for u, v in section)
+    faces = [tuple(reversed(range(8)))]
+    for j in range(len(stations)-1):
+        for i in range(8):
+            faces.append((j*8+i, j*8+(i+1)%8,
+                          (j+1)*8+(i+1)%8, (j+1)*8+i))
+    faces.append(tuple((len(stations)-1)*8+i for i in range(8)))
+    obj = k.quad_mesh(name, parent, verts, faces, color)
+    k.bevel(obj, edge, 4)
+    return obj
+
+
 def lamp_set(k, parent, roof_y, roof_z, pair=True, beacon=True):
     xs = (-.32, .32) if pair else (0,)
     for x in xs:
@@ -120,22 +159,56 @@ def cab(k, parent, y=.25, z=.80, white=True, scale=1):
     cabin = k.empty("Cabin", parent, (0, y, z))
     cabin.scale = (scale,) * 3
     shell = "white" if white else "team"
-    k.box("thick rounded cabin floor", cabin, (0, 0, .18), (1.28, 1.18, .24), shell, .11)
-    k.box("rounded cabin rear", cabin, (0, .50, .72), (1.26, .20, 1.04), shell, .11)
-    k.box("thick curved roof", cabin, (0, 0, 1.31), (1.34, 1.18, .19), shell, .095, 7)
-    for x in (-.57, .57):
-        k.beam("strong front window pillar", cabin, (x, -.48, .20), (x * .92, -.42, 1.29), .135, shell, .13, .06)
-        k.beam("strong rear pillar", cabin, (x, .46, .22), (x * .94, .46, 1.26), .135, shell, .13, .06)
-        k.box("lower cab door", cabin, (x, -.01, .29), (.14, .95, .34), shell, .055)
-        k.box("window sill", cabin, (x, -.01, .53), (.14, .95, .075), shell, .032)
-        k.box("tinted side glass", cabin, (x, -.02, .88), (.030, .77, .60), "glass", .025)
-        k.box("black wing mirror", cabin, (x * 1.23, -.36, .94), (.15, .10, .27), "track", .045)
-    k.box("large curved windshield", cabin, (0, -.47, .87), (1.00, .032, .69), "glass", .04)
+    # A continuous rounded outer skin. Glass is assigned to selected faces of
+    # the skin itself; there is no opaque wall behind it or four-post cage.
+    count = 40
+    rings = [
+        (.10, .58, .52, 0), (.22, .66, .59, 0),
+        (.38, .70, .60, 0), (.45, .70, .59, 0),
+        (1.18, .65, .53, 1), (1.27, .61, .49, 0),
+        (1.37, .52, .42, 0), (1.43, .35, .28, 0),
+        (1.46, .05, .04, 0),
+    ]
+    verts = []
+    for height, rx, ry, _ in rings:
+        for i in range(count):
+            a = 2 * math.pi * i / count
+            ca, sa = math.cos(a), math.sin(a)
+            # The front edge leans back into the curved roof as on the sheets.
+            fore = .035 + .09 * max(0, height - .56)
+            verts.append((rx * math.copysign(abs(ca) ** .36, ca),
+                          ry * math.copysign(abs(sa) ** .36, sa) + fore,
+                          height))
+    faces, mats = [], []
+    for j in range(len(rings) - 1):
+        for i in range(count):
+            ni = (i + 1) % count
+            faces.append((j * count + i, j * count + ni,
+                          (j + 1) * count + ni, (j + 1) * count + i))
+            a = 2 * math.pi * (i + .5) / count
+            ca, sa = math.cos(a), math.sin(a)
+            front_glass = sa < -.52 and abs(ca) < .70
+            side_glass = abs(ca) > .84 and -.30 < sa < .60
+            window_sector = front_glass or side_glass
+            mats.append(1 if j == 3 and window_sector else
+                        (2 if j in (2, 4) and window_sector else 0))
+    faces.append(tuple(reversed(tuple(range(count)))))
+    mats.append(0)
+    faces.append(tuple((len(rings)-1)*count+i for i in range(count)))
+    mats.append(0)
+    skin = k.quad_mesh("one piece domed cabin shell and panoramic glazing", cabin, verts, faces, shell)
+    skin.data.materials.append(k.mat("glass"))
+    skin.data.materials.append(k.mat("track"))
+    for poly, mi in zip(skin.data.polygons, mats):
+        poly.material_index = mi
+        poly.use_smooth = True
+    for x in (-.70, .70):
+        k.box("black wing mirror", cabin, (x * 1.13, -.35, .94), (.15, .10, .27), "track", .045)
     k.box("dark operator seat", cabin, (0, .24, .32), (.53, .37, .34), "dark", .10)
-    pilot = k.empty("pilot", cabin, (0, -.075, .17))
-    pilot.scale = (.77,) * 3
+    pilot = k.empty("pilot", cabin, (0, -.075, .20))
+    pilot.scale = (.88,) * 3
     bot_shape(k, pilot, "pilot ")
-    k.empty("P_BotSeat", cabin, (0, -.075, .17))
+    k.empty("P_BotSeat", cabin, (0, -.075, .20))
     k.empty("P_BotEntry", cabin, (.75, -.10, -.06))
     lamp_set(k, cabin, -.45, 1.50)
     return cabin
@@ -157,16 +230,15 @@ def vehicle_base(k, root, length=1.95, y=.05):
 
 
 def bucket_mesh(k, parent, center=(0, 0, 0), width=1.10, radius=.48, color="team"):
-    # A thick open scoop with visible concave inner surface and raised side cheeks.
-    verts = []
-    n = 12
-    for x in (-width / 2, width / 2):
-        for i in range(n + 1):
-            a = math.radians(-18 + i * 112)
-            verts.append((x + center[0], center[1] - math.sin(a) * radius, center[2] + math.cos(a) * radius))
-    faces = []
-    for i in range(n):
-        faces.append((i, i + 1, n + 2 + i, n + 1 + i))
+    # An open U-shaped scoop, with the lip projecting far forward from the pin.
+    # The section is designed in side view rather than reducing the bucket to a box.
+    profile = [(.26, .48), (.38, .29), (.43, .04), (.37, -.24),
+               (.20, -.47), (-.05, -.60), (-.34, -.60), (-.68, -.47)]
+    s = radius / .53
+    verts = [(center[0] + x, center[1] + yy*s, center[2] + zz*s)
+             for x in (-width/2, width/2) for yy, zz in profile]
+    n = len(profile)
+    faces = [(i, i + 1, n + i + 1, n + i) for i in range(n - 1)]
     obj = k.quad_mesh("deep curved bucket bowl", parent, verts, faces, color)
     solid = obj.modifiers.new("bucket shell thickness", "SOLIDIFY")
     solid.thickness = .10
@@ -174,19 +246,20 @@ def bucket_mesh(k, parent, center=(0, 0, 0), width=1.10, radius=.48, color="team
     bpy.ops.object.modifier_apply(modifier=solid.name)
     k.bevel(obj, .035, 3)
     for x in (-width / 2, width / 2):
-        side = [(x, center[1] + .23, center[2] + .40),
-                (x, center[1] + .36, center[2] - .21),
-                (x, center[1] + .10, center[2] - .43),
-                (x, center[1] - .46, center[2] - .32),
-                (x, center[1] - .23, center[2] - .12)]
-        cheek = k.quad_mesh("curved bucket end cheek", parent, side, [(0, 1, 2, 3, 4)], color)
+        side = [(center[0] + x, center[1] + yy*s, center[2] + zz*s)
+                for yy, zz in profile]
+        side += [(center[0] + x, center[1] - .61*s, center[2] - .08*s),
+                 (center[0] + x, center[1] - .32*s, center[2] + .29*s)]
+        cheek = k.quad_mesh("curved bucket end cheek", parent, side, [tuple(range(len(side)))], color)
         solid = cheek.modifiers.new("thick bucket cheek", "SOLIDIFY")
         solid.thickness = .08
         bpy.context.view_layer.objects.active = cheek
         bpy.ops.object.modifier_apply(modifier=solid.name)
         k.bevel(cheek, .03, 3)
-    for x in (-.34, 0, .34):
-        k.box("bucket tooth", parent, (x, center[1] - radius * .9, center[2] - .42), (.18, .24, .12), color, .035)
+    for x in (-width*.31, -width*.10, width*.10, width*.31):
+        k.box("rounded bucket tooth", parent,
+              (x, center[1] - .70*s, center[2] - .49*s),
+              (.16, .25, .13), color, .05)
 
 
 def excavator():
@@ -198,15 +271,19 @@ def excavator():
     rear_engine(k, upper, .84, 1.23)
     cab(k, upper, .32, .91, True, .90)
     boom = k.empty("boom", upper, (-.50, -.55, 1.34))
-    k.beam("massive curved blue boom", boom, (0, 0, 0), (-.06, -.85, 1.18), .32, "team", .29, .11)
+    swept_body(k, boom, "arched thick blue boom",
+               [(.10, .05, .24, .22), (-.30, .47, .26, .24),
+                (-.73, 1.08, .24, .23), (-.90, 1.18, .20, .18)], "team", .08)
     k.beam("orange hydraulic ram", boom, (.17, -.13, .18), (.16, -.72, 1.08), .13, "orange", .11, .05)
     k.cyl("large orange shoulder hinge", boom, (-.20, 0, .03), .23, .14, "orange", "X")
     arm = k.empty("arm", boom, (-.06, -.85, 1.18))
-    k.beam("chunky blue dipper arm", arm, (0, 0, 0), (.07, -.68, -.84), .25, "team", .22, .075)
+    swept_body(k, arm, "tapered rounded blue dipper arm",
+               [(.06, .02, .22, .20), (-.20, -.22, .23, .20),
+                (-.55, -.68, .21, .18), (-.72, -.83, .17, .16)], "team", .065)
     k.beam("bucket piston", arm, (.12, -.21, -.25), (.08, -.63, -.77), .085, "metal", .07)
     k.cyl("orange elbow hinge", arm, (.12, 0, 0), .17, .12, "orange", "X")
     bucket = k.empty("bucket", arm, (.07, -.68, -.84))
-    bucket_mesh(k, bucket, (0, -.15, -.23), 1.12, .53, "team")
+    bucket_mesh(k, bucket, (0, -.15, -.23), 1.48, .63, "team")
     k.cyl("bucket pin", bucket, (.58, 0, 0), .16, .12, "orange", "X")
     k.empty("P_DigContact", bucket, (0, -.70, -.70))
     k.clip(boom, "Dig", [(1, (0, 0, 0)), (15, (-.18, 0, 0)), (30, (0, 0, 0))])
@@ -217,14 +294,22 @@ def excavator():
 
 
 def curved_blade(k, parent, width=2.18, height=.79, color="orange", grader=False):
-    # Curved face made as a shallow ruled surface, with orange edge plates.
+    # The forward lip and swept-back top remain legible in the side silhouette.
     verts = []
-    for x in (-width / 2, width / 2):
-        for j in range(7):
-            z = -height / 2 + j * height / 6
-            y = -.13 + .19 * (1 - (z / (height / 2)) ** 2)
+    columns = 9
+    rows = 7
+    for col in range(columns):
+        x = -width/2 + col*width/(columns-1)
+        horizontal_cup = (.07 if grader else .23)*(1-(x/(width/2))**2)
+        for j in range(rows):
+            t = j / 6
+            z = -height / 2 + t * height
+            y = ((-.07 + .12*(1-(2*t-1)**2)) if grader
+                 else (-.38 + .73*t - .22*t*t)) + horizontal_cup
             verts.append((x, y, z))
-    faces = [(j, j + 1, 8 + j, 7 + j) for j in range(6)]
+    faces = [(col*rows+j, col*rows+j+1,
+              (col+1)*rows+j+1, (col+1)*rows+j)
+             for col in range(columns-1) for j in range(rows-1)]
     blade = k.quad_mesh("concave bulldozer blade" if not grader else "angled grader blade", parent, verts, faces,
                         "metal" if grader else color)
     solid = blade.modifiers.new("thick blade", "SOLIDIFY")
@@ -232,9 +317,44 @@ def curved_blade(k, parent, width=2.18, height=.79, color="orange", grader=False
     bpy.context.view_layer.objects.active = blade
     bpy.ops.object.modifier_apply(modifier=solid.name)
     k.bevel(blade, .024, 3)
-    k.box("bright orange cutting edge", parent, (0, -.14, -height / 2), (width + .06, .11, .12), "orange", .035)
+    for poly in blade.data.polygons:
+        poly.use_smooth = True
+    if grader:
+        k.box("bright orange cutting edge", parent, (0, -.08, -height / 2),
+              (width + .06, .16, .11), "orange", .035)
+    else:
+        lip = []
+        for col in range(columns):
+            x = -width/2 + col*width/(columns-1)
+            yy = -.38 + .23*(1-(x/(width/2))**2)
+            lip += [(x, -.46, -height/2-.015), (x, yy+.025, -height/2-.015)]
+        lip_obj = k.quad_mesh("continuous rounded forward blade lip", parent,
+                              lip, [(2*i, 2*i+1, 2*i+3, 2*i+2)
+                                    for i in range(columns-1)], "orange")
+        thick = lip_obj.modifiers.new("rolled lower cutting lip", "SOLIDIFY")
+        thick.thickness = .10
+        bpy.context.view_layer.objects.active = lip_obj
+        bpy.ops.object.modifier_apply(modifier=thick.name)
+        k.bevel(lip_obj, .035, 3)
+    if grader:
+        k.box("orange upper grader blade rail", parent, (0, -.07, height/2),
+              (width+.06, .11, .10), "orange", .025)
     for x in (-width / 2, width / 2):
-        k.box("blade reinforced end", parent, (x, -.03, 0), (.12, .32, height + .09), "orange", .06)
+        outline = []
+        for j in range(7):
+            t = j / 6
+            yy = (-.07 + .12*(1-(2*t-1)**2)) if grader else (-.38 + .73*t - .22*t*t)
+            outline.append((x, yy - .025,
+                            -height/2 + t*height))
+        outline += ([(x, .14, height/2), (x, .14, -height/2)] if grader
+                    else [(x, .42, height/2), (x, .32, -height/2)])
+        cheek = k.quad_mesh("swept blade side cheek", parent, outline,
+                            [tuple(range(len(outline)))], "orange")
+        solid = cheek.modifiers.new("substantial cheek", "SOLIDIFY")
+        solid.thickness = .12
+        bpy.context.view_layer.objects.active = cheek
+        bpy.ops.object.modifier_apply(modifier=solid.name)
+        k.bevel(cheek, .035, 3)
 
 
 def bulldozer():
@@ -258,6 +378,13 @@ def bulldozer():
 
 def wheel(k, parent, x, y, z, r=.43):
     k.cyl("deep-tread black tire", parent, (x, y, z), r, .33, "track", "X", 28, .075)
+    for i in range(14):
+        a = 2*math.pi*i/14
+        tread = k.box("rounded angled tire tread", parent,
+                      (x, y + r*.98*math.sin(a), z + r*.98*math.cos(a)),
+                      (.35, .115, .065), "black", .018, 3)
+        tread.rotation_euler.x = -a
+        tread.rotation_euler.z = math.radians(13 if i % 2 else -13)
     k.cyl("orange inset hub", parent, (x + (.178 if x > 0 else -.178), y, z), r * .56, .045, "orange", "X", 24, .025)
     k.cyl("gold wheel center", parent, (x + (.205 if x > 0 else -.205), y, z), r * .23, .04, "orange_light", "X", 20, .015)
 
@@ -273,15 +400,16 @@ def grader():
         for y in (-.38, .38):
             wheel(k, rear_axle, x, y, .43, .43)
     body = k.empty("Body", root)
-    k.box("long narrow blue front frame", body, (0, -.73, .83), (.55, 2.82, .25), "team", .10)
-    k.box("square rounded blue front nose", body, (0, -1.83, .88), (.64, .57, .47), "team", .10)
+    swept_body(k, body, "arched long front gooseneck body",
+               [(-2.13, .78, .30, .20), (-1.80, .80, .33, .23),
+                (-1.42, .94, .29, .18), (-.90, 1.12, .23, .16),
+                (-.45, 1.10, .24, .19)], "team", .085)
     k.box("wide blue rear engine", body, (0, .94, 1.05), (1.25, 1.20, .85), "team", .14)
     k.box("orange rear engine side", body, (-.67, 1.22, 1.05), (.09, .63, .65), "orange", .045)
     for zz in (.89, 1.04, 1.19):
         k.box("rear dark grille", body, (0, 1.56, zz), (.57, .045, .045), "vent", .015)
     k.cyl("upright rear exhaust", body, (.51, 1.07, 1.78), .075, .81, "track", "Z", 18)
-    cab(k, body, .28, .70, True, .83)
-    k.beam("arched blue front gooseneck", body, (0, -.20, .90), (0, -1.42, .90), .22, "team", .18, .07)
+    cab(k, body, .28, .70, True, .92)
     for x in (-.50, .50):
         k.cyl("low front amber lamp", body, (x, -1.46, 1.05), .11, .12, "lamp", "Y")
     link = k.empty("GraderLink", body, (0, -.63, .64))
@@ -289,7 +417,7 @@ def grader():
     for x in (-.59, .59):
         k.beam("amber blade lift linkage", link, (x, .12, 0), (x, -.08, -.20), .10, "orange", .09)
     blade = k.empty("grader_work_blade", link, (0, -.09, -.27))
-    blade.rotation_euler.z = math.radians(10)
+    blade.rotation_euler.z = math.radians(18)
     curved_blade(k, blade, 2.28, .50, grader=True)
     k.empty("P_GradeContact", blade, (0, -.15, -.31))
     k.clip(blade, "Grade", [(1, (0, 0, .16)), (16, (.02, 0, -.16)), (31, (0, 0, .16))])
@@ -324,23 +452,23 @@ def bridge_launcher():
     # Tall lattice arm dominates the side silhouette; orange clamps bracket each end.
     for x in (-.53, .53):
         for z in (-.24, .24):
-            k.beam("continuous blue truss chord", truss, (x, -1.22, z), (x, 2.15, z), .10, "team", .09, .035)
-        for i in range(7):
-            y0 = -1.20 + i * .47
+            k.beam("continuous blue truss chord", truss, (x, -1.22, z), (x, 2.65, z), .10, "team", .09, .035)
+        for i in range(8):
+            y0 = -1.20 + i * .48
             a = (x, y0, -.23 if i % 2 else .23)
-            b = (x, y0 + .47, .23 if i % 2 else -.23)
+            b = (x, y0 + .48, .23 if i % 2 else -.23)
             k.beam("triangular lattice strut", truss, a, b, .085, "team", .08, .025)
-    for y in (-1.23, 2.17):
+    for y in (-1.23, 2.67):
         k.box("thick amber girder clamp", truss, (0, y, 0), (1.33, .35, .73), "orange", .10)
         for x in (-.70, .70):
             k.cyl("clamp hinge", truss, (x, y, 0), .15, .13, "orange_light", "X")
     for x in (-.40, .40):
-        k.beam("silver hydraulic guide", truss, (x, -1.18, .34), (x, 2.13, .34), .058, "silver", .06, .018)
+        k.beam("silver hydraulic guide", truss, (x, -1.18, .34), (x, 2.63, .34), .058, "silver", .06, .018)
     carrier = k.empty("GirderCarrier", chassis, (0, 0, 1.79))
-    k.box("large pale bridge segment", carrier, (0, .72, 0), (1.70, 3.65, .35), "stone_light", .045)
+    k.box("large pale bridge segment", carrier, (0, .91, 0), (1.70, 4.05, .35), "stone_light", .045)
     for x in (-.88, .88):
-        k.box("blue bridge segment rail", carrier, (x, .72, -.03), (.16, 3.65, .33), "team", .035)
-    for i in range(7):
+        k.box("blue bridge segment rail", carrier, (x, .91, -.03), (.16, 4.05, .33), "team", .035)
+    for i in range(8):
         k.box("bridge deck separation", carrier, (0, -.85 + i * .52, .19), (1.69, .035, .025), "stone", .008)
     k.empty("P_BridgeSegmentSocket", carrier, (0, -1.19, 0))
     for sy, yy in (("F", -1.0), ("R", 1.0)):
@@ -360,10 +488,17 @@ def bridge_launcher():
 
 def bridge_post(k, parent, x, y, steel=False):
     stone = "metal" if steel else "stone"
-    cap = "silver" if steel else "stone_light"
+    cap = "stone_dark" if steel else "stone_light"
     k.box("thick corner bridge post", parent, (x, y, .84), (.43, .47, 1.67), stone, .10, 6)
     k.box("wide carved post base", parent, (x, y, .13), (.56, .60, .32), cap, .07)
-    k.box("wide rounded post cap", parent, (x, y, 1.73), (.58, .62, .30), cap, .09, 6)
+    if steel:
+        k.cyl("faceted steel post cap", parent, (x, y, 1.73), .34, .30,
+              cap, "Z", 12, .055)
+        k.cyl("warm inset bridge post lamp band", parent, (x, y, 1.59),
+              .285, .065, "orange_light", "Z", 16, .012)
+    else:
+        k.box("large rounded carved stone post cap", parent,
+              (x, y, 1.73), (.60, .62, .32), cap, .11, 6)
     for z in (.38, 1.26):
         k.box("steel bolted post collar", parent, (x, y, z), (.56, .60, .22), "stone_dark" if not steel else "track", .04)
         for xx in (-.20, .20):
@@ -378,16 +513,26 @@ def stone_bridge():
     top = k.empty("StoneBridge")
     root = k.empty("Root", top, (0, 0, -1.1))
     healthy = k.empty("Healthy", root)
-    k.box("thick stone deck substrate", healthy, (0, 0, .74), (2.42, 5.54, .42), "stone_dark", .09)
+    k.box("stone deck substrate", healthy, (0, 0, .82), (2.42, 5.54, .25), "stone_dark", .07)
     for x in (-.77, 0, .77):
-        for j in range(6):
-            y = -2.29 + j * .91
-            k.box("individual rounded stone road slab", healthy, (x, y, 1.01), (.75, .88, .17),
+        for j in range(3):
+            y = -1.75 + j * 1.75
+            k.box("individual broad stone road slab", healthy, (x, y, 1.01), (.75, 1.69, .17),
                   "stone_light" if (j + round(x * 3)) % 3 == 0 else "stone", .055, 5)
     for x in (-1.26, 1.26):
         for j in range(6):
             k.box("raised stone curb blocks", healthy, (x, -2.29 + j * .91, 1.03), (.29, .85, .34), "stone_light", .045)
-        k.beam("stone bridge side arch support", healthy, (x, -2.46, .54), (x, 2.46, .54), .20, "stone", .18)
+        ys = [-2.61, -1.9, -1.0, 0, 1.0, 1.9, 2.61]
+        underside = [.24, .33, .50, .61, .50, .33, .24]
+        arch_outline = [(x, yy, .94) for yy in ys]
+        arch_outline += [(x, yy, zz) for yy, zz in reversed(list(zip(ys, underside)))]
+        wall = k.quad_mesh("continuous carved stone arch side profile", healthy,
+                           arch_outline, [tuple(range(len(arch_outline)))], "stone")
+        thick = wall.modifiers.new("wide stone arch depth", "SOLIDIFY")
+        thick.thickness = .32
+        bpy.context.view_layer.objects.active = wall
+        bpy.ops.object.modifier_apply(modifier=thick.name)
+        k.bevel(wall, .04, 3)
     for x in (-1.33, 1.33):
         for y in (-2.55, 2.55):
             bridge_post(k, healthy, x, y)
@@ -404,21 +549,33 @@ def steel_bridge():
     top = k.empty("SteelBridge")
     root = k.empty("Root", top, (0, 0, -1.1))
     healthy = k.empty("Healthy", root)
-    for x in (-.83, 0, .83):
-        for j in range(6):
-            k.box("riveted steel road plate", healthy, (x, -2.30 + j * .92, 1.04), (.79, .88, .13),
-                  "silver" if j % 3 == 0 else "metal", .04, 4)
-            for xx in (-.26, .26):
-                for dy in (-.31, .31):
-                    k.sphere("steel deck rivet", healthy, (x + xx, -2.30 + j * .92 + dy, 1.115),
-                             (.024, .024, .011), "stone_dark", 10, 6)
+    for j in range(3):
+        yy = -1.73 + j*1.73
+        k.box("broad riveted steel road plate", healthy, (0, yy, 1.04),
+              (2.32, 1.66, .13), "metal" if j != 1 else "silver", .04, 4)
+        for xx in (-1.04, 1.04):
+            for dy in (-.70, -.23, .23, .70):
+                k.sphere("steel deck rivet", healthy, (xx, yy+dy, 1.115),
+                         (.030, .030, .014), "stone_dark", 10, 6)
+    # The supplied sheet shows D1 light damage: shallow visible cracks while
+    # the deck is still continuous and functional.
+    for points in [
+        [(-.38, -2.35), (-.18, -2.12), (-.30, -1.93), (-.07, -1.70)],
+        [(.28, -.52), (.09, -.32), (.20, -.11), (-.03, .10)],
+    ]:
+        for (x0, y0), (x1, y1) in zip(points, points[1:]):
+            k.beam("D1 shallow deck crack", healthy, (x0, y0, 1.122),
+                   (x1, y1, 1.122), .022, "stone_dark", .011, .005)
     for x in (-1.26, 1.26):
         for z in (.47, 1.01):
             k.beam("long riveted side beam", healthy, (x, -2.59, z), (x, 2.59, z), .15, "track", .13, .035)
-        for j in range(6):
-            a = (x, -2.55 + j * .86, .50 if j % 2 else .99)
-            b = (x, -1.69 + j * .86, .99 if j % 2 else .50)
-            k.beam("crossing steel truss brace", healthy, a, b, .10, "metal", .08, .025)
+        for j in range(3):
+            y0 = -2.55 + j*1.70
+            y1 = y0 + 1.70
+            k.beam("full crossing steel truss brace", healthy,
+                   (x, y0, .50), (x, y1, .99), .12, "metal", .10, .028)
+            k.beam("full crossing steel truss brace", healthy,
+                   (x, y0, .99), (x, y1, .50), .12, "metal", .10, .028)
     for x in (-1.35, 1.35):
         for y in (-2.55, 2.55):
             bridge_post(k, healthy, x, y, steel=True)
