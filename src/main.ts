@@ -22,6 +22,9 @@ import type { OnlinePlayer, ServerMessage } from "./net/client";
 import type { Team } from "./game/types";
 import { civilTrivia } from "./content/trivia";
 import { TriviaViewer } from "./render/trivia";
+import { flushFeedback, submitDifficultyFeedback } from "./net/feedback";
+import { cpuConfigVersion } from "./game/balance";
+import { flushSoloMatches, submitSoloMatch } from "./net/matches";
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) =>
   document.querySelector<T>(selector)!;
@@ -70,6 +73,8 @@ let titleRedCPU = new CPU("normal", "red");
 let titleAccumulator = 0;
 let cpuEnabled = true;
 let difficulty: Difficulty = "normal";
+let soloMatchId = "";
+let feedbackAnswer: Difficulty | null = null;
 let started = false,
   paused = false,
   selected: string | null = null,
@@ -362,6 +367,8 @@ function prepareSolo() {
   tutorialStage = null;
   tutorialMarchBot = null;
   mode = "cpu";
+  soloMatchId = crypto.randomUUID();
+  feedbackAnswer = null;
   playerTeam = "blue";
   sound.unlock();
   state = createGame(Date.now() >>> 0);
@@ -1183,6 +1190,17 @@ function finish() {
   closePanel();
   const win = state.winner === playerTeam,
     draw = state.winner === "draw";
+  if (mode === "cpu" && !tutorialStage && soloMatchId) {
+    void submitSoloMatch({
+      id: soloMatchId,
+      selectedDifficulty: difficulty,
+      configVersion: cpuConfigVersion(M.cpu, difficulty),
+      outcome: draw ? "draw" : win ? "win" : "loss",
+      durationSeconds: Math.round(state.time),
+      playerCastleHp: state.teams[playerTeam].hp,
+      cpuCastleHp: state.teams[playerTeam === "blue" ? "red" : "blue"].hp,
+    });
+  }
   $("#result").classList.remove("hidden");
   $("#result").innerHTML =
     `<article class="result-card ${win ? "victory" : ""}"><div class="result-main"><div class="result-crown">${icon("crown")}</div><div class="eyebrow">ゲーム終了</div><h2>${draw ? "引き分け！" : win ? "道をつないだ。<br>勝利をつかんだ！" : "次こそ、<br>勝利への道を。"}</h2><p>${draw ? "最後まで守り切りました。次の工事で決着を。" : win ? "5体の小さなBotたちに、大きな拍手を。" : "掘るBotと攻めるBotの配分、相手の道をふさぐタイミングがカギ。"}</p><div class="result-score"><span class="blue">${state.teams.blue.hp}</span><small>城の残り</small><span class="red">${state.teams.red.hp}</span></div><div class="result-stats"><div><b>${state.teams[playerTeam].stats.mined}</b><small>集めた資源</small></div><div><b>${state.teams[playerTeam].stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
@@ -1192,7 +1210,7 @@ function finish() {
       .padStart(
         2,
         "0",
-      )}</b><small>工事時間</small></div></div></div><section id="result-trivia" class="result-trivia" aria-label="土木まめちしき"></section><div class="result-actions"><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一度遊ぶ"} ${icon("march")}</button><button id="back-title" class="secondary">${icon("home")}<span>タイトルへ戻る</span></button></div></article>`;
+      )}</b><small>工事時間</small></div></div>${mode === "cpu" && !tutorialStage ? `<section class="result-feedback" aria-label="CPUの強さについてのアンケート"><strong>今回のCPU、どう感じた？</strong><small>回答は強さの調整に役立てます · 任意</small><div class="result-feedback-choices">${(["easy", "normal", "hard"] as const).map((value) => `<button type="button" data-feedback="${value}">${{ easy: "かんたん", normal: "ふつう", hard: "むずかしい" }[value]}</button>`).join("")}</div><p id="feedback-status" role="status" aria-live="polite"></p></section>` : ""}</div><section id="result-trivia" class="result-trivia" aria-label="土木まめちしき"></section><div class="result-actions"><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一度遊ぶ"} ${icon("march")}</button><button id="back-title" class="secondary">${icon("home")}<span>タイトルへ戻る</span></button></div></article>`;
   firstResultTrivia();
   sound.play("end");
   sound.setMusicScene(win ? "victory" : "retry");
@@ -1297,6 +1315,37 @@ app.addEventListener("click", (e) => {
     if (key !== "join") joinFeedback = "";
     sound.play("ui");
     updateJoinKeypad();
+  } else if (button.dataset.feedback) {
+    const answer = button.dataset.feedback as Difficulty;
+    if (mode !== "cpu" || feedbackAnswer || !soloMatchId) return;
+    feedbackAnswer = answer;
+    sound.play("ui");
+    document
+      .querySelectorAll<HTMLButtonElement>("[data-feedback]")
+      .forEach((choice) => {
+        choice.disabled = true;
+        choice.classList.toggle("chosen", choice === button);
+      });
+    const status = $("#feedback-status");
+    status.textContent = "回答を送っています…";
+    void submitDifficultyFeedback({
+      id: soloMatchId,
+      selectedDifficulty: difficulty,
+      feltDifficulty: answer,
+      outcome:
+        state.winner === "draw"
+          ? "draw"
+          : state.winner === playerTeam
+            ? "win"
+            : "loss",
+      durationSeconds: Math.round(state.time),
+      playerCastleHp: state.teams[playerTeam].hp,
+      cpuCastleHp: state.teams[playerTeam === "blue" ? "red" : "blue"].hp,
+    }).then((sent) => {
+      status.textContent = sent
+        ? "ありがとう！ 次の調整に役立てます。"
+        : "回答を保存しました。通信が戻ったら送信します。";
+    });
   } else if (button.dataset.difficulty) {
     sound.unlock();
     sound.resumeMusic();
@@ -1798,3 +1847,5 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
   if (document.readyState === "complete") registerOffline();
   else window.addEventListener("load", registerOffline, { once: true });
 }
+void flushFeedback();
+void flushSoloMatches();

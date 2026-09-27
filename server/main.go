@@ -553,6 +553,22 @@ func main() {
 		log.Fatal(err)
 	}
 	h := newHub(conf)
+	feedbackPath := os.Getenv("INFRA_FEEDBACK_PATH")
+	if feedbackPath == "" {
+		feedbackPath = "feedback.jsonl"
+	}
+	feedback, err := newFeedbackStore(feedbackPath)
+	if err != nil {
+		log.Fatalf("feedback storage unavailable: %v", err)
+	}
+	matchesPath := os.Getenv("INFRA_MATCH_PATH")
+	if matchesPath == "" {
+		matchesPath = "matches.jsonl"
+	}
+	matches, err := newMatchStore(matchesPath)
+	if err != nil {
+		log.Fatalf("match storage unavailable: %v", err)
+	}
 	go func() {
 		ticker := time.NewTicker(time.Duration(conf.Game.Tick * float64(time.Second)))
 		defer ticker.Stop()
@@ -561,6 +577,9 @@ func main() {
 		}
 	}()
 	http.HandleFunc("/ws", h.serveWS)
+	http.HandleFunc("/feedback", feedback.serveHTTP)
+	http.HandleFunc("/matches", matches.serveHTTP)
+	http.HandleFunc("/balance/export", balanceExportHandler(feedbackPath, matchesPath, os.Getenv("INFRA_BALANCE_EXPORT_TOKEN")))
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "ok") })
 	http.Handle("/", http.FileServer(http.Dir(*static)))
 	log.Printf("INFRA RUSH online server on %s", *addr)

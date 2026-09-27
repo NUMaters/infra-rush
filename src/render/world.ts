@@ -28,6 +28,36 @@ function rigPart(root: T.Object3D, name: string): T.Object3D | undefined {
   });
   return found;
 }
+function strengthenWalk(animations: T.AnimationClip[]) {
+  const idle = animations.find((clip) => clip.name === "ACT_Idle");
+  const walk = animations.find((clip) => clip.name === "ACT_Walk");
+  if (!idle || !walk) return;
+  const rest = new T.Quaternion();
+  const pose = new T.Quaternion();
+  const delta = new T.Quaternion();
+  const axis = new T.Vector3();
+  for (const track of walk.tracks) {
+    if (
+      !(track instanceof T.QuaternionKeyframeTrack) ||
+      !/(Arm|Leg)/.test(track.name)
+    )
+      continue;
+    const idleTrack = idle.tracks.find((item) => item.name === track.name);
+    if (!(idleTrack instanceof T.QuaternionKeyframeTrack)) continue;
+    rest.fromArray(idleTrack.values, 0).normalize();
+    for (let i = 0; i < track.values.length; i += 4) {
+      pose.fromArray(track.values, i).normalize();
+      if (rest.dot(pose) < 0) pose.set(-pose.x, -pose.y, -pose.z, -pose.w);
+      delta.copy(rest).invert().multiply(pose);
+      const sine = Math.hypot(delta.x, delta.y, delta.z);
+      if (sine < 1e-6) continue;
+      axis.set(delta.x / sine, delta.y / sine, delta.z / sine);
+      const angle = 2 * Math.atan2(sine, delta.w);
+      pose.copy(rest).multiply(delta.setFromAxisAngle(axis, angle * 1.8));
+      pose.normalize().toArray(track.values, i);
+    }
+  }
+}
 interface Particle {
   mesh: T.Mesh;
   velocity: T.Vector3;
@@ -52,13 +82,15 @@ export class World {
       kind: string;
       ring: T.Mesh;
       walkBlend: number;
-      facing: number;
       rigHeading: number;
       pose: ExcavatorPose;
       team: Team;
       mixer: T.AnimationMixer | null;
       actions: Map<string, T.AnimationAction>;
       animationState: string;
+      nextBlinkAt: number;
+      travelPosition: T.Vector2;
+      heading: number;
     }
   >();
   private bridges = new Map<
@@ -233,6 +265,7 @@ export class World {
           gltf.scene.scale.setScalar(1 / 3);
           root.add(gltf.scene);
           this.templates.set(n, root);
+          strengthenWalk(gltf.animations);
           this.botAnimations = gltf.animations;
         } else {
           this.templates.set(n, gltf.scene);
@@ -837,7 +870,7 @@ export class World {
       for (const clip of this.botAnimations)
         actions.set(clip.name, mixer.clipAction(clip));
       actions.get("ACT_Idle")?.play();
-      actions.get("ACT_Blink")?.play();
+      actions.get("ACT_Blink")?.setLoop(T.LoopOnce, 1);
     }
     a = {
       bot,
@@ -845,13 +878,15 @@ export class World {
       kind: "",
       ring,
       walkBlend: 0,
-      facing: b.team === "blue" ? 0 : Math.PI,
-      rigHeading: 0,
+      rigHeading: b.team === "blue" ? 0 : Math.PI,
       pose: { ...EXCAVATOR_TRAVEL_POSE },
       team: b.team,
       mixer,
       actions,
       animationState: "ACT_Idle",
+      nextBlinkAt: this.clock + 2.5 + b.index * 0.7,
+      travelPosition: new T.Vector2(b.position[0], b.position[1]),
+      heading: b.team === "blue" ? 0 : Math.PI,
     };
     this.actors.set(b.id, a);
     return a;
@@ -1069,12 +1104,6 @@ export class World {
           ? M.vehicles[b.action as keyof typeof M.vehicles]
           : "";
       const moving = b.state === "MOVING" || b.state === "MARCHING";
-      let facing = b.team === "blue" ? 0 : Math.PI;
-      if (moving && b.path.length) {
-        const p = b.path[0];
-        facing = Math.atan2(p[0] - b.position[0], p[1] - b.position[1]);
-      }
-      const rigHeading = moving ? facing : vehicleWorkHeading(b, s.bridges);
       if (a.kind !== kind) {
         if (a.rig) {
           this.dynamic.remove(a.rig);
@@ -1083,16 +1112,39 @@ export class World {
         if (kind) {
           a.rig = this.model(kind, b.team);
           this.dynamic.add(a.rig);
-          a.rigHeading = rigHeading;
+          a.rigHeading = moving ? a.heading : vehicleWorkHeading(b, s.bridges);
           a.pose = { ...EXCAVATOR_TRAVEL_POSE };
         }
         a.kind = kind;
       }
       a.bot.visible = !kind;
-      a.bot.position.set(b.position[0], 0.35, b.position[1]);
-      // Turn toward each new path segment instead of snapping at waypoints.
-      a.facing = dampAngle(a.facing, facing, 14, dt);
-      a.bot.rotation.y = a.facing;
+      const previousX = a.travelPosition.x;
+      const previousZ = a.travelPosition.y;
+      const distanceToState = Math.hypot(
+        b.position[0] - previousX,
+        b.position[1] - previousZ,
+      );
+      if (distanceToState > 3) {
+        // Returning Bots can teleport home; do not drag the rendered model
+        // through the map while catching up to that state change.
+        a.travelPosition.set(b.position[0], b.position[1]);
+      } else {
+        const follow = 1 - Math.exp(-6 * dt);
+        a.travelPosition.x += (b.position[0] - previousX) * follow;
+        a.travelPosition.y += (b.position[1] - previousZ) * follow;
+      }
+      a.bot.position.set(a.travelPosition.x, 0.35, a.travelPosition.y);
+      const travelX = a.travelPosition.x - previousX;
+      const travelZ = a.travelPosition.y - previousZ;
+      if (moving && Math.hypot(travelX, travelZ) > 1e-5) {
+        const desiredHeading = Math.atan2(travelX, travelZ);
+        const turn = Math.atan2(
+          Math.sin(desiredHeading - a.heading),
+          Math.cos(desiredHeading - a.heading),
+        );
+        a.heading += turn * (1 - Math.exp(-11 * dt));
+      }
+      a.bot.rotation.y = a.heading;
       let scale = 1;
       if (b.state === "RETURNING")
         scale = Math.max(0.01, 1 - b.progress / b.duration);
@@ -1134,6 +1186,10 @@ export class World {
           a.actions.get(nextAnimation)?.reset().fadeIn(0.15).play();
           a.animationState = nextAnimation;
         }
+        if (this.clock >= a.nextBlinkAt) {
+          a.actions.get("ACT_Blink")?.reset().play();
+          a.nextBlinkAt = this.clock + 3.5 + Math.random() * 2.2;
+        }
         a.mixer.update(dt);
       } else
         for (const sideName of ["left", "right"] as const) {
@@ -1164,6 +1220,9 @@ export class World {
       if (a.rig) {
         a.rig.position.copy(a.bot.position);
         // Heavy machines pivot on their tracks, so they turn more slowly.
+        const rigHeading = moving
+          ? a.heading
+          : vehicleWorkHeading(b, s.bridges);
         a.rigHeading = dampAngle(a.rigHeading, rigHeading, 4.5, dt);
         a.rig.rotation.y = a.rigHeading;
         const work = !moving;
@@ -1252,7 +1311,7 @@ export class World {
         }
       }
       a.ring.visible = b.id === this.selected;
-      a.ring.position.set(b.position[0], 0.4, b.position[1]);
+      a.ring.position.set(a.travelPosition.x, 0.4, a.travelPosition.y);
       a.ring.scale.setScalar(kind ? 1.6 : 1);
     }
     for (const b of s.bridges) {
