@@ -233,23 +233,24 @@ h1 {
 }
 .title-tagline {
   display: inline-block;
-  padding: 10px 16px 11px;
-  border: 2px solid #ffffffd9;
-  border-radius: 17px;
-  background: #f3ffeedf;
-  box-shadow: 0 5px 16px #144b4770;
-  backdrop-filter: blur(10px);
+  padding: 5px 8px 6px;
+  border-radius: 9px;
+  background: #f3ffeea8;
+  backdrop-filter: blur(4px);
 }
-.title-tagline h1 {
+.title-copy .title-tagline h1 {
   margin: 0;
   color: #184961;
-  text-shadow: 0 1px #fff;
-}
-.title-tagline p {
-  margin: 2px 0 0;
-  color: #256b78;
-  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 0;
   line-height: 1.3;
+}
+.title-copy .title-tagline p {
+  margin: 1px 0 0;
+  color: #256b78;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.25;
 }
 .start-card {
   position: absolute;
@@ -1410,7 +1411,7 @@ h1 {
   gap: 8px;
 }
 .room-join #room-id-input {
-  flex: 1;
+  width: 100%;
   min-width: 0;
   min-height: 52px;
   letter-spacing: 0.12em;
@@ -1421,13 +1422,10 @@ h1 {
   font-size: 14px;
   font-weight: 900;
 }
-.room-join > div:not(.room-keypad) > button:last-child {
-  flex: 0 0 82px;
-  margin: 0;
-  border-radius: 12px;
-  background: #dff1f8;
-  color: #235876;
-  font-weight: 900;
+.room-join #room-id-input.has-code {
+  font-size: clamp(25px, 7vw, 31px);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2em;
 }
 .room-join .room-keypad {
   display: grid;
@@ -1445,9 +1443,17 @@ h1 {
   font-weight: 900;
   box-shadow: 0 3px 0 #9dc4d4;
 }
-.room-keypad button[data-keypad="done"] {
+.room-keypad button[data-keypad="join"] {
   background: #ffcf48;
-  font-size: 15px;
+  font-size: 18px;
+}
+.join-feedback {
+  min-height: 22px;
+  margin: 10px 0 0;
+  color: #a44c43;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
 }
 #share-room {
   width: 100%;

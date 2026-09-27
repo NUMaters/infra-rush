@@ -82,6 +82,8 @@ let onlineStatus = "";
 let nameDraft = "";
 let joinDraft = "";
 let keypadOpen = false;
+let joinPending = false;
+let joinFeedback = "";
 let pendingInvite = /^[0-9]{5}$/.test(
   new URLSearchParams(location.search).get("room") ?? "",
 )
@@ -728,7 +730,7 @@ function renderOnlineLobby() {
       ${status === "公開対戦サーバーの設定が必要です" ? '<p role="status">公開版の対戦サーバーは準備中です。1人プレイは遊べます。</p>' : ""}
       <button id="online-random" class="primary" ${connected ? "" : "disabled"}>ランダム対戦 ${icon("march")}</button>
       <button id="online-create" class="secondary" ${connected ? "" : "disabled"}>専用部屋を作成する</button>
-      <div class="room-join"><label>招待コードで参加</label><div><button id="room-id-input" type="button" aria-label="招待コードを入力" aria-expanded="${keypadOpen}">${joinDraft || "数字5桁を入力"}</button><button id="online-join" class="secondary" ${connected && joinDraft.length === 5 ? "" : "disabled"}>参加</button></div>${keypadOpen ? `<div class="room-keypad" aria-label="招待コード用テンキー">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" data-keypad="${n}">${n}</button>`).join("")}<button type="button" data-keypad="erase" aria-label="一文字消す">⌫</button><button type="button" data-keypad="0">0</button><button type="button" data-keypad="done">完了</button></div>` : ""}</div>`;
+      <div class="room-join"><label>招待コードで参加</label><div class="room-input-row"><button id="room-id-input" type="button" class="${joinDraft ? "has-code" : ""}" aria-label="招待コードを入力" aria-expanded="${keypadOpen}">${joinDraft || "数字5桁を入力"}</button></div>${keypadOpen ? `<div class="room-keypad" aria-label="招待コード用テンキー">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" data-keypad="${n}">${n}</button>`).join("")}<button type="button" data-keypad="erase" aria-label="一文字消す">⌫</button><button type="button" data-keypad="0">0</button><button type="button" data-keypad="join" ${connected && joinDraft.length === 5 && !joinPending ? "" : "disabled"}>${joinPending ? "探しています…" : "参加"}</button></div><p id="join-feedback" class="join-feedback" role="status" aria-live="polite">${escapeHtml(joinFeedback)}</p>` : ""}</div>`;
   } else if (onlinePhase === "queueing") {
     content = `<div class="match-spinner" aria-hidden="true"></div><h2>相手を探しています</h2><p>ランダム対戦を選んだ人とマッチングします。</p>`;
   } else if (onlinePhase === "waiting") {
@@ -742,15 +744,36 @@ function renderOnlineLobby() {
   }
   lobby.innerHTML = `<article class="dialog online-dialog ${onlinePhase === "menu" && keypadOpen ? "keypad-open" : ""}"><button id="online-close" class="circle close-online" aria-label="オンライン対戦を閉じる">${icon("close")}</button>${content}${status ? `<small class="online-status">${escapeHtml(status)}</small>` : ""}</article>`;
 }
+function updateJoinKeypad() {
+  const input = document.getElementById("room-id-input");
+  if (!input) return;
+  input.textContent = joinDraft || "数字5桁を入力";
+  input.classList.toggle("has-code", !!joinDraft);
+  const join = document.querySelector<HTMLButtonElement>(
+    '[data-keypad="join"]',
+  );
+  if (join) {
+    join.disabled = joinPending || joinDraft.length !== 5 || !online?.connected;
+    join.textContent = joinPending ? "探しています…" : "参加";
+  }
+  const feedback = document.getElementById("join-feedback");
+  if (feedback) feedback.textContent = joinFeedback;
+}
 function showOnline() {
   mode = "online";
   showOpponentConnection(false);
   onlinePhase = "menu";
   onlineStatus = "";
+  joinPending = false;
+  joinFeedback = "";
   $("#online-lobby").classList.remove("hidden");
   if (!online) {
     online = new OnlineClient();
     online.onStatus = (status) => {
+      if (status === "reconnecting" && joinPending) {
+        joinPending = false;
+        joinFeedback = "接続が切れました。もう一度参加してください";
+      }
       onlineStatus =
         status === "connected"
           ? ""
@@ -810,6 +833,9 @@ function handleOnlineMessage(message: ServerMessage) {
     onlinePhase = "queueing";
     renderOnlineLobby();
   } else if (message.type === "room") {
+    joinPending = false;
+    joinFeedback = "";
+    keypadOpen = false;
     onlineRoom = message.roomId;
     playerTeam = message.team;
     onlinePlayers = message.players;
@@ -852,6 +878,12 @@ function handleOnlineMessage(message: ServerMessage) {
     toast(message.error);
     sound.play("warning");
   } else if (message.type === "error") {
+    if (joinPending && onlinePhase === "menu") {
+      joinPending = false;
+      joinFeedback = message.message;
+      updateJoinKeypad();
+      return;
+    }
     onlineStatus = message.message;
     renderOnlineLobby();
     toast(message.message);
@@ -1227,16 +1259,21 @@ app.addEventListener("click", (e) => {
     return;
   const firstAudioGesture = !audioGestureSeen;
   audioGestureSeen = true;
-  tapBurst(button);
+  if (!button.dataset.keypad) tapBurst(button);
   if (button.dataset.action) doAction(button.dataset.action as Action);
   else if (button.dataset.keypad) {
     const key = button.dataset.keypad;
     if (key === "erase") joinDraft = joinDraft.slice(0, -1);
-    else if (key === "done") keypadOpen = false;
-    else if (joinDraft.length < 5) joinDraft += key;
-    onlineStatus = "";
+    else if (key === "join") {
+      if (/^[0-9]{5}$/.test(joinDraft) && online?.connected) {
+        joinPending = true;
+        joinFeedback = "部屋を探しています…";
+        online.send({ type: "join", roomId: joinDraft });
+      } else joinFeedback = "招待コードは数字5桁です";
+    } else if (joinDraft.length < 5) joinDraft += key;
+    if (key !== "join") joinFeedback = "";
     sound.play("ui");
-    renderOnlineLobby();
+    updateJoinKeypad();
   } else if (button.dataset.difficulty) {
     sound.unlock();
     sound.resumeMusic();
@@ -1307,15 +1344,6 @@ app.addEventListener("click", (e) => {
         break;
       case "online-create":
         online?.send({ type: "create" });
-        break;
-      case "online-join":
-        if (!/^[0-9]{5}$/.test(joinDraft)) {
-          onlineStatus = "招待コードは数字5桁です";
-          renderOnlineLobby();
-        } else {
-          keypadOpen = false;
-          online?.send({ type: "join", roomId: joinDraft });
-        }
         break;
       case "room-id-input":
         keypadOpen = !keypadOpen;

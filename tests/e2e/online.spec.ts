@@ -149,6 +149,58 @@ test("private room shares a five-digit invite and accepts a friend", async ({
   }
 });
 
+test("invite keypad stays still and shows a missing room in place", async ({
+  page,
+}) => {
+  await page.goto(onlineTestURL);
+  await page.locator("#online-start").click();
+  await expect(page.locator("#online-create")).toBeEnabled();
+  await page.locator("#room-id-input").click();
+  await page.evaluate(() => {
+    const saved = window as Window & {
+      joinDialog?: Element;
+      joinMessages?: string[];
+    };
+    saved.joinDialog = document.querySelector(".online-dialog")!;
+    saved.joinMessages = [];
+    const feedback = document.getElementById("join-feedback")!;
+    new MutationObserver(() =>
+      saved.joinMessages!.push(feedback.textContent ?? ""),
+    ).observe(feedback, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  });
+  for (const digit of "00000")
+    await page.locator(`[data-keypad="${digit}"]`).click();
+  expect(
+    await page.evaluate(
+      () =>
+        document.querySelector(".online-dialog") ===
+        (window as Window & { joinDialog?: Element }).joinDialog,
+    ),
+  ).toBe(true);
+  expect(
+    await page
+      .locator("#room-id-input")
+      .evaluate((element) => parseFloat(getComputedStyle(element).fontSize)),
+  ).toBeGreaterThanOrEqual(25);
+  await expect(page.locator("#online-join")).toHaveCount(0);
+  await page.locator('[data-keypad="join"]').click();
+  await expect(page.locator("#join-feedback")).toHaveText(
+    "部屋が見つかりません",
+  );
+  expect(
+    await page.evaluate(() =>
+      (window as Window & { joinMessages?: string[] }).joinMessages?.some(
+        (message) => message.includes("部屋を探しています"),
+      ),
+    ),
+  ).toBe(true);
+  await expect(page.locator(".room-keypad")).toBeVisible();
+});
+
 test("a player can reconnect and continue issuing sequenced commands", async ({
   browser,
 }) => {
@@ -168,7 +220,7 @@ test("a player can reconnect and continue issuing sequenced commands", async ({
     await host.locator("#online-create").click();
     const roomID = await host.locator("#copy-room").innerText();
     await enterCode(guest, roomID);
-    await guest.locator("#online-join").click();
+    await guest.locator('[data-keypad="join"]').click();
     await host.locator("#online-ready").click();
     await guest.locator("#online-ready").click();
     await host.bringToFront();
