@@ -1,0 +1,16 @@
+{
+  "name": "INFRA RUSH",
+  "short_name": "INFRA RUSH",
+  "description": "5体のBotで掘る、橋をかける、城へ攻める3Dゲーム",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#b5e8f7",
+  "theme_color": "#168cd0",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

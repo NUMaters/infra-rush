@@ -30,6 +30,7 @@ test("result trivia presents sourced facts with matching models", async ({
     "src",
     /stone-bridge\.png$/,
   );
+  await expect(page.locator("#result-trivia .trivia-canvas")).toBeVisible();
   expect(
     await page
       .locator("#result-trivia .trivia-model")
@@ -45,6 +46,7 @@ test("result trivia presents sourced facts with matching models", async ({
     "src",
     /excavator\.png$/,
   );
+  await expect(page.locator("#result-trivia .trivia-canvas")).toBeVisible();
   await expect
     .poll(() =>
       page

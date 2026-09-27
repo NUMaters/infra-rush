@@ -15,6 +15,7 @@ import { OnlineClient } from "./net/client";
 import type { OnlinePlayer, ServerMessage } from "./net/client";
 import type { Team } from "./game/types";
 import { civilTrivia } from "./content/trivia";
+import { TriviaViewer } from "./render/trivia";
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) =>
   document.querySelector<T>(selector)!;
@@ -181,7 +182,7 @@ type TutorialStage =
   | "complete";
 let tutorialStage: TutorialStage | null = null;
 let tutorialMarchBot: string | null = null;
-let tutorialCompleteTimer: ReturnType<typeof setTimeout>;
+const triviaViewer = new TriviaViewer();
 const triviaStorageKey = "infra-rush-last-trivia";
 let resultTriviaIndex = -1;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -339,7 +340,7 @@ function closePanel() {
 }
 function prepareSolo() {
   if (!ready) return;
-  clearTimeout(tutorialCompleteTimer);
+  triviaViewer.stop();
   tutorialStage = null;
   tutorialMarchBot = null;
   mode = "cpu";
@@ -448,10 +449,6 @@ function setTutorialStage(stage: TutorialStage) {
   tutorialStage = stage;
   sound.play(stage === "complete" ? "complete" : "ui");
   renderUI();
-  if (stage === "complete")
-    tutorialCompleteTimer = setTimeout(() => {
-      if (tutorialStage === "complete") start();
-    }, 2400);
 }
 function renderTutorial() {
   const stage = tutorialStage;
@@ -531,9 +528,10 @@ function renderTutorial() {
   html(
     "#tutorial-card",
     `<article class="tutorial-card ${stage === "complete" ? "cleared" : ""} ${stage === "rules" ? "rules" : ""}">
-    <div class="tutorial-top"><span>れんしゅう <b>${step}/7</b></span><button id="tutorial-skip" type="button">${stage === "complete" ? "今すぐ対戦" : "スキップして対戦"} ${icon("march")}</button></div>
+    <div class="tutorial-top"><span>れんしゅう <b>${step}/7</b></span><button id="tutorial-skip" type="button">${stage === "complete" ? "CPU戦へ進む" : "スキップして対戦"} ${icon("march")}</button></div>
     <div class="tutorial-message"><span class="tutorial-emblem">${icon(stage === "mine" || stage === "gather" ? "mine" : stage === "bridge" || stage === "build" || stage === "construction" ? "build" : stage === "pickEmbank" || stage === "embank" || stage === "embankWork" ? "embank" : stage === "pickDestroy" || stage === "destroy" || stage === "destroyWork" ? "destroy" : stage === "pickClear" || stage === "clear" || stage === "clearWork" ? "clear" : stage === "rules" || stage === "pick" ? "helmet" : "march")}</span><div><h2>${title}</h2><p>${description}</p></div></div>
     ${stage === "rules" ? '<button id="tutorial-next" type="button">操作を試す →</button>' : ""}
+    ${stage === "complete" ? '<button id="tutorial-home" type="button">タイトルへ戻る</button>' : ""}
     <div class="tutorial-progress" aria-label="練習の進み具合 ${step}/7">${Array.from({ length: 7 }, (_, i) => `<i class="${i < step ? "done" : ""}"></i>`).join("")}</div>
   </article>`,
   );
@@ -801,6 +799,7 @@ function showOnline() {
 }
 function enterOnlineGame(startAt = 0, serverNow = 0) {
   if (started) return;
+  triviaViewer.stop();
   rememberMatch();
   sound.unlock();
   state = createGame();
@@ -850,6 +849,7 @@ function handleOnlineMessage(message: ServerMessage) {
       forgetMatch();
       if (started && (introActive || state.status === "finished")) {
         cancelIntro();
+        triviaViewer.stop();
         started = false;
         $("#result").classList.add("hidden");
         $("#hud").classList.add("hidden");
@@ -1136,6 +1136,7 @@ function showResultTrivia(index: number) {
   }
   $("#result-trivia").innerHTML =
     `<div class="trivia-top"><span>土木まめちしき</span><small>${index + 1}/${civilTrivia.length}</small></div><div class="trivia-content"><div class="trivia-visual"><img class="trivia-model" src="${import.meta.env.BASE_URL}ui/trivia/${fact.model}.png" alt="${fact.modelName}のゲーム内モデル"><span class="trivia-model-name">${fact.modelName}</span></div><div class="trivia-bubble"><small>${fact.topic}</small><h3>${fact.title}</h3><p>${fact.text}</p></div></div><div class="trivia-bottom"><a href="${fact.source}" target="_blank" rel="noopener noreferrer">出典：${fact.sourceLabel} ↗</a><button id="result-trivia-next" type="button">次の話を聞く ${icon("march")}</button></div>`;
+  triviaViewer.show($("#result-trivia .trivia-visual"), fact.model);
 }
 function firstResultTrivia() {
   let previous = resultTriviaIndex;
@@ -1178,7 +1179,7 @@ function backTitle() {
   forgetMatch();
   showOpponentConnection(false);
   cancelIntro();
-  clearTimeout(tutorialCompleteTimer);
+  triviaViewer.stop();
   tutorialStage = null;
   $("#tutorial").classList.add("hidden");
   if (mode === "online") {
@@ -1315,6 +1316,10 @@ app.addEventListener("click", (e) => {
       case "tutorial-skip":
         sound.play("ui");
         start();
+        break;
+      case "tutorial-home":
+        sound.play("ui");
+        backTitle();
         break;
       case "tutorial-next":
         sound.play("ui");
@@ -1724,3 +1729,11 @@ try {
     `<div class="dialog"><h2>準備中に問題が発生しました</h2><p>${loadingFailed ? "ゲームデータの読み込みが止まりました。通信を確認して、もう一度お試しください。" : "3D描画を開始できませんでした。WebGL対応ブラウザでお試しください。"}</p><button onclick="location.reload()" class="primary">再読み込み</button></div>`;
 }
 // QA hooks are removed from production builds by Vite.
+if ("serviceWorker" in navigator && import.meta.env.PROD)
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`)
+      .catch(() => {
+        // The game stays playable if a browser disallows offline installation.
+      });
+  });

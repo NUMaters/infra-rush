@@ -28,6 +28,7 @@ execFileSync(
     "--target=es2022",
     '--tsconfig-raw={"compilerOptions":{"useDefineForClassFields":true}}',
     `--define:import.meta.env.DEV=${qa}`,
+    `--define:import.meta.env.PROD=${!qa}`,
     '--define:import.meta.env.BASE_URL="./"',
     `--define:import.meta.env.VITE_ONLINE_WS_URL=${JSON.stringify(process.env.VITE_ONLINE_WS_URL ?? "")}`,
     "--minify",
@@ -55,9 +56,12 @@ for (const name of [
 await cp("public/audio", `${out}/audio`, { recursive: true });
 await cp("public/models", `${out}/models`, { recursive: true });
 await cp("public/ui", `${out}/ui`, { recursive: true });
+await cp("public/icons", `${out}/icons`, { recursive: true });
+await atomicCopy("public/manifest.webmanifest", `${out}/manifest.webmanifest`);
+await atomicCopy("public/sw.js", `${out}/sw.js`);
 await writeFile(
   `${out}/index.html`,
-  '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#168cd0"><title>INFRA RUSH — 勝利への道をつくろう。</title><link rel="stylesheet" href="./assets/main.css"><script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script></head><body><div id="app"></div><script type="module" src="./assets/main.js"></script></body></html>',
+  '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#168cd0"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png"><link rel="icon" type="image/png" sizes="48x48" href="./icons/favicon-48.png"><link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png"><link rel="manifest" href="./manifest.webmanifest"><title>INFRA RUSH — 勝利への道をつくろう。</title><link rel="stylesheet" href="./assets/main.css"><script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script></head><body><div id="app"></div><script type="module" src="./assets/main.js"></script></body></html>',
 );
 console.log(
   `${out}/ is ready (${qa ? "development QA" : "production, no QA hooks"}).`,

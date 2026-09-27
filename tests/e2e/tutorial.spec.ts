@@ -161,7 +161,12 @@ test("solo practice teaches mining, routes, sabotage and clearing", async ({
   ).toBeNull();
   await expect(page.locator("#tutorial-card")).toContainText("練習クリア！");
   await expect(page.locator("#tutorial-skip")).toBeVisible();
-  await expect(page.locator("#tutorial")).toBeHidden({ timeout: 6000 });
+  await page.waitForTimeout(2800);
+  await expect(page.locator("#tutorial")).toBeVisible();
+  await expect(page.locator("#match-intro")).toBeHidden();
+  await expect(page.locator("#tutorial-home")).toBeVisible();
+  await page.locator("#tutorial-skip").click();
+  await expect(page.locator("#tutorial")).toBeHidden();
   await expect(page.locator("#match-intro")).toBeVisible();
   const fresh = await page.evaluate(() => window.infraQA.snapshot());
   expect(fresh.teams.red.hp).toBe(15);
