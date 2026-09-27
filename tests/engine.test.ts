@@ -100,6 +100,73 @@ describe("Bot state and mining", () => {
   });
 });
 describe("bridges, ownership and route validation", () => {
+  it("keeps an attacker on the enemy bank after its bridge collapses", () => {
+    const s = createGame();
+    s.nextQuake = 1e9;
+    bridge(s);
+    expect(command(s, "blue", { botId: "blue-0", action: "march" }).ok).toBe(
+      true,
+    );
+    expect(command(s, "blue", { botId: "blue-1", action: "march" }).ok).toBe(
+      true,
+    );
+    while (s.bots[0].path.length > 2) tick(s, M.game.tick);
+    // The first Bot has crossed; the second has not yet reached the far bank.
+    s.bots[1].path = [
+      [-7, -4],
+      [-7, 4],
+      [0, 6],
+      [0, 8],
+    ];
+    s.bots[1].position = [...s.bots[1].home];
+    s.bridges[0].level = 0;
+    advance(s, 16);
+    expect(s.teams.red.hp).toBe(14);
+    expect(s.bots[1].state).toBe("IDLE");
+  });
+  it("allows embankment and drilling beside another Bot's bridge work", () => {
+    const s = createGame();
+    s.nextQuake = 1e9;
+    fund(s);
+    fund(s, "red");
+    const b = bridge(s, "blue", 2);
+    b.capacity = 3;
+    b.damage = 1;
+    expect(
+      command(s, "blue", { botId: "blue-0", action: "repair", target: "blue" })
+        .ok,
+    ).toBe(true);
+    expect(
+      command(s, "red", { botId: "red-0", action: "embank", target: "blue" })
+        .ok,
+    ).toBe(true);
+    expect(
+      command(s, "red", { botId: "red-1", action: "destroy", target: "blue" })
+        .ok,
+    ).toBe(true);
+    expect(b.lock).toBe("blue-0");
+    advance(s, 35);
+    expect(b.blockedBy).toBe("red");
+    expect(b.level).toBe(2);
+    expect(b.damage).toBe(1);
+  });
+  it("removes exactly one strength per drill or earthquake and retains cracks until fully repaired", () => {
+    const s = createGame();
+    s.nextQuake = 1e9;
+    fund(s);
+    fund(s, "red");
+    const b = bridge(s, "blue", 3);
+    doTask(s, "destroy", "blue", "red");
+    expect(b).toMatchObject({ level: 2, capacity: 3, damage: 1 });
+    doTask(s, "destroy", "blue", "red");
+    expect(b).toMatchObject({ level: 1, capacity: 3, damage: 2 });
+    doTask(s, "repair");
+    expect(b).toMatchObject({ level: 2, capacity: 3, damage: 1 });
+    earthquake(s);
+    expect(b).toMatchObject({ level: 1, capacity: 3, damage: 2 });
+    doTask(s, "destroy", "blue", "red");
+    expect(b).toMatchObject({ level: 0, capacity: 0, owner: null });
+  });
   it("builds own bridge for stone50 and returns home", () => {
     const s = createGame();
     fund(s);
@@ -178,11 +245,10 @@ describe("bridges, ownership and route validation", () => {
     advance(s, 10);
     expect(s).toEqual(before);
   });
-  it("aborts march on embankment even after crossing the bridge", () => {
+  it("aborts march on embankment before crossing the bridge", () => {
     const s = createGame();
     const b = bridge(s);
     command(s, "blue", { botId: "blue-0", action: "march" });
-    advance(s, 6);
     b.blockedBy = "red";
     tick(s, 0.05);
     expect(s.bots[0].state).toBe("RETURNING");

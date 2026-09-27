@@ -2309,6 +2309,7 @@ h1 {
   padding: 12px;
   border-radius: 18px;
   overflow-y: auto;
+  overflow-x: hidden;
   z-index: 25;
 }
 #hud #task-panel .panel-heading {
@@ -2331,14 +2332,19 @@ h1 {
   min-width: 44px;
 }
 #hud #task-panel .actions {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 #hud #task-panel .action {
+  min-width: 0;
   min-height: 54px;
   padding: 7px;
   gap: 6px;
   border-radius: 10px;
+}
+#hud #task-panel .action span {
+  min-width: 0;
+  overflow: hidden;
 }
 #hud #task-panel .action svg {
   width: 20px;
@@ -2347,11 +2353,14 @@ h1 {
 }
 #hud #task-panel .action b {
   font-size: 13px;
+  white-space: nowrap;
 }
 #hud #task-panel .action small {
   font-size: 9px;
   white-space: nowrap;
   letter-spacing: -0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 #hud #task-panel .panel-tip {
   margin: 8px 0 0;

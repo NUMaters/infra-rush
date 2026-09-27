@@ -121,7 +121,8 @@ export function canCommand(
     return usable(s, team).length ? null : "渡れる橋をつくろう";
   const b = s.bridges.find((x) => x.id === c.target);
   if (!b) return "橋をタップしてね";
-  if (b.lock) return "別のBotが作業しています";
+  if (b.lock && c.action !== "embank" && c.action !== "destroy")
+    return "別のBotが作業しています";
   if (c.action === "build") {
     if (b.level > 0) return "橋はすでに完成しています";
     if (b.exclusive && b.exclusive !== team) return "相手の橋はつくれません";
@@ -217,7 +218,7 @@ export function command(
       [M.castle[other(t)][0], -sz * 8],
     ];
   } else {
-    target!.lock = b.id;
+    if (c.action !== "embank" && c.action !== "destroy") target!.lock = b.id;
     b.path =
       c.action === "clear"
         ? [
@@ -298,7 +299,8 @@ function finish(s: GameState, b: Bot) {
           owner !== b.team) ||
         (["embank", "destroy"].includes(b.action!) &&
           owner !== other(b.team)) ||
-        (b.action === "clear" && !bridge.blockedBy))
+        (b.action === "clear" && !bridge.blockedBy) ||
+        (b.action === "embank" && !!bridge.blockedBy))
     ) {
       pay(s, b.team, b.paid, 1);
       returning(s, b, "作業先がなくなったので資源が戻りました");
@@ -318,7 +320,7 @@ function finish(s: GameState, b: Bot) {
         break;
       case "repair":
         bridge.level = Math.min(bridge.capacity, bridge.level + 1);
-        bridge.damage = 0;
+        bridge.damage = Math.max(0, bridge.capacity - bridge.level);
         stats.repairs++;
         break;
       case "embank":
@@ -330,7 +332,7 @@ function finish(s: GameState, b: Bot) {
         break;
       case "destroy":
         bridge.level--;
-        bridge.damage = Math.min(2, bridge.damage + 1);
+        bridge.damage = Math.min(2, bridge.capacity - bridge.level);
         stats.sabotage++;
         if (bridge.level === 0) {
           bridge.owner = null;
@@ -364,7 +366,7 @@ export function earthquake(s: GameState) {
     if (!b.level) continue;
     if (random(s) >= M.earthquake.damageProbability[b.level]) continue;
     b.level = Math.max(M.earthquake.minimumLevel, b.level - 1);
-    b.damage = Math.min(2, b.damage + 1);
+    b.damage = Math.min(2, b.capacity - b.level);
     if (b.level === 0) {
       b.owner = null;
       b.capacity = 0;
@@ -404,7 +406,12 @@ export function tick(s: GameState, dt: number) {
   for (const b of s.bots) {
     if (s.status !== "playing") break;
     if (b.state === "IDLE") continue;
-    if (b.action === "march" && b.state !== "RETURNING") {
+    if (
+      b.action === "march" &&
+      b.state !== "RETURNING" &&
+      b.state !== "ATTACKING_CASTLE" &&
+      b.path.length > 2
+    ) {
       const route = s.bridges.find((x) => x.id === b.target);
       if (!route || route.owner !== b.team || !route.level || route.blockedBy) {
         returning(s, b, "道が塞がれた！ 帰還します");

@@ -213,7 +213,7 @@ export class MarineLife {
         -0.49,
         -14 + p * 28,
       );
-      this.fish.rotation.y = side < 0 ? Math.PI : 0;
+      this.fish.rotation.y = 0;
       this.fishMaterial.opacity = 0.22 * fade(p);
     } else if (cue.kind === "birds") {
       this.birds.visible = true;
@@ -257,7 +257,7 @@ export class MarineLife {
         -0.49,
         -16 + p * 32,
       );
-      this.whale.rotation.y = side < 0 ? Math.PI : 0;
+      this.whale.rotation.y = 0;
       this.whaleTail.rotation.y = Math.sin(time * 2.2) * 0.16;
       this.whaleMaterial.opacity = 0.17 * fade(p);
     }

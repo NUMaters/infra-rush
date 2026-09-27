@@ -84,6 +84,58 @@ func TestSabotageAndRepair(t *testing.T) {
 	}
 }
 
+func TestCrossedBotCanFinishAfterBridgeCollapse(t *testing.T) {
+	g := newGame(configForTest(t), 33)
+	g.NextQuake = 1e9
+	b := g.bridge("blue")
+	b.Owner = str("blue")
+	b.Level, b.Capacity = 1, 1
+	for _, id := range []string{"blue-0", "blue-1"} {
+		if err := g.command("blue", Command{BotID: id, Action: "march"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for len(g.bot("blue-0").Path) > 2 {
+		g.tick(g.conf.Game.Tick)
+	}
+	g.bot("blue-1").Path = []Point{{-7, -4}, {-7, 4}, {0, 6}, {0, 8}}
+	g.bot("blue-1").Position = g.bot("blue-1").Home
+	b.Level = 0
+	advance(g, 16)
+	if g.Teams["red"].HP != 14 || g.bot("blue-1").State != "IDLE" {
+		t.Fatalf("crossed bot should attack, uncrossed bot should return: hp=%d state=%s", g.Teams["red"].HP, g.bot("blue-1").State)
+	}
+}
+
+func TestParallelSabotageAndStrengthDamage(t *testing.T) {
+	g := newGame(configForTest(t), 34)
+	g.NextQuake = 1e9
+	b := g.bridge("blue")
+	b.Owner = str("blue")
+	b.Level, b.Capacity, b.Damage = 2, 3, 1
+	g.Teams["blue"].Resources["iron"] = 100
+	g.Teams["red"].Resources["iron"] = 100
+	g.Teams["red"].Resources["soil"] = 100
+	for _, c := range []struct {
+		team, bot, action string
+	}{{"blue", "blue-0", "repair"}, {"red", "red-0", "embank"}, {"red", "red-1", "destroy"}} {
+		if err := g.command(c.team, Command{BotID: c.bot, Action: c.action, Target: "blue"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !is(b.Lock, "blue-0") {
+		t.Fatal("parallel sabotage replaced the repair lock")
+	}
+	advance(g, 35)
+	if b.Level != 2 || b.Damage != 1 || !is(b.BlockedBy, "red") {
+		t.Fatalf("parallel result: %+v", b)
+	}
+	g.earthquake()
+	if b.Level != 1 || b.Damage != 2 || b.BlockedBy != nil {
+		t.Fatalf("earthquake must remove exactly one level and mound: %+v", b)
+	}
+}
+
 func TestPreEmbankEarthquakeAndTimeout(t *testing.T) {
 	g := newGame(configForTest(t), 19)
 	g.NextQuake = 1e9

@@ -155,6 +155,14 @@ const resourceNames: Record<Resource, string> = {
   stone: "石",
   iron: "鉄",
 };
+const compactReasons: Record<string, string> = {
+  別のBotが作業しています: "作業中",
+  渡れる橋をつくろう: "橋をつくろう",
+  自分の橋で作業しよう: "自分の橋が必要",
+  相手の橋で作業しよう: "相手の橋が必要",
+  先に自分の城の近くに橋をつくろう: "手前の橋が必要",
+};
+const compactReason = (reason: string) => compactReasons[reason] ?? reason;
 const botName = (i: number) => ["アオ", "ソラ", "リク", "ナギ", "ウミ"][i];
 let toastTimer: ReturnType<typeof setTimeout>;
 let panelCloseTimer: ReturnType<typeof setTimeout>;
@@ -301,7 +309,7 @@ function chooseBridge(id: string) {
 }
 function bridgeBuilder(id: string): string | null {
   const bridge = state.bridges.find((b) => b.id === id);
-  if (!bridge || bridge.lock) return null;
+  if (!bridge) return null;
   const candidates = [
     ...state.bots.filter((b) => b.id === selected),
     ...state.bots.filter((b) => b.id !== selected && b.team === playerTeam),
@@ -1056,11 +1064,14 @@ function renderUI() {
         }) === null,
     );
   $("#hint").classList.toggle("hidden", bridgeReady || !!tutorialStage);
-  $("#hint").innerHTML = !bridge.level
-    ? `${resourceIcon("stone")} <span>石を50集めて、手前の橋をつくろう</span>`
-    : bridge.blockedBy
-      ? `${icon("clear")} <span>道がふさがれた！ <b>土をならす</b>と通れるよ</span>`
-      : `${icon("march")} <span>橋ができた！ <b>攻める</b>で相手の城へ。あと${state.teams[playerTeam === "blue" ? "red" : "blue"].hp}回！</span>`;
+  html(
+    "#hint",
+    !bridge.level
+      ? `${resourceIcon("stone")} <span>石を50集めて、手前の橋をつくろう</span>`
+      : bridge.blockedBy
+        ? `${icon("clear")} <span>道がふさがれた！ <b>土をならす</b>と通れるよ</span>`
+        : `${icon("march")} <span>橋ができた！ <b>攻める</b>で相手の城へ。あと${state.teams[playerTeam === "blue" ? "red" : "blue"].hp}回！</span>`,
+  );
   if (selected) {
     const b = state.bots.find((x) => x.id === selected)!;
     const busy = b.state !== "IDLE" && b.action !== "mine";
@@ -1081,7 +1092,7 @@ function renderUI() {
               (tutorialStage && a !== tutorialAllowedAction(tutorialStage)
                 ? "練習の案内に進もう"
                 : null);
-            return `<button data-action="${a}" ${reason ? "disabled" : ""} title="${reason ?? labels[a]}" class="action ${a === "march" ? "rush" : ""}">${icon(a)}<span><b>${labels[a]}</b><small>${reason ?? costText(a)}</small></span></button>`;
+            return `<button data-action="${a}" ${reason ? "disabled" : ""} title="${reason ?? labels[a]}" class="action ${a === "march" ? "rush" : ""}">${icon(a)}<span><b>${labels[a]}</b><small>${reason ? compactReason(reason) : costText(a)}</small></span></button>`;
           })
           .join(
             "",

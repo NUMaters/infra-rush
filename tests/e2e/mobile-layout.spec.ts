@@ -38,6 +38,25 @@ test("small phones can read every dialog and use the HUD", async ({ page }) => {
     320,
   );
 
+  const bot = await page.evaluate(() => window.infraQA.projectBot("blue-4"));
+  await page.mouse.click(bot.x, bot.y);
+  await expect(page.locator("#task-panel")).toBeVisible();
+  const panel = await page.locator("#task-panel").evaluate((element) => ({
+    width: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    height: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+  }));
+  expect(panel.scrollWidth).toBe(panel.width);
+  expect(panel.scrollHeight).toBe(panel.height);
+  const hintImageStable = await page.evaluate(async () => {
+    const image = document.querySelector("#hint img");
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    return image !== null && image === document.querySelector("#hint img");
+  });
+  expect(hintImageStable).toBe(true);
+  await page.locator("#close-panel").click();
+
   await page.evaluate(() => {
     window.infraQA.setCpu("hard");
     window.infraQA.advance(120);

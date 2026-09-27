@@ -24,7 +24,7 @@ describe("automatic construction targets", () => {
     expect(resolveTaskTarget(s, "blue", "embank", "center")).toBe("red");
     expect(resolveTaskTarget(s, "blue", "build")).toBe("blue");
   });
-  it("falls back from a locked or already blocked central bridge to an actionable enemy bridge", () => {
+  it("allows sabotage beside work on the central bridge and falls back only when already blocked", () => {
     const s = createGame();
     const center = s.bridges.find((bridge) => bridge.id === "center")!;
     const enemy = s.bridges.find((bridge) => bridge.id === "red")!;
@@ -33,8 +33,8 @@ describe("automatic construction targets", () => {
       bridge.level = bridge.capacity = 1;
     }
     center.lock = "red-0";
-    expect(resolveTaskTarget(s, "blue", "embank", "center")).toBe("red");
-    expect(resolveTaskTarget(s, "blue", "destroy", "center")).toBe("red");
+    expect(resolveTaskTarget(s, "blue", "embank", "center")).toBe("center");
+    expect(resolveTaskTarget(s, "blue", "destroy", "center")).toBe("center");
     center.lock = null;
     center.blockedBy = "blue";
     expect(resolveTaskTarget(s, "blue", "embank", "center")).toBe("red");

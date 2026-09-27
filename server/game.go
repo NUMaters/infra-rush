@@ -278,7 +278,7 @@ func (g *Game) canCommand(team string, c Command) error {
 	if bridge == nil {
 		return errors.New("橋をタップしてね")
 	}
-	if bridge.Lock != nil {
+	if bridge.Lock != nil && c.Action != "embank" && c.Action != "destroy" {
 		return errors.New("別のBotが作業しています")
 	}
 	if c.Action == "build" {
@@ -410,7 +410,9 @@ func (g *Game) command(team string, c Command) error {
 		enemy := teamPoint(g.conf, own(team))
 		b.Path = []Point{{closest.X, sz * 4}, {closest.X, -sz * 4}, {enemy[0], -sz * 6}, {enemy[0], -sz * 8}}
 	default:
-		target.Lock = str(b.ID)
+		if c.Action != "embank" && c.Action != "destroy" {
+			target.Lock = str(b.ID)
+		}
 		b.Path = []Point{{target.X, sz * 4.6}}
 		if c.Action == "clear" {
 			b.Path = append(b.Path, Point{target.X, -sz * 3.8})
@@ -493,7 +495,7 @@ func (g *Game) finishBot(b *Bot) {
 		if owner == nil {
 			owner = bridge.Exclusive
 		}
-		if !is(b.Action, "build") && ((bridge.Level == 0 && !is(b.Action, "embank")) || ((is(b.Action, "upgrade") || is(b.Action, "repair") || is(b.Action, "clear")) && !is(owner, b.Team)) || ((is(b.Action, "embank") || is(b.Action, "destroy")) && !is(owner, own(b.Team))) || (is(b.Action, "clear") && bridge.BlockedBy == nil)) {
+		if !is(b.Action, "build") && ((bridge.Level == 0 && !is(b.Action, "embank")) || ((is(b.Action, "upgrade") || is(b.Action, "repair") || is(b.Action, "clear")) && !is(owner, b.Team)) || ((is(b.Action, "embank") || is(b.Action, "destroy")) && !is(owner, own(b.Team))) || (is(b.Action, "clear") && bridge.BlockedBy == nil) || (is(b.Action, "embank") && bridge.BlockedBy != nil)) {
 			g.pay(b.Team, b.Paid, 1)
 			g.returning(b, "作業先がなくなったので資源が戻りました")
 			return
@@ -510,7 +512,7 @@ func (g *Game) finishBot(b *Bot) {
 			bridge.Capacity++
 		case "repair":
 			bridge.Level = int(math.Min(float64(bridge.Capacity), float64(bridge.Level+1)))
-			bridge.Damage = 0
+			bridge.Damage = bridge.Capacity - bridge.Level
 			stats.Repairs++
 		case "embank":
 			bridge.BlockedBy = str(b.Team)
@@ -519,7 +521,10 @@ func (g *Game) finishBot(b *Bot) {
 			bridge.BlockedBy = nil
 		case "destroy":
 			bridge.Level--
-			bridge.Damage = int(math.Min(2, float64(bridge.Damage+1)))
+			bridge.Damage = bridge.Capacity - bridge.Level
+			if bridge.Damage > 2 {
+				bridge.Damage = 2
+			}
 			stats.Sabotage++
 			if bridge.Level == 0 {
 				bridge.Owner = nil
@@ -558,7 +563,7 @@ func (g *Game) earthquake() {
 			if b.Level < g.conf.Earthquake.MinimumLevel {
 				b.Level = g.conf.Earthquake.MinimumLevel
 			}
-			b.Damage++
+			b.Damage = b.Capacity - b.Level
 			if b.Damage > 2 {
 				b.Damage = 2
 			}
@@ -610,7 +615,7 @@ func (g *Game) tick(dt float64) {
 		if b.State == "IDLE" {
 			continue
 		}
-		if is(b.Action, "march") && b.State != "RETURNING" {
+		if is(b.Action, "march") && b.State != "RETURNING" && b.State != "ATTACKING_CASTLE" && len(b.Path) > 2 {
 			route := g.bridge(value(b.Target))
 			if route == nil || !is(route.Owner, b.Team) || route.Level == 0 || route.BlockedBy != nil {
 				g.returning(b, "道が塞がれた！ 帰還します")

@@ -15,7 +15,7 @@ export function resolveTaskTarget(
       context === "center" ? ["center", other(team)] : [other(team), "center"];
     if (context === other(team) && action === "embank") {
       const exclusive = state.bridges.find((b) => b.id === context);
-      if (exclusive && !exclusive.lock && !exclusive.blockedBy) return context;
+      if (exclusive && !exclusive.blockedBy) return context;
     }
     const findTarget = (allowUnbuilt: boolean) =>
       targets.find((id) => {
@@ -25,7 +25,6 @@ export function resolveTaskTarget(
           (bridge.owner === other(team) ||
             (action === "embank" && bridge.exclusive === other(team))) &&
           (bridge.level > 0 || (allowUnbuilt && action === "embank")) &&
-          !bridge.lock &&
           (action !== "embank" || !bridge.blockedBy)
         );
       });
