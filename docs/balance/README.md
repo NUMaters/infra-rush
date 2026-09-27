@@ -1,4 +1,4 @@
-# CPU難易度の自動調整
+# CPU難易度の自動調整（MLOps）
 
 ![対戦結果と任意アンケートからCPU難易度を小幅に調整する流れ](cpu-mlops-overview.png)
 
