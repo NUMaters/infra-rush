@@ -1,5 +1,6 @@
 import * as T from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { M } from "../game/master";
@@ -33,6 +34,7 @@ export class World {
   readonly camera = new T.OrthographicCamera(-20, 20, 20, -20, 0.1, 150);
   readonly canvas: HTMLCanvasElement;
   private templates = new Map<string, T.Group>();
+  private botAnimations: T.AnimationClip[] = [];
   private teamMaterials = new Map<string, T.MeshStandardMaterial>();
   private particleGeometry = new T.BoxGeometry(0.12, 0.12, 0.12);
   private particleMaterials = new Map<number, T.MeshStandardMaterial>();
@@ -45,6 +47,9 @@ export class World {
       ring: T.Mesh;
       walkBlend: number;
       team: Team;
+      mixer: T.AnimationMixer | null;
+      actions: Map<string, T.AnimationAction>;
+      animationState: string;
     }
   >();
   private bridges = new Map<
@@ -212,7 +217,17 @@ export class World {
         const gltf = await new GLTFLoader().loadAsync(
           new URL(`models/${n}.glb`, modelBase).href,
         );
-        this.templates.set(n, gltf.scene);
+        if (n === "bot") {
+          // The supplied WorkBot is authored at roughly three game units tall.
+          // Keep its rig and animation tracks intact under a scale parent.
+          const root = new T.Group();
+          gltf.scene.scale.setScalar(1 / 3);
+          root.add(gltf.scene);
+          this.templates.set(n, root);
+          this.botAnimations = gltf.animations;
+        } else {
+          this.templates.set(n, gltf.scene);
+        }
         onProgress(++loaded / names.length);
       }),
     );
@@ -221,13 +236,18 @@ export class World {
   model(name: string, team: Team = "blue") {
     const source = this.templates.get(name);
     if (!source) throw new Error(`Missing model ${name}`);
-    const group = source.clone(true);
+    const group: T.Group =
+      name === "bot" ? (cloneSkeleton(source) as T.Group) : source.clone(true);
     group.traverse((o) => {
       if (o instanceof T.Mesh) {
         o.castShadow = true;
         o.receiveShadow = true;
         const mat = o.material as T.MeshStandardMaterial;
-        if (mat.name === "team") {
+        if (
+          mat.name === "team" ||
+          (name === "bot" &&
+            (mat.name === "MAT_Body_Blue" || mat.name === "MAT_Helmet_Blue"))
+        ) {
           const key = mat.uuid + team;
           let colored = this.teamMaterials.get(key);
           if (!colored) {
@@ -239,6 +259,28 @@ export class World {
         }
       }
     });
+    if (["excavator", "dozer", "grader", "launcher"].includes(name)) {
+      const pilot = rigPart(group, "pilot");
+      if (pilot?.parent) {
+        const replacement = this.model("bot", team);
+        replacement.name = "WorkBotPilot";
+        replacement.position.copy(pilot.position);
+        replacement.quaternion.copy(pilot.quaternion);
+        replacement.scale.copy(pilot.scale);
+        pilot.parent.add(replacement);
+        pilot.visible = false;
+      }
+    } else if (name === "drill") {
+      const seat = rigPart(group, "BotSeat");
+      if (seat) {
+        for (const child of seat.children)
+          if (child.name.startsWith("Bot ")) child.visible = false;
+        const replacement = this.model("bot", team);
+        replacement.name = "WorkBotPilot";
+        replacement.scale.setScalar(0.88);
+        seat.add(replacement);
+      }
+    }
     return group;
   }
   private solid(
@@ -780,7 +822,18 @@ export class World {
     );
     ring.rotation.x = -Math.PI / 2;
     ring.visible = false;
-    a = { bot, rig: null, kind: "", ring, walkBlend: 0, team: b.team };
+    const mixer = this.botAnimations.length ? new T.AnimationMixer(bot) : null;
+    const actions = new Map<string, T.AnimationAction>();
+    if (mixer) {
+      for (const clip of this.botAnimations)
+        actions.set(clip.name, mixer.clipAction(clip));
+      actions.get("ACT_Idle")?.play();
+      actions.get("ACT_Blink")?.play();
+    }
+    a = {
+      bot, rig: null, kind: "", ring, walkBlend: 0, team: b.team,
+      mixer, actions, animationState: "ACT_Idle",
+    };
     this.actors.set(b.id, a);
     return a;
   }
@@ -1048,7 +1101,19 @@ export class World {
         a.bot.position.x += Math.sin(a.bot.rotation.y) * lunge;
         a.bot.position.z += Math.cos(a.bot.rotation.y) * lunge;
       }
-      for (const sideName of ["left", "right"] as const) {
+      if (a.mixer) {
+        const nextAnimation = attacking
+          ? "ACT_Wave"
+          : moving && !kind
+            ? "ACT_Walk"
+            : "ACT_Idle";
+        if (nextAnimation !== a.animationState) {
+          a.actions.get(a.animationState)?.fadeOut(0.15);
+          a.actions.get(nextAnimation)?.reset().fadeIn(0.15).play();
+          a.animationState = nextAnimation;
+        }
+        a.mixer.update(dt);
+      } else for (const sideName of ["left", "right"] as const) {
         const side = sideName === "left" ? 1 : -1;
         const footLift = Math.max(0, step * side) * a.walkBlend;
         const leg = rigPart(a.bot, `leg_${sideName}`);

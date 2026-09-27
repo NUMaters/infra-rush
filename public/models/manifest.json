@@ -1,9 +1,9 @@
 [
   {
     "asset": "bot",
-    "triangles": 17108,
-    "meshes": 15,
-    "bytes": 548972
+    "triangles": 23372,
+    "meshes": 8,
+    "bytes": 932340
   },
   {
     "asset": "castle",

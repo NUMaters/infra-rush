@@ -3,20 +3,22 @@
   "category": "characters",
   "source": "source/worker_bot.blend",
   "model": "export/bot.glb",
-  "scale": 1.0,
-  "mountPoints": [
-    "P_InteractPoint"
-  ],
+  "scale": 0.3333333333,
+  "mountPoints": [],
   "animations": {
-    "walk": "Walk",
-    "work": "Work"
+    "idle": "ACT_Idle",
+    "walk": "ACT_Walk",
+    "wave": "ACT_Wave",
+    "blink": "ACT_Blink"
   },
   "teamColorMaterials": [
-    "team"
+    "MAT_Body_Blue",
+    "MAT_Helmet_Blue"
   ],
   "damageStates": [],
   "referenceFiles": [
+    "source/WorkBot.glb",
     "../../../docs/references/16VE0Sft-tV2VhA78yvOGWuFPgKrqKxrB.png"
   ],
-  "notes": "Reference-specific rounded Bot; runtime limb pivots and edit-ready armature."
+  "notes": "WorkBot.glb supplied in the user's Drive folder. The editable blend is imported from that GLB; game units use one-third scale."
 }
