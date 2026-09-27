@@ -68,6 +68,20 @@ for index, object_ in parts.items():
         parent = upper
     parent_keep_world(object_, parent)
 
+# Parts 17 and 23 are the two thin panels in the cab's boom-side window.
+# The supplied texture makes them opaque blue, hiding the driver completely.
+# Their materials are unique to these panels, so tint and transparency can be
+# adjusted without making the white cab shell or blue boom see-through.
+for index in (17, 23):
+    material = parts[index].active_material
+    material.surface_render_method = "BLENDED"
+    shader = material.node_tree.nodes.get("Principled BSDF")
+    color_input = shader.inputs["Base Color"]
+    for link in list(color_input.links):
+        material.node_tree.links.remove(link)
+    color_input.default_value = (0.88, 0.94, 1.0, 1.0)
+    shader.inputs["Alpha"].default_value = 0.12
+
 # The supplied sculpt has 177k triangles. Preserve the small silhouette
 # details, but simplify the large textured surfaces for mobile rendering.
 for object_ in parts.values():

@@ -40,7 +40,7 @@ test("supplied excavator loads and mines in the actual 3D scene", async ({
     await page.evaluate(() => {
       window.infraQA.command("red", "red-0", "mine");
       window.infraQA.advance(8);
-      window.infraQA.focus(-8, 10, 2.7);
+      window.infraQA.focus(-8, 10, 4.2);
     });
     await expect
       .poll(() =>
@@ -50,6 +50,11 @@ test("supplied excavator loads and mines in the actual 3D scene", async ({
       )
       .toBe("MINING");
     await page.screenshot({ path: testInfo.outputPath("excavator-red-mining.png") });
+    await page.mouse.move(720, 450);
+    await page.mouse.down({ button: "right" });
+    await page.mouse.move(1030, 450, { steps: 12 });
+    await page.mouse.up({ button: "right" });
+    await page.screenshot({ path: testInfo.outputPath("excavator-red-side.png") });
   }
   expect(errors).toEqual([]);
 });

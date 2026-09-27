@@ -29,7 +29,13 @@ for image in bpy.data.images:
     # The cab windows and seat are blue-gray too, but have much less saturated
     # blue than the painted bucket/boom. A broad hue-only mask turned the
     # boom-side window pink and exposed jagged texture edges in the game.
-    mask = (blue > red * 2.2) & (blue > green * 1.35) & (blue > 0.42) & (green > 0.14)
+    # Both faces of the fused boom/dipper use parts 1 and 14. Recolor their
+    # shaded inner faces as well, while excluding the window meshes by part.
+    part = int(image.name.split("_part_")[1].split("_")[0])
+    if part in (1, 14):
+        mask = (blue > red * 1.38) & (blue > green * 1.13) & (blue > 0.25) & (green > 0.14)
+    else:
+        mask = (blue > red * 2.2) & (blue > green * 1.35) & (blue > 0.42) & (green > 0.14)
     count = int(np.count_nonzero(mask))
     if not count:
         continue
