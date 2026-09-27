@@ -8,8 +8,12 @@ test("supplied excavator loads and mines in the actual 3D scene", async ({
   const asset = page.waitForResponse((response) =>
     response.url().endsWith("/models/excavator.glb"),
   );
+  const redAsset = page.waitForResponse((response) =>
+    response.url().endsWith("/models/excavator-red.glb"),
+  );
   await page.goto("/?qa");
   expect((await asset).status()).toBe(200);
+  expect((await redAsset).status()).toBe(200);
   await page.locator("#start").click();
   await page.getByRole("button", { name: "かんたん", exact: true }).click();
   await page.locator("#cpu-start").click();
@@ -33,6 +37,19 @@ test("supplied excavator loads and mines in the actual 3D scene", async ({
     await page.mouse.move(370, 450, { steps: 12 });
     await page.mouse.up({ button: "right" });
     await page.screenshot({ path: testInfo.outputPath("excavator-cab.png") });
+    await page.evaluate(() => {
+      window.infraQA.command("red", "red-0", "mine");
+      window.infraQA.advance(8);
+      window.infraQA.focus(-8, 10, 2.7);
+    });
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.infraQA.snapshot().bots.find((bot) => bot.id === "red-0")?.state,
+        ),
+      )
+      .toBe("MINING");
+    await page.screenshot({ path: testInfo.outputPath("excavator-red-mining.png") });
   }
   expect(errors).toEqual([]);
 });

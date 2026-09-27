@@ -9,7 +9,7 @@
     "P_DigContact"
   ],
   "animations": {},
-  "teamColorMaterials": [],
+  "teamColorMaterials": ["painted blue base-color pixels have an exported red-team variant"],
   "damageStates": [],
   "referenceFiles": [
     "../../../docs/references/1mrnEluiU6tqH5dCtVgzYpyyLDZwp2U2d.png"

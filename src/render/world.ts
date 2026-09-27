@@ -236,6 +236,7 @@ export class World {
       "bot",
       "castle",
       "excavator",
+      "excavator-red",
       "dozer",
       "grader",
       "launcher",
@@ -276,6 +277,7 @@ export class World {
     this.buildMap();
   }
   model(name: string, team: Team = "blue") {
+    if (name === "excavator" && team === "red") name = "excavator-red";
     const source = this.templates.get(name);
     if (!source) throw new Error(`Missing model ${name}`);
     const group: T.Group =
@@ -301,12 +303,12 @@ export class World {
         }
       }
     });
-    if (["excavator", "dozer", "grader", "launcher"].includes(name)) {
+    if (["excavator", "excavator-red", "dozer", "grader", "launcher"].includes(name)) {
       const pilot = rigPart(group, "pilot");
       if (pilot?.parent) {
         const replacement = this.model("bot", team);
         replacement.name = "WorkBotPilot";
-        if (name === "excavator") {
+        if (name === "excavator" || name === "excavator-red") {
           // The supplied model has an empty, correctly scaled seat mount.
           // Keep it visible so the pilot and its arm bones can animate there.
           pilot.add(replacement);

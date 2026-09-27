@@ -10,5 +10,6 @@ for asset in bot dozer grader launcher stone-bridge steel-bridge; do
   "$BLENDER_BIN" --background --python assets/blender/build_reference_fleet.py -- "$asset"
 done
 "$BLENDER_BIN" --background --python assets/blender/prepare_supplied_excavator.py
+"$BLENDER_BIN" --background --python assets/blender/make_red_excavator.py
 "$BLENDER_BIN" --background --python assets/blender/build_drill_reference.py
 python3 assets/blender/refresh_model_manifest.py
