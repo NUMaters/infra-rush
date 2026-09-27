@@ -1733,6 +1733,10 @@ if ("serviceWorker" in navigator && import.meta.env.PROD)
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`)
+      .then(async (registration) => {
+        await navigator.serviceWorker.ready;
+        registration.active?.postMessage("CACHE_GAME_ASSETS");
+      })
       .catch(() => {
         // The game stays playable if a browser disallows offline installation.
       });
