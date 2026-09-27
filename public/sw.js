@@ -1,4 +1,4 @@
-const CACHE = "infra-rush-v3";
+const CACHE = "infra-rush-v4";
 const ROOT = new URL(self.registration.scope);
 
 async function cacheOne(cache, url) {
@@ -21,6 +21,8 @@ async function cacheGameAssets() {
     ...["soil", "stone", "iron"].map((name) => new URL(`ui/resources/${name}.png`, ROOT).href),
     ...["stone-bridge", "steel-bridge", "excavator", "dozer", "launcher", "grader", "soil", "stone-resource"].map((name) => new URL(`ui/trivia/${name}.png`, ROOT).href),
     ...["infra-rush-title", "infra-rush-loop", "infra-rush-victory", "infra-rush-retry"].map((name) => new URL(`audio/${name}.mp3`, ROOT).href),
+    new URL("media/opening.mp4", ROOT).href,
+    new URL("media/opening-poster.webp", ROOT).href,
   ];
   for (let i = 0; i < assets.length; i += 4)
     await Promise.all(assets.slice(i, i + 4).map((url) => cacheOne(cache, url)));
@@ -66,11 +68,11 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET" || new URL(request.url).origin !== ROOT.origin) return;
+  if (request.method !== "GET" || request.headers.has("range") || new URL(request.url).origin !== ROOT.origin) return;
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (response.ok) {
+        if (response.status === 200) {
           const copy = response.clone();
           event.waitUntil(caches.open(CACHE).then((cache) => cache.put(request, copy)));
         }

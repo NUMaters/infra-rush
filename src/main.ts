@@ -40,7 +40,13 @@ function html(selector: string, markup: string) {
 }
 const app = $("#app");
 app.innerHTML = `<main id="world"></main><div id="vignette"></div>
-<section id="loading" aria-label="ゲームを読み込み中"><div class="match-spinner loading-spinner" role="progressbar" aria-label="読み込み中" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><p>読み込み中…</p></section>
+<section id="loading" aria-label="ゲームを読み込み中" style="background-image:url('${import.meta.env.BASE_URL}media/opening-poster.webp')">
+ <video id="opening-video" class="opening-video" src="${import.meta.env.BASE_URL}media/opening.mp4" poster="${import.meta.env.BASE_URL}media/opening-poster.webp" muted autoplay playsinline loop preload="auto" aria-hidden="true"></video>
+ <div class="opening-tint" aria-hidden="true"></div>
+ <div class="opening-brand" aria-hidden="true">INFRA <b>RUSH!</b><span>オープニング</span></div>
+ <div class="opening-caption" aria-hidden="true"><span>Botたち、出発！</span></div>
+ <div class="opening-status"><div class="match-spinner loading-spinner" role="progressbar" aria-label="読み込み中" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><p>読み込み中…</p><div class="opening-progress" aria-hidden="true"><span></span></div></div>
+</section>
 <section id="title" class="hidden">
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
@@ -66,6 +72,35 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
 <section id="online-lobby" class="overlay hidden" aria-label="オンライン対戦"></section>
 <section id="title-trivia" class="overlay hidden" role="dialog" aria-modal="true" aria-label="土木の豆知識"><article class="dialog title-trivia-dialog"><button id="title-trivia-close" class="circle close-online" type="button" aria-label="豆知識を閉じる">${icon("close")}</button><section id="title-trivia-content" class="result-trivia" aria-label="土木の豆知識"></section></article></section>
 <section id="result" class="overlay hidden"></section><div id="scene-wipe" aria-hidden="true"></div>`;
+const openingVideo = $("#opening-video") as HTMLVideoElement;
+const openingReducedMotion = window.matchMedia(
+  "(prefers-reduced-motion: reduce)",
+).matches;
+const openingStartedAt = performance.now();
+const openingCaptions = [
+  "Botたち、出発！",
+  "掘って、つくろう！",
+  "道をならそう！",
+  "橋をつないで、お城へ！",
+];
+openingVideo.addEventListener("timeupdate", () => {
+  const caption = $("#loading .opening-caption span");
+  const next =
+    openingCaptions[Math.min(3, Math.floor(openingVideo.currentTime / 2))];
+  if (caption.textContent !== next) {
+    caption.textContent = next;
+    caption.classList.remove("cut-in");
+    void caption.offsetWidth;
+    caption.classList.add("cut-in");
+  }
+});
+if (openingReducedMotion) {
+  openingVideo.removeAttribute("autoplay");
+  openingVideo.pause();
+} else
+  void openingVideo.play().catch(() => {
+    openingVideo.classList.add("opening-video-fallback");
+  });
 let state = createGame();
 let cpu = new CPU();
 let titleState = createGame();
@@ -1818,23 +1853,42 @@ try {
     } else if (kind === "bridge") chooseBridge(id);
     else if (selected) closePanel();
   };
+  const openingMinimum = new Promise<void>((resolve) =>
+    setTimeout(
+      resolve,
+      openingReducedMotion
+        ? 0
+        : Math.max(0, 8000 - (performance.now() - openingStartedAt)),
+    ),
+  );
   await Promise.race([
     world.load((n) => {
       $("#loading .loading-spinner").setAttribute(
         "aria-valuenow",
         String(Math.round(n * 100)),
       );
+      $("#loading .opening-progress span").style.width =
+        `${Math.round(n * 100)}%`;
     }),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Asset load timed out")), 45000),
     ),
   ]);
+  $("#loading .opening-status p").textContent = "準備できたよ！";
+  await openingMinimum;
   ready = true;
   resetTitleDemo();
-  $("#loading").classList.add("hidden");
   $("#title").classList.remove("hidden");
+  $("#title").classList.add("title-arriving");
+  $("#loading").classList.add("opening-exit");
   sound.setMusicScene("title");
   requestAnimationFrame(frame);
+  await new Promise<void>((resolve) =>
+    setTimeout(resolve, openingReducedMotion ? 0 : 700),
+  );
+  $("#loading").classList.add("hidden");
+  openingVideo.pause();
+  $("#title").classList.remove("title-arriving");
   if (
     pendingInvite ||
     Date.now() - Number(localStorage.getItem(resumeKey) ?? 0) < 100_000
@@ -1924,6 +1978,8 @@ try {
   }
 } catch (error) {
   console.error(error);
+  openingVideo.pause();
+  $("#loading").classList.add("opening-failed");
   const loadingFailed =
     error instanceof Error && /fetch|load|network|timeout/i.test(error.message);
   $("#loading").innerHTML =
