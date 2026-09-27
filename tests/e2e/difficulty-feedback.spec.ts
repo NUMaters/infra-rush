@@ -4,9 +4,12 @@ test("solo result collects one optional difficulty rating with match context", a
   page,
 }, testInfo) => {
   const submitted: unknown[] = [];
-  await page.route("**/feedback", async (route) => {
+  const matches: unknown[] = [];
+  await page.route(/\/(?:feedback|matches)$/, async (route) => {
     if (route.request().method() === "POST") {
-      submitted.push(route.request().postDataJSON());
+      (route.request().url().endsWith("/matches") ? matches : submitted).push(
+        route.request().postDataJSON(),
+      );
     }
     await route.fulfill({
       status: 204,
@@ -29,6 +32,7 @@ test("solo result collects one optional difficulty rating with match context", a
   });
   await expect(page.locator("#result")).toBeVisible();
   await expect(page.locator(".result-feedback-choices button")).toHaveCount(3);
+  await expect.poll(() => matches.length).toBe(1);
   await page
     .locator(".result-card")
     .evaluate((card) =>
@@ -48,4 +52,13 @@ test("solo result collects one optional difficulty rating with match context", a
     durationSeconds: 360,
   });
   await expect(page.locator('[data-feedback="normal"]')).toBeDisabled();
+  expect(matches[0]).toMatchObject({
+    id: (submitted[0] as { id: string }).id,
+    selectedDifficulty: "easy",
+    outcome: "draw",
+    durationSeconds: 360,
+  });
+  expect((matches[0] as { configVersion: string }).configVersion).toMatch(
+    /^[0-9a-f]{8}$/,
+  );
 });

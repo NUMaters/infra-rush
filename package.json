@@ -15,7 +15,8 @@
     "assets": "sh assets/blender/build_all.sh",
     "build:portable": "node scripts/build-portable.mjs",
     "build:qa": "node scripts/build-portable.mjs --qa",
-    "preview:portable": "python3 scripts/serve-preview.py --directory dist --port 5177"
+    "preview:portable": "python3 scripts/serve-preview.py --directory dist --port 5177",
+    "balance": "node scripts/run-balance.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"

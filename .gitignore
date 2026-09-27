@@ -5,6 +5,7 @@ dist/
 !.env.example
 *.log
 feedback.jsonl
+matches.jsonl
 __pycache__/
 
 .qa-preview/

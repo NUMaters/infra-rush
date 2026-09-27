@@ -1,5 +1,6 @@
 import { M } from "./master";
 import type { Difficulty } from "./master";
+import type { CpuProfile } from "./balance";
 import type { Command, GameState, Team } from "./types";
 import { canCommand, command, other, usable } from "./engine";
 export class CPU {
@@ -7,12 +8,13 @@ export class CPU {
   constructor(
     public difficulty: Difficulty = "normal",
     public team: Team = "red",
+    private readonly profile: CpuProfile = M.cpu[difficulty],
   ) {
-    this.next = M.cpu[difficulty].initialDelay;
+    this.next = profile.initialDelay;
   }
   update(s: GameState) {
     if (s.time < this.next || s.status !== "playing") return;
-    const cfg = M.cpu[this.difficulty];
+    const cfg = this.profile;
     this.next = s.time + cfg.interval;
     const team = this.team,
       own = s.bridges.find((b) => b.exclusive === team)!,

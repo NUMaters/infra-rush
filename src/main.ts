@@ -23,6 +23,8 @@ import type { Team } from "./game/types";
 import { civilTrivia } from "./content/trivia";
 import { TriviaViewer } from "./render/trivia";
 import { flushFeedback, submitDifficultyFeedback } from "./net/feedback";
+import { cpuConfigVersion } from "./game/balance";
+import { flushSoloMatches, submitSoloMatch } from "./net/matches";
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) =>
   document.querySelector<T>(selector)!;
@@ -1188,6 +1190,17 @@ function finish() {
   closePanel();
   const win = state.winner === playerTeam,
     draw = state.winner === "draw";
+  if (mode === "cpu" && !tutorialStage && soloMatchId) {
+    void submitSoloMatch({
+      id: soloMatchId,
+      selectedDifficulty: difficulty,
+      configVersion: cpuConfigVersion(M.cpu, difficulty),
+      outcome: draw ? "draw" : win ? "win" : "loss",
+      durationSeconds: Math.round(state.time),
+      playerCastleHp: state.teams[playerTeam].hp,
+      cpuCastleHp: state.teams[playerTeam === "blue" ? "red" : "blue"].hp,
+    });
+  }
   $("#result").classList.remove("hidden");
   $("#result").innerHTML =
     `<article class="result-card ${win ? "victory" : ""}"><div class="result-main"><div class="result-crown">${icon("crown")}</div><div class="eyebrow">ゲーム終了</div><h2>${draw ? "引き分け！" : win ? "道をつないだ。<br>勝利をつかんだ！" : "次こそ、<br>勝利への道を。"}</h2><p>${draw ? "最後まで守り切りました。次の工事で決着を。" : win ? "5体の小さなBotたちに、大きな拍手を。" : "掘るBotと攻めるBotの配分、相手の道をふさぐタイミングがカギ。"}</p><div class="result-score"><span class="blue">${state.teams.blue.hp}</span><small>城の残り</small><span class="red">${state.teams.red.hp}</span></div><div class="result-stats"><div><b>${state.teams[playerTeam].stats.mined}</b><small>集めた資源</small></div><div><b>${state.teams[playerTeam].stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
@@ -1835,3 +1848,4 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
   else window.addEventListener("load", registerOffline, { once: true });
 }
 void flushFeedback();
+void flushSoloMatches();
