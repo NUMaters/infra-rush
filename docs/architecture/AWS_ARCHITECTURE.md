@@ -4,7 +4,9 @@
 
 ![AWS アーキテクチャ図。CloudFront と S3 の静的配信、ALB、2 AZ の ECS ゲートウェイと試合ワーカー、Valkey、DynamoDB、VPC エンドポイント、運用経路を示す](AWS_ARCHITECTURE.png)
 
-編集可能な図: [AWS_ARCHITECTURE.svg](AWS_ARCHITECTURE.svg)。図のサービスアイコンは [AWS Architecture Icons の 2026-07-31 版](https://aws.amazon.com/architecture/icons/)を使用。CIDR、タスク数、閾値、SLO はこのプロジェクト向けの**提案値**であり、AWS が自動設定する値ではない。
+編集可能な draw.io 原本: [AWS_ARCHITECTURE.drawio](AWS_ARCHITECTURE.drawio)。[SVG](AWS_ARCHITECTURE.svg) と PNG は draw.io からの書き出し。図のサービスアイコンは [AWS Architecture Icons の 2026-07-31 版](https://aws.amazon.com/architecture/icons/)を埋め込んだ。CIDR、タスク数、閾値、SLO はこのプロジェクト向けの**提案値**であり、AWS が自動設定する値ではない。
+
+再編集時は `.drawio` を diagrams.net で開く。原本の生成は `python3 docs/architecture/generate_aws_drawio.py`、図の変更後の PNG / SVG 書き出しは draw.io の「ファイル → 形式を指定してエクスポート」を使う。画像は全体を拡大して、文字、アイコン、矢印の重なりを確認する。
 
 ## 1. 結論と設計の境界
 
@@ -57,6 +59,21 @@ ECR のプライベート pull では <code>ecr.api</code> / <code>ecr.dkr</code
 4. **耐久性:** Gateway は指示をワーカーへ渡し、ワーカーは <code>(roomId, playerId, seq)</code> を条件付きでジャーナルへ永続化してから ACK。ワーカーは約 1 秒ごとに試合スナップショットと RNG 状態・tick 番号を保存。障害時は新所有者が最後の snapshot と journal を再生し、両クライアントが再接続する。ACK 済み指示を失わないための設計で、実際の RPO は再生テストで確認する。
 5. **Valkey:** ランダム待機列、短期 presence、状態配信用 pub/sub に使用。配信は揮発性でよく、唯一の正本にしない。Gateway が購読する部屋チャンネルへ Worker が状態を publish。ElastiCache Serverless for Valkey は Multi-AZ 複製を提供する。[AWS の説明](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/disaster-recovery-resiliency.html)。
 6. **匿名結果と回答:** <code>/matches</code>・<code>/feedback</code> を Gateway が検証し、UUID 条件付き put で DynamoDB に保存。個人名・招待コード・IP を分析データへ入れず、TTL を 60～90 日に設定。日次 EventBridge Scheduler → バッチで非公開 S3 に集計用エクスポート。現行の GitHub Actions チューナーは OIDC で S3 の限定オブジェクトだけ読み、境界付き変更・テスト・公開という挙動を維持する。公開用の長期 bearer token と <code>/balance/export</code> は移行後に廃止する。
+
+### CPU バランス調整の MLOps
+
+**現状:** [CPU MLOps の決定記録](../decisions/023-cpu-mlops.md)と[運用手順](../balance/README.md)にある仕組みは、学習済みモデルを提供する推論サーバーではない。CPU の行動規則は固定し、難易度ごとの**判断間隔だけ**を匿名対戦結果と任意アンケートで小幅に調整する。現在は Fly.io の非公開 JSONL と token 保護された export API を GitHub Actions が日次で読み、評価・テスト後に `master/cpu.json` と `docs/balance/history.jsonl` をコミットして Pages を更新する。
+
+**AWS 移行後の提案経路:**
+
+1. Gateway は CPU 戦の UUID、難易度、CPU 設定版、勝敗、時間、任意回答を検証し、DynamoDB に条件付き保存する。名前、招待コード、IP、接続トークンは分析レコードに入れない。TTL と S3 lifecycle で保存期間を限定する。クライアント自己申告と回答者バイアスは品質上の限界として維持する。
+2. EventBridge Scheduler が日次バッチを起動し、現行設定版だけの集計を S3 の非公開・版管理済み prefix に出す。失敗時は再試行と失敗通知を設定し、前回の正常な集計を上書きしない。バッチはオンライン対戦の必須経路から外す。
+3. GitHub Actions は AWS OIDC の短期認証で**集計用 prefix の読み取りだけ**を許可する。リポジトリとブランチを IAM trust policy の `sub` で制限し、S3 の生データや他のゲーム状態への権限を与えない。[AWS IAM の OIDC 手順](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html)。
+4. チューナーは難易度ごとに現行設定版の試合 **80 件以上**、回答 **15 件以上**、前回更新から **3 日以上**を確認し、勝率と体感が矛盾しない場合にだけ、`master/cpu-balance-policy.json` の境界・最大歩幅内で候補を作る。固定 seed の左右入替 CPU 戦、`npm test`、`npm run build`、ESLint を通す。データ不足、逆効果、異常値、ジョブ失敗では設定を変えない。
+5. 変更候補と集計要約は Git 履歴で版管理する。本番移行時には候補 PR と承認ゲートを追加し、静的サイトの S3 prefix → CloudFront へ配布する。現行の Actions は自動で `main` にコミットするため、**承認ゲートは未実装の追加要件**である。公開後は設定版ごとに勝率、回答傾向、対戦完了率、ジョブ失敗、費用を監視し、新しい設定版のデータが揃うまで次の調整をしない。
+6. 異常時は policy の `enabled=false` または難易度別 `frozen=true` で停止し、`cpu.json` を前の版に戻して配布する。旧版への復帰と次回自動昇格の抑止を同時に行う。バッチ停止・データ不足があっても対戦 API は継続する。
+
+これらは GitHub Actions と S3 の短時間バッチで足りる規模を想定した構成で、SageMaker の常時エンドポイントは置かない。行動方策を実際に学習する段階に進む場合は、データ契約、学習・評価の再現性、モデル登録、段階配信、推論遅延と費用を別途設計する。
 
 ## 4. 可用性・スケーリング・容量
 
