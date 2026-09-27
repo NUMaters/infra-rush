@@ -4,6 +4,7 @@ dist/
 .env*
 !.env.example
 *.log
+feedback.jsonl
 __pycache__/
 
 .qa-preview/

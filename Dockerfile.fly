@@ -9,7 +9,8 @@ FROM alpine:3.21
 WORKDIR /app
 COPY --from=build /infra-rush /infra-rush
 COPY master ./master
-RUN adduser -D -u 10001 game
-USER game
+RUN adduser -D -u 10001 game && apk add --no-cache su-exec
+COPY server/fly-entrypoint.sh /fly-entrypoint.sh
+RUN chmod +x /fly-entrypoint.sh
 EXPOSE 8080
-CMD ["/infra-rush", "-static", "/app/static", "-master", "/app/master"]
+ENTRYPOINT ["/fly-entrypoint.sh"]

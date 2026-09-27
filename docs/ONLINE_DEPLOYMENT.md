@@ -6,7 +6,7 @@ GitHub Pages は静的ファイルのみ配信する。`/ws` の Go プロセス
 
 ## 必要な設定
 
-1. このリポジトリの `Dockerfile` から Go サーバーを HTTPS と WebSocket に対応した公開ホストへデプロイする。サーバーは `PORT` で待ち受け、`/health` と `/ws` を提供する。
+1. このリポジトリの `Dockerfile` から Go サーバーを HTTPS と WebSocket に対応した公開ホストへデプロイする。サーバーは `PORT` で待ち受け、`/health`、`/ws`、任意のCPU難易度アンケート用 `/feedback` を提供する。アンケートを収集する場合は `INFRA_FEEDBACK_PATH` に永続ストレージ上のファイルを指定する。
 2. サーバーの環境変数 `INFRA_ALLOWED_ORIGINS=https://numaters.github.io` を設定する。接続元はページのパスを含まず、オリジンだけを指定する。
 3. GitHub リポジトリ変数 `INFRA_RUSH_WS_URL` に、公開サーバーの `wss://<host>/ws` を設定する。Pages のビルド時に `VITE_ONLINE_WS_URL` として埋め込まれる。`ws://` は HTTPS ページから使えない。
 4. `pages.yml` を再実行し、公開ページを別々の2ブラウザで開いてランダム対戦、数字5桁の招待コード、共有リンクからの参加を確認する。
@@ -15,13 +15,14 @@ GitHub Pages は静的ファイルのみ配信する。`/ws` の Go プロセス
 
 ## Fly.io での低コスト配置
 
-`fly.toml` は東京リージョンの 256MB / shared CPU 1台、待機中の自動停止を指定する。`Dockerfile.fly` には対戦用Goサーバーとマスターデータだけを入れ、Pagesで配信する3Dモデルは重複配置しない。Bot・部屋・資源はプロセスのメモリにあるため、**必ず1台**にする。
+`fly.toml` は東京リージョンの 256MB / shared CPU 1台、待機中の自動停止とアンケート保存用1GBボリュームを指定する。`Dockerfile.fly` には対戦用Goサーバーとマスターデータだけを入れ、Pagesで配信する3Dモデルは重複配置しない。Bot・部屋・資源はプロセスのメモリにあるため、**必ず1台**にする。
 
 Fly.ioにサインインし、支払い方法と実際の料金を確認してから、次を実行する。`infra-rush-numaters` が既に使われている場合は、`fly.toml` の `app` も同じ別名に変更する。
 
 ```sh
 flyctl auth login
 flyctl apps create infra-rush-numaters
+flyctl volumes create feedback_data -a infra-rush-numaters -r nrt -s 1 -y
 flyctl deploy --ha=false
 flyctl scale count 1
 curl https://infra-rush-numaters.fly.dev/health
@@ -30,6 +31,8 @@ gh workflow run pages.yml --repo NUMaters/infra-rush
 ```
 
 `/health` が `ok` を返し、Pages の再デプロイが成功したら、公開URLを2ブラウザで開いてランダム対戦と部屋IDを確認する。自動停止中の初回接続には起動待ちが生じる。無料トライアルは2 VM時間または7日で終了し、決済手段なしではその後の対戦サーバーが止まる。継続利用は従量課金で、稼働時間のほか転送量・停止中のルートファイルシステムなどが課金される。デプロイ・再起動中の試合も失われる。
+
+CPU戦アンケートは `/data/feedback.jsonl` に保存する。ボリュームはマシン停止中も1GB分が課金される（現行価格で約0.15米ドル/月）。集計するときは `fly ssh sftp get /data/feedback.jsonl feedback.jsonl -a infra-rush-numaters` でローカルへ取得し、`python3 scripts/feedback-report.py feedback.jsonl` を実行する。ファイルには名前・招待コードを含まないが、個々の回答なので公開しない。
 
 ## Google Cloud Run での配置例
 
