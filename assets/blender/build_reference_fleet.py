@@ -270,22 +270,22 @@ def excavator():
     k.box("wide blue upper deck", upper, (0, .15, .98), (1.61, 1.73, .32), "team", .15)
     rear_engine(k, upper, .84, 1.23)
     cab(k, upper, .32, .91, True, .90)
-    boom = k.empty("boom", upper, (-.50, -.55, 1.34))
+    boom = k.empty("boom", upper, (-.50, -.40, 1.20))
     swept_body(k, boom, "arched thick blue boom",
-               [(.10, .05, .24, .22), (-.30, .47, .26, .24),
-                (-.73, 1.08, .24, .23), (-.90, 1.18, .20, .18)], "team", .08)
-    k.beam("orange hydraulic ram", boom, (.17, -.13, .18), (.16, -.72, 1.08), .13, "orange", .11, .05)
+               [(.10, .05, .24, .22), (-.12, .42, .26, .24),
+                (-.29, .89, .24, .23), (-.38, 1.00, .20, .18)], "team", .08)
+    k.beam("orange hydraulic ram", boom, (.17, -.08, .18), (.16, -.31, .91), .13, "orange", .11, .05)
     k.cyl("large orange shoulder hinge", boom, (-.20, 0, .03), .23, .14, "orange", "X")
-    arm = k.empty("arm", boom, (-.06, -.85, 1.18))
+    arm = k.empty("arm", boom, (-.06, -.38, 1.00))
     swept_body(k, arm, "tapered rounded blue dipper arm",
-               [(.06, .02, .22, .20), (-.20, -.22, .23, .20),
-                (-.55, -.68, .21, .18), (-.72, -.83, .17, .16)], "team", .065)
-    k.beam("bucket piston", arm, (.12, -.21, -.25), (.08, -.63, -.77), .085, "metal", .07)
+               [(.04, .02, .22, .20), (-.12, -.33, .23, .20),
+                (-.30, -.83, .21, .18), (-.46, -1.30, .17, .16)], "team", .065)
+    k.beam("bucket piston", arm, (.12, -.08, -.42), (.08, -.42, -1.21), .085, "metal", .07)
     k.cyl("orange elbow hinge", arm, (.12, 0, 0), .17, .12, "orange", "X")
-    bucket = k.empty("bucket", arm, (.07, -.68, -.84))
-    bucket_mesh(k, bucket, (0, -.15, -.23), 1.48, .63, "team")
+    bucket = k.empty("bucket", arm, (.07, -.46, -1.30))
+    bucket_mesh(k, bucket, (0, -.15, -.23), 1.08, .36, "team")
     k.cyl("bucket pin", bucket, (.58, 0, 0), .16, .12, "orange", "X")
-    k.empty("P_DigContact", bucket, (0, -.70, -.70))
+    k.empty("P_DigContact", bucket, (0, -.70, -.62))
     k.clip(boom, "Dig", [(1, (0, 0, 0)), (15, (-.18, 0, 0)), (30, (0, 0, 0))])
     k.clip(arm, "Dig", [(1, (0, 0, 0)), (15, (.22, 0, 0)), (30, (0, 0, 0))])
     k.clip(bucket, "Load", [(1, (0, 0, 0)), (18, (.38, 0, 0)), (30, (0, 0, 0))])
