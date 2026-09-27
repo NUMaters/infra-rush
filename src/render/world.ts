@@ -17,6 +17,23 @@ import { seaMaterial, shoreGeometry, shoreMaterial } from "./water";
 import { MarineLife, type MarineKind } from "./marine-life";
 
 const TEAM = { blue: 0x1689ff, red: 0xf34b53 };
+// WorkBot's source helmet reaches 1.08 game units above its seat mount.
+// These factors leave room below each supplied cab roof, including the small
+// driver sway during work. The excavator's taller cab already fits at 1.0.
+const PILOT_SCALE: Record<string, number> = {
+  excavator: 1,
+  dozer: 0.7,
+  grader: 0.68,
+  drill: 0.72,
+  launcher: 0.82,
+};
+const CAB_ROOF: Record<string, string> = {
+  excavator: "tripo_part_0",
+  dozer: "tripo_part_0",
+  grader: "tripo_part_1",
+  drill: "tripo_part_24",
+  launcher: "tripo_part_1",
+};
 const DEFAULT_ZOOM = 1.03;
 const unit = new T.Vector3(0, 1, 0);
 const clamp = T.MathUtils.clamp;
@@ -330,6 +347,9 @@ export class World {
       if (pilot?.parent) {
         const replacement = this.model("bot", team);
         replacement.name = "WorkBotPilot";
+        replacement.scale.multiplyScalar(
+          PILOT_SCALE[name.replace(/-red$/, "")] ?? 1,
+        );
         // The supplied models have scale-corrected seat mounts. Keeping the
         // WorkBot beneath the mount lets both teams animate their drivers.
         pilot.add(replacement);
@@ -1441,6 +1461,10 @@ export class World {
     const output = rigPart(rig, "P_BridgeOutput");
     const bit = rigPart(rig, "drill_spin");
     const girder = rigPart(rig, "GirderCarrier");
+    const pilot = rigPart(rig, "pilot");
+    const baseAsset = (rig.userData.assetName as string).replace(/-red$/, "");
+    const helmet = pilot && rigPart(pilot, "HELMET");
+    const roof = rigPart(rig, CAB_ROOF[baseAsset]);
     const point = (object: T.Object3D | undefined) =>
       object?.getWorldPosition(new T.Vector3()).toArray() ?? null;
     return {
@@ -1451,6 +1475,8 @@ export class World {
         ? new T.Vector3(1, 0, 0).transformDirection(bit.matrixWorld).toArray()
         : null,
       bitRotation: bit?.quaternion.toArray() ?? null,
+      helmetTop: helmet ? new T.Box3().setFromObject(helmet).max.y : null,
+      roofTop: roof ? new T.Box3().setFromObject(roof).max.y : null,
     };
   }
   previewMarine(kind: MarineKind | null, progress = 0.5) {

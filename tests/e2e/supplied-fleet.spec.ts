@@ -105,6 +105,9 @@ for (const team of ["blue", "red"] as const) {
         id,
       );
       expect(before?.asset).toBe(task.asset + (team === "red" ? "-red" : ""));
+      expect(before?.helmetTop).not.toBeNull();
+      expect(before?.roofTop).not.toBeNull();
+      expect(before!.helmetTop!).toBeLessThan(before!.roofTop! - 0.03);
       if (task.asset === "launcher") {
         await page.evaluate(() => window.infraQA.advance(3));
         await page.waitForTimeout(250);

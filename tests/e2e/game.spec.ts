@@ -14,6 +14,8 @@ declare global {
         girder: number[] | null;
         bitAxis: number[] | null;
         bitRotation: number[] | null;
+        helmetTop: number | null;
+        roofTop: number | null;
       } | null;
       quake: () => void;
       setCpuEnabled: (enabled: boolean) => void;
