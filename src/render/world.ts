@@ -4,7 +4,7 @@ import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { M } from "../game/master";
-import { side } from "../game/engine";
+import { quarry, side } from "../game/engine";
 import type { Bot, GameEvent, GameState, Point, Team } from "../game/types";
 import { vehicleWorkHeading } from "./vehicle-heading";
 import {
@@ -114,6 +114,20 @@ function launcherExtension(team: Team): T.Group {
   box(0.045, 0.025, 0.23, 0.72, -0.04, 0, yellow);
   group.visible = false;
   return group;
+}
+function releaseLauncherExtension(rig: T.Group) {
+  const extension = rigPart(rig, "LauncherExtension");
+  if (!extension) return;
+  const materials = new Set<T.Material>();
+  extension.traverse((part) => {
+    if (!(part instanceof T.Mesh)) return;
+    part.geometry.dispose();
+    for (const material of Array.isArray(part.material)
+      ? part.material
+      : [part.material])
+      materials.add(material);
+  });
+  for (const material of materials) material.dispose();
 }
 function strengthenWalk(animations: T.AnimationClip[]) {
   const idle = animations.find((clip) => clip.name === "ACT_Idle");
@@ -350,6 +364,27 @@ export class World {
         const gltf = await new GLTFLoader().loadAsync(
           new URL(`models/${n}.glb`, modelBase).href,
         );
+        if (/^(excavator|dozer|grader|launcher|drill)(-red)?$/.test(n)) {
+          // Supplied fleet GLBs contain a normal texture for almost every
+          // material. All ten variants can exceed mobile GPU texture budgets
+          // after a full match, making their painted surfaces render black.
+          // Keep the color maps and authored geometry; use the toy-like
+          // material constants already baked into the source models.
+          gltf.scene.traverse((part) => {
+            if (!(part instanceof T.Mesh)) return;
+            const materials = Array.isArray(part.material)
+              ? part.material
+              : [part.material];
+            for (const material of materials) {
+              if (!(material instanceof T.MeshStandardMaterial)) continue;
+              material.normalMap = null;
+              material.roughnessMap = null;
+              material.metalnessMap = null;
+              material.aoMap = null;
+              material.needsUpdate = true;
+            }
+          });
+        }
         if (n === "bot") {
           // The supplied WorkBot is authored at roughly three game units tall.
           // Keep its rig and animation tracks intact under a scale parent.
@@ -1030,6 +1065,17 @@ export class World {
   }
   reset() {
     this.selected = null;
+    for (const actor of this.actors.values()) {
+      this.dynamic.remove(actor.bot, actor.ring);
+      actor.mixer?.uncacheRoot(actor.bot);
+      actor.ring.geometry.dispose();
+      (actor.ring.material as T.Material).dispose();
+      if (actor.rig) {
+        releaseLauncherExtension(actor.rig);
+        this.dynamic.remove(actor.rig);
+      }
+    }
+    this.actors.clear();
     for (const p of this.particles) this.dynamic.remove(p.mesh);
     this.particles = [];
     this.shake = 0;
@@ -1154,7 +1200,7 @@ export class World {
       });
     }
   }
-  update(s: GameState, dt: number, elapsed = dt) {
+  update(s: GameState, dt: number, elapsed = dt, attractMode = false) {
     this.clock += dt;
     this.waterTime.value = this.clock;
     this.marine.update(this.clock);
@@ -1195,6 +1241,18 @@ export class World {
     this.controls.update();
     this.camera.position.x += jitter;
     this.camera.position.z += jitter;
+    const featuredMiners = new Map<Team, string>();
+    if (attractMode)
+      for (const team of ["blue", "red"] as const) {
+        const nearest = s.bots
+          .filter((worker) => worker.team === team && worker.action === "mine")
+          .sort(
+            (a, b) =>
+              Math.abs(quarry(team)[0] + ((a.index % 3) - 1) * 1.8) -
+              Math.abs(quarry(team)[0] + ((b.index % 3) - 1) * 1.8),
+          )[0];
+        if (nearest) featuredMiners.set(team, nearest.id);
+      }
     for (const b of s.bots) {
       const a = this.actor(b);
       const active = ![
@@ -1203,13 +1261,21 @@ export class World {
         "ATTACKING_CASTLE",
         "RETURNING",
       ].includes(b.state);
+      // The title simulation may send all five workers to one quarry. Their
+      // large excavators overlap and shadow one another into a black mass.
+      // Show one working machine per team there and keep the other Bot figures.
+      const showTitleMiner =
+        !attractMode ||
+        b.action !== "mine" ||
+        featuredMiners.get(b.team) === b.id;
       const kind =
-        active && b.action && b.action in M.vehicles
+        active && showTitleMiner && b.action && b.action in M.vehicles
           ? M.vehicles[b.action as keyof typeof M.vehicles]
           : "";
       const moving = b.state === "MOVING" || b.state === "MARCHING";
       if (a.kind !== kind) {
         if (a.rig) {
+          releaseLauncherExtension(a.rig);
           this.dynamic.remove(a.rig);
           a.rig = null;
         }
@@ -1323,6 +1389,8 @@ export class World {
         }
       if (a.rig) {
         a.rig.position.copy(a.bot.position);
+        if (attractMode && b.action === "mine" && b.state === "MINING")
+          a.rig.position.x += b.team === "blue" ? -1.5 : 1.5;
         // Heavy machines pivot on their tracks, so they turn more slowly.
         const rigHeading = moving
           ? a.heading

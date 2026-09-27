@@ -8,6 +8,7 @@ declare global {
       attractSnapshot: () => GameState;
       advance: (s: number) => void;
       metrics: () => Record<string, number>;
+      camera: () => { position: number[]; target: number[]; zoom: number };
       inspectVehicle: (id: string) => {
         asset: string;
         output: number[] | null;

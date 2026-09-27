@@ -38,6 +38,13 @@ test("solo result collects one optional difficulty rating with match context", a
     .evaluate((card) =>
       Promise.all(card.getAnimations().map((animation) => animation.finished)),
     );
+  expect(
+    await page
+      .locator(".result-feedback")
+      .evaluate((element) =>
+        Math.round(element.getBoundingClientRect().height),
+      ),
+  ).toBeLessThanOrEqual(90);
   await page.screenshot({ path: testInfo.outputPath("result-feedback.png") });
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
@@ -61,4 +68,34 @@ test("solo result collects one optional difficulty rating with match context", a
   expect((matches[0] as { configVersion: string }).configVersion).toMatch(
     /^[0-9a-f]{8}$/,
   );
+  await page.locator("#review-map").click();
+  await expect(page.locator("#result")).toBeHidden();
+  await expect(page.locator("#map-review")).toBeVisible();
+  expect(await page.evaluate(() => window.infraQA.snapshot().status)).not.toBe(
+    "playing",
+  );
+  const cameraBefore = await page.evaluate(() => window.infraQA.camera());
+  const bounds = await page.locator("#world canvas").boundingBox();
+  expect(bounds).not.toBeNull();
+  const x = bounds!.x + bounds!.width / 2;
+  const y = bounds!.y + bounds!.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 45, y + 24, { steps: 6 });
+  await page.mouse.up();
+  await expect
+    .poll(() => page.evaluate(() => window.infraQA.camera().target[0]))
+    .not.toBe(cameraBefore.target[0]);
+  await page.screenshot({ path: testInfo.outputPath("final-map.png") });
+  await page.locator("#review-back").click();
+  await expect(page.locator("#result")).toBeVisible();
+  await expect(page.locator('[data-feedback="hard"]')).toHaveClass(/chosen/);
+  await page.locator("#result #back-title").click();
+  await expect(page.locator("#title")).toBeVisible();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
+  await page.waitForTimeout(200);
+  expect(
+    await page.evaluate(() => window.infraQA.metrics().textures),
+  ).toBeLessThan(900);
+  await page.screenshot({ path: testInfo.outputPath("returned-title.png") });
 });

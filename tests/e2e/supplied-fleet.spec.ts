@@ -148,6 +148,9 @@ for (const team of ["blue", "red"] as const) {
         path: testInfo.outputPath(team + "-" + task.asset + ".png"),
       });
     }
+    expect(
+      await page.evaluate(() => window.infraQA.metrics().textures),
+    ).toBeLessThan(800);
     expect(errors).toEqual([]);
   });
 }

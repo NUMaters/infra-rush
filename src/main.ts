@@ -73,7 +73,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
 <section id="modal" class="overlay hidden"></section>
 <section id="online-lobby" class="overlay hidden" aria-label="オンライン対戦"></section>
 <section id="title-trivia" class="overlay hidden" role="dialog" aria-modal="true" aria-label="土木の豆知識"><article class="dialog title-trivia-dialog"><button id="title-trivia-close" class="circle close-online" type="button" aria-label="豆知識を閉じる">${icon("close")}</button><section id="title-trivia-content" class="result-trivia" aria-label="土木の豆知識"></section></article></section>
-<section id="result" class="overlay hidden"></section><div id="scene-wipe" aria-hidden="true"></div>`;
+<section id="result" class="overlay hidden"></section><div id="map-review" class="hidden" aria-label="試合終了時のマップ"><div class="map-review-bar"><span>試合終了時のマップ</span><button id="review-back" type="button">結果へ戻る</button></div><p>ドラッグで移動 · ピンチで拡大・回転</p></div><div id="scene-wipe" aria-hidden="true"></div>`;
 const openingVideo = $("#opening-video") as HTMLVideoElement;
 const openingReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
@@ -339,6 +339,7 @@ let introStage = -1;
 let introActive = false;
 type TutorialStage =
   | "rules"
+  | "camera"
   | "pick"
   | "mine"
   | "gather"
@@ -434,7 +435,7 @@ function resourceSpendPop(position: Point, resource: Resource, amount: number) {
   setTimeout(() => el.remove(), 1400);
 }
 function chooseBot(id: string, context: string | null = null) {
-  if (tutorialStage === "rules") return;
+  if (tutorialStage === "rules" || tutorialStage === "camera") return;
   const nextStage: Partial<Record<TutorialStage, TutorialStage>> = {
     pick: "mine",
     pickMarch: "march",
@@ -550,6 +551,8 @@ function prepareSolo() {
   $("#hud").classList.add("hidden");
   $("#tutorial").classList.add("hidden");
   $("#result").classList.add("hidden");
+  $("#map-review").classList.add("hidden");
+  $("#bridge-labels").classList.remove("hidden");
   $("#modal").classList.add("hidden");
   $("#latency").classList.add("hidden");
   $("#task-panel").classList.add("hidden");
@@ -584,6 +587,7 @@ function showSoloMenu(open: boolean) {
 }
 const tutorialSteps: TutorialStage[] = [
   "rules",
+  "camera",
   "pick",
   "mine",
   "gather",
@@ -608,17 +612,19 @@ function tutorialStepNumber(stage: TutorialStage) {
   const index = tutorialSteps.indexOf(stage);
   return index < 1
     ? 1
-    : index < 4
+    : index < 2
       ? 2
-      : index < 7
+      : index < 5
         ? 3
-        : index < 10
+        : index < 8
           ? 4
-          : index < 13
+          : index < 11
             ? 5
-            : index < 16
+            : index < 14
               ? 6
-              : 7;
+              : index < 17
+                ? 7
+                : 8;
 }
 function tutorialAllowedAction(stage: TutorialStage | null): Action | null {
   if (stage === "mine") return "mine";
@@ -645,6 +651,10 @@ function renderTutorial() {
     rules: [
       "まずはゲームのルール",
       `5体のBotで資源を集めて橋をかけ、相手の城を${M.castle.hp}回たたこう。土で道をふさぎ、橋を壊して相手を止められる。自分の道がふさがれたら、土をならして通れるようにしよう。`,
+    ],
+    camera: [
+      "マップを見渡そう",
+      "画面をドラッグすると視点を移動できるよ。2本指で拡大・縮小や回転も試してみよう。PCではホイールで拡大、右ドラッグで回転できるよ。",
     ],
     pick: ["Botをタップ！", "手前の青いBotをタップして、仕事を選ぼう。"],
     mine: [
@@ -712,12 +722,12 @@ function renderTutorial() {
   const step = tutorialStepNumber(stage);
   html(
     "#tutorial-card",
-    `<article class="tutorial-card ${stage === "complete" ? "cleared" : ""} ${stage === "rules" ? "rules" : ""}">
-    <div class="tutorial-top"><span>れんしゅう <b>${step}/7</b></span><button id="tutorial-skip" type="button">${stage === "complete" ? "CPU戦へ進む" : "スキップして対戦"} ${icon("march")}</button></div>
+    `<article class="tutorial-card ${stage === "complete" ? "cleared" : ""} ${stage === "rules" || stage === "camera" ? "rules" : ""}">
+    <div class="tutorial-top"><span>れんしゅう <b>${step}/8</b></span><button id="tutorial-skip" type="button">${stage === "complete" ? "CPU戦へ進む" : "スキップして対戦"} ${icon("march")}</button></div>
     <div class="tutorial-message"><span class="tutorial-emblem">${icon(stage === "mine" || stage === "gather" ? "mine" : stage === "bridge" || stage === "build" || stage === "construction" ? "build" : stage === "pickEmbank" || stage === "embank" || stage === "embankWork" ? "embank" : stage === "pickDestroy" || stage === "destroy" || stage === "destroyWork" ? "destroy" : stage === "pickClear" || stage === "clear" || stage === "clearWork" ? "clear" : stage === "rules" || stage === "pick" ? "helmet" : "march")}</span><div><h2>${title}</h2><p>${description}</p></div></div>
-    ${stage === "rules" ? '<button id="tutorial-next" type="button">操作を試す →</button>' : ""}
+    ${stage === "rules" || stage === "camera" ? `<button id="tutorial-next" type="button">${stage === "camera" ? "Botを選んでみる →" : "カメラを動かしてみる →"}</button>` : ""}
     ${stage === "complete" ? '<button id="tutorial-home" type="button">タイトルへ戻る</button>' : ""}
-    <div class="tutorial-progress" aria-label="練習の進み具合 ${step}/7">${Array.from({ length: 7 }, (_, i) => `<i class="${i < step ? "done" : ""}"></i>`).join("")}</div>
+    <div class="tutorial-progress" aria-label="練習の進み具合 ${step}/8">${Array.from({ length: 8 }, (_, i) => `<i class="${i < step ? "done" : ""}"></i>`).join("")}</div>
   </article>`,
   );
   document
@@ -1005,6 +1015,8 @@ function enterOnlineGame(startAt = 0, serverNow = 0) {
   $("#hud").classList.add("hidden");
   $("#latency").classList.remove("hidden");
   $("#result").classList.add("hidden");
+  $("#map-review").classList.add("hidden");
+  $("#bridge-labels").classList.remove("hidden");
   sound.setMusicScene("game");
   syncSoundButtons();
   beginIntro(Math.max(0, startAt - serverNow));
@@ -1065,6 +1077,7 @@ function handleOnlineMessage(message: ServerMessage) {
         triviaViewer.stop();
         started = false;
         $("#result").classList.add("hidden");
+        $("#map-review").classList.add("hidden");
         $("#hud").classList.add("hidden");
         state = createGame();
         world.reset();
@@ -1423,6 +1436,7 @@ function finish() {
       cpuCastleHp: state.teams[playerTeam === "blue" ? "red" : "blue"].hp,
     });
   }
+  $("#map-review").classList.add("hidden");
   $("#result").classList.remove("hidden");
   $("#result").innerHTML =
     `<article class="result-card ${win ? "victory" : ""}"><div class="result-main"><div class="result-crown">${icon("crown")}</div><div class="eyebrow">ゲーム終了</div><h2>${draw ? "引き分け！" : win ? "道をつないだ。<br>勝利をつかんだ！" : "次こそ、<br>勝利への道を。"}</h2><p>${draw ? "最後まで守り切りました。次の工事で決着を。" : win ? "5体の小さなBotたちに、大きな拍手を。" : "掘るBotと攻めるBotの配分、相手の道をふさぐタイミングがカギ。"}</p><div class="result-score"><span class="blue">${state.teams.blue.hp}</span><small>城の残り</small><span class="red">${state.teams.red.hp}</span></div><div class="result-stats"><div><b>${state.teams[playerTeam].stats.mined}</b><small>集めた資源</small></div><div><b>${state.teams[playerTeam].stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
@@ -1432,11 +1446,25 @@ function finish() {
       .padStart(
         2,
         "0",
-      )}</b><small>工事時間</small></div></div>${mode === "cpu" && !tutorialStage ? `<section class="result-feedback" aria-label="CPUの強さについてのアンケート"><strong>今回のCPU、どう感じた？</strong><small>回答は強さの調整に役立てます · 任意</small><div class="result-feedback-choices">${(["easy", "normal", "hard"] as const).map((value) => `<button type="button" data-feedback="${value}">${{ easy: "かんたん", normal: "ふつう", hard: "むずかしい" }[value]}</button>`).join("")}</div><p id="feedback-status" role="status" aria-live="polite"></p></section>` : ""}</div><section id="result-trivia" class="result-trivia" aria-label="土木まめちしき"></section>${mode === "online" ? '<p id="result-rematch-status" class="result-rematch-status" role="status" aria-live="polite"></p>' : ""}<div class="result-actions"><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一度遊ぶ"} ${icon("march")}</button><button id="back-title" class="secondary">${icon("home")}<span>タイトルへ戻る</span></button></div></article>`;
+      )}</b><small>工事時間</small></div></div><button id="review-map" class="result-map-button" type="button">試合の最後を見る</button>${mode === "cpu" && !tutorialStage ? `<section class="result-feedback" aria-label="CPUの強さについてのアンケート"><strong>今回のCPU、どう感じた？ <small>任意</small></strong><div class="result-feedback-choices">${(["easy", "normal", "hard"] as const).map((value) => `<button type="button" data-feedback="${value}">${{ easy: "かんたん", normal: "ふつう", hard: "むずかしい" }[value]}</button>`).join("")}</div><p id="feedback-status" role="status" aria-live="polite"></p></section>` : ""}</div><section id="result-trivia" class="result-trivia" aria-label="土木まめちしき"></section>${mode === "online" ? '<p id="result-rematch-status" class="result-rematch-status" role="status" aria-live="polite"></p>' : ""}<div class="result-actions"><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一度遊ぶ"} ${icon("march")}</button><button id="back-title" class="secondary">${icon("home")}<span>タイトルへ戻る</span></button></div></article>`;
   firstResultTrivia();
   renderRematchStatus();
   sound.play("end");
   sound.setMusicScene(win ? "victory" : "retry");
+}
+function showFinalMap() {
+  if (state.status === "playing") return;
+  triviaViewer.stop();
+  $("#result").classList.add("hidden");
+  $("#hud").classList.add("hidden");
+  $("#bridge-labels").classList.add("hidden");
+  $("#map-review").classList.remove("hidden");
+  world.resetView();
+}
+function returnToResult() {
+  $("#map-review").classList.add("hidden");
+  $("#result").classList.remove("hidden");
+  if (resultTriviaIndex >= 0) showResultTrivia(resultTriviaIndex);
 }
 function backTitle() {
   forgetMatch();
@@ -1459,6 +1487,7 @@ function backTitle() {
   paused = false;
   closePanel();
   $("#result").classList.add("hidden");
+  $("#map-review").classList.add("hidden");
   $("#modal").classList.add("hidden");
   $("#hud").classList.add("hidden");
   $("#latency").classList.add("hidden");
@@ -1626,7 +1655,15 @@ app.addEventListener("click", (e) => {
         break;
       case "tutorial-next":
         sound.play("ui");
-        setTutorialStage("pick");
+        setTutorialStage(tutorialStage === "rules" ? "camera" : "pick");
+        break;
+      case "review-map":
+        sound.play("ui");
+        showFinalMap();
+        break;
+      case "review-back":
+        sound.play("ui");
+        returnToResult();
         break;
       case "restart":
         sound.play("ui");
@@ -1906,7 +1943,8 @@ function frame(now: number) {
       }),
     };
   }
-  if (started || !lobbyVisible) world.update(displayState, dt, elapsed);
+  if (started || !lobbyVisible)
+    world.update(displayState, dt, elapsed, !started);
   if (opponentOffline && started) {
     const enemy = playerTeam === "blue" ? "red" : "blue";
     const p = world.project(M.castle[enemy] as Point, 5.7);
@@ -2051,6 +2089,11 @@ try {
         attractSnapshot: () => structuredClone(titleState),
         advance: simulate,
         metrics: () => world.metrics(),
+        camera: () => ({
+          position: world.camera.position.toArray(),
+          target: world.controls.target.toArray(),
+          zoom: world.camera.zoom,
+        }),
         inspectVehicle: (id: string) => world.inspectVehicle(id),
         previewMarine: (
           kind: "fish" | "birds" | "dolphin" | "whale" | null,

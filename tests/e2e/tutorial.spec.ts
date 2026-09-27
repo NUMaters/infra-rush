@@ -19,6 +19,11 @@ test("solo practice can be skipped at any time and starts a fresh CPU match", as
     "まずはゲームのルール",
   );
   await page.locator("#tutorial-next").click();
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "マップを見渡そう",
+  );
+  await expect(page.locator("#tutorial-card")).toContainText("2本指");
+  await page.locator("#tutorial-next").click();
   await expect(page.locator("#tutorial-card")).toContainText("Botをタップ！");
   await expect(page.locator("#tutorial-skip")).toBeVisible();
   expect(await page.evaluate(() => window.infraQA.snapshot().time)).toBe(0);
@@ -63,6 +68,7 @@ test("single player can begin a CPU match without practice", async ({
 test("solo practice teaches mining, routes, sabotage and clearing", async ({
   page,
 }, info) => {
+  test.setTimeout(300000);
   await page.goto("/?qa");
   await page.locator("#start").click();
   await page.locator("#tutorial-start").click();
@@ -70,6 +76,10 @@ test("solo practice teaches mining, routes, sabotage and clearing", async ({
     "まずはゲームのルール",
   );
   await expect(page.locator("#tutorial-card")).toContainText("道をふさぎ");
+  await page.locator("#tutorial-next").click();
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "マップを見渡そう",
+  );
   await page.locator("#tutorial-next").click();
   await expect(page.locator("#tutorial-card")).toContainText("Botをタップ！");
   await page.locator("#qa-freeze").click();

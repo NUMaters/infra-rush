@@ -3,6 +3,8 @@ import {
   Box3,
   DirectionalLight,
   Group,
+  Mesh,
+  MeshStandardMaterial,
   PerspectiveCamera,
   Scene,
   Vector3,
@@ -22,6 +24,7 @@ export class TriviaViewer {
   stop() {
     this.generation++;
     cancelAnimationFrame(this.frame);
+    this.renderer?.forceContextLoss();
     this.renderer?.dispose();
     this.renderer?.domElement.remove();
     this.renderer = null;
@@ -52,6 +55,20 @@ export class TriviaViewer {
 
       const turntable = new Group();
       const model = gltf.scene;
+      model.traverse((part) => {
+        if (!(part instanceof Mesh)) return;
+        const materials = Array.isArray(part.material)
+          ? part.material
+          : [part.material];
+        for (const material of materials) {
+          if (!(material instanceof MeshStandardMaterial)) continue;
+          material.normalMap = null;
+          material.roughnessMap = null;
+          material.metalnessMap = null;
+          material.aoMap = null;
+          material.needsUpdate = true;
+        }
+      });
       const box = new Box3().setFromObject(model);
       const center = box.getCenter(new Vector3());
       model.position.sub(center);
@@ -120,6 +137,7 @@ export class TriviaViewer {
       };
       this.frame = requestAnimationFrame(animate);
     } catch {
+      renderer?.forceContextLoss();
       renderer?.dispose();
       renderer?.domElement.remove();
       if (generation !== this.generation || !host.isConnected) return;

@@ -57,7 +57,7 @@ test("result trivia presents sourced facts with matching models", async ({
     )
     .toBeGreaterThan(0);
   await expect(page.locator("#result-trivia .trivia-top")).toContainText(
-    "2/12",
+    "2/18",
   );
   expect(
     await page.evaluate(() => localStorage.getItem("infra-rush-last-trivia")),

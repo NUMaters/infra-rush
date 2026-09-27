@@ -1998,7 +1998,7 @@ h1 {
   font-size: 9px;
 }
 .result-feedback {
-  padding: 12px;
+  padding: 7px 10px;
   border: 2px solid #b7dfd0;
   border-radius: 18px;
   background: #f1fbef;
@@ -2010,22 +2010,24 @@ h1 {
 }
 .result-feedback strong {
   color: #244d57;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 900;
 }
-.result-feedback small {
-  margin: 2px 0 9px;
+.result-feedback strong small {
+  display: inline;
+  margin-left: 5px;
   color: #68848a;
   font-size: 10px;
 }
 .result-feedback-choices {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
+  margin-top: 4px;
 }
 .result-feedback-choices button {
-  min-height: 42px;
-  padding: 6px 2px;
+  min-height: 40px;
+  padding: 4px 2px;
   border: 2px solid #afd7e1;
   border-radius: 11px;
   background: #fff;
@@ -2047,11 +2049,26 @@ h1 {
   opacity: 0.5;
 }
 .result-feedback p {
-  min-height: 13px;
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: #518073;
   font-size: 10px;
   font-weight: 800;
+}
+.result-feedback p:empty {
+  display: none;
+}
+.result-map-button {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 42px;
+  margin: 5px 0 10px;
+  border: 2px solid #c2e1e9;
+  border-radius: 12px;
+  background: #e9f8fa;
+  color: #235371;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 3px 0 #9dc8d3;
 }
 .result-trivia {
   min-width: 0;
@@ -2209,7 +2226,8 @@ h1 {
 }
 .result-actions {
   grid-column: 1 / -1;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   justify-content: center;
   gap: 14px;
@@ -2237,7 +2255,60 @@ h1 {
 .result-actions .primary,
 .result-actions .secondary {
   margin: 0;
-  width: min(250px, 50%);
+  width: 100%;
+}
+#map-review {
+  position: fixed;
+  inset: 0;
+  z-index: 52;
+  pointer-events: none;
+  color: #17435b;
+}
+#map-review.hidden {
+  display: none;
+}
+.map-review-bar {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 7px 8px 7px 16px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #fffdf1ee;
+  box-shadow: 0 5px 0 #37667a55;
+  font-size: 13px;
+  font-weight: 900;
+  pointer-events: auto;
+}
+.map-review-bar button {
+  min-height: 42px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #ffcd46;
+  color: #29465c;
+  font-weight: 900;
+}
+#map-review > p {
+  position: absolute;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: 50%;
+  translate: -50% 0;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  margin: 0;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #fffdf1dc;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
 }
 .result-actions .secondary {
   min-height: 52px;
@@ -2541,14 +2612,11 @@ h1 {
   }
   .result-feedback {
     grid-column: 1 / -1;
-    margin-bottom: 10px;
-    padding: 8px;
-  }
-  .result-feedback small {
-    margin-bottom: 5px;
+    margin-bottom: 6px;
+    padding: 6px 8px;
   }
   .result-feedback-choices button {
-    min-height: 38px;
+    min-height: 40px;
   }
   .result-trivia {
     padding: 10px;
@@ -2567,7 +2635,9 @@ h1 {
     padding-top: 5px;
   }
   .result-actions {
-    display: block;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
     margin-top: 10px;
   }
   .result-actions .primary,
@@ -2575,7 +2645,7 @@ h1 {
     width: 100%;
   }
   .result-actions .secondary {
-    margin-top: 8px;
+    margin-top: 0;
   }
 }
 @media (max-width: 360px) {
