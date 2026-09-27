@@ -7,6 +7,12 @@ import { M } from "../game/master";
 import { side } from "../game/engine";
 import type { Bot, GameEvent, GameState, Point, Team } from "../game/types";
 import { vehicleWorkHeading } from "./vehicle-heading";
+import {
+  EXCAVATOR_TRAVEL_POSE,
+  dampAngle,
+  excavatorDigPose,
+  type ExcavatorPose,
+} from "./excavator-motion";
 import { seaMaterial, shoreGeometry, shoreMaterial } from "./water";
 import { MarineLife, type MarineKind } from "./marine-life";
 
@@ -34,7 +40,8 @@ function strengthenWalk(animations: T.AnimationClip[]) {
     if (
       !(track instanceof T.QuaternionKeyframeTrack) ||
       !/(Arm|Leg)/.test(track.name)
-    ) continue;
+    )
+      continue;
     const idleTrack = idle.tracks.find((item) => item.name === track.name);
     if (!(idleTrack instanceof T.QuaternionKeyframeTrack)) continue;
     rest.fromArray(idleTrack.values, 0).normalize();
@@ -75,6 +82,8 @@ export class World {
       kind: string;
       ring: T.Mesh;
       walkBlend: number;
+      rigHeading: number;
+      pose: ExcavatorPose;
       team: Team;
       mixer: T.AnimationMixer | null;
       actions: Map<string, T.AnimationAction>;
@@ -864,8 +873,17 @@ export class World {
       actions.get("ACT_Blink")?.setLoop(T.LoopOnce, 1);
     }
     a = {
-      bot, rig: null, kind: "", ring, walkBlend: 0, team: b.team,
-      mixer, actions, animationState: "ACT_Idle",
+      bot,
+      rig: null,
+      kind: "",
+      ring,
+      walkBlend: 0,
+      rigHeading: b.team === "blue" ? 0 : Math.PI,
+      pose: { ...EXCAVATOR_TRAVEL_POSE },
+      team: b.team,
+      mixer,
+      actions,
+      animationState: "ACT_Idle",
       nextBlinkAt: this.clock + 2.5 + b.index * 0.7,
       travelPosition: new T.Vector2(b.position[0], b.position[1]),
       heading: b.team === "blue" ? 0 : Math.PI,
@@ -1085,6 +1103,7 @@ export class World {
         active && b.action && b.action in M.vehicles
           ? M.vehicles[b.action as keyof typeof M.vehicles]
           : "";
+      const moving = b.state === "MOVING" || b.state === "MARCHING";
       if (a.kind !== kind) {
         if (a.rig) {
           this.dynamic.remove(a.rig);
@@ -1093,11 +1112,12 @@ export class World {
         if (kind) {
           a.rig = this.model(kind, b.team);
           this.dynamic.add(a.rig);
+          a.rigHeading = moving ? a.heading : vehicleWorkHeading(b, s.bridges);
+          a.pose = { ...EXCAVATOR_TRAVEL_POSE };
         }
         a.kind = kind;
       }
       a.bot.visible = !kind;
-      const moving = b.state === "MOVING" || b.state === "MARCHING";
       const previousX = a.travelPosition.x;
       const previousZ = a.travelPosition.y;
       const distanceToState = Math.hypot(
@@ -1171,36 +1191,40 @@ export class World {
           a.nextBlinkAt = this.clock + 3.5 + Math.random() * 2.2;
         }
         a.mixer.update(dt);
-      } else for (const sideName of ["left", "right"] as const) {
-        const side = sideName === "left" ? 1 : -1;
-        const footLift = Math.max(0, step * side) * a.walkBlend;
-        const leg = rigPart(a.bot, `leg_${sideName}`);
-        if (leg) {
-          leg.rotation.x =
-            step * side * 0.85 * a.walkBlend + breath * side * 0.045;
-          leg.rotation.z = -side * (0.08 * a.walkBlend + footLift * 0.48);
-          leg.position.x = side * (0.145 + footLift * 0.07);
-          leg.position.y = 0.16 - 0.08 * a.walkBlend + footLift * 0.14;
+      } else
+        for (const sideName of ["left", "right"] as const) {
+          const side = sideName === "left" ? 1 : -1;
+          const footLift = Math.max(0, step * side) * a.walkBlend;
+          const leg = rigPart(a.bot, `leg_${sideName}`);
+          if (leg) {
+            leg.rotation.x =
+              step * side * 0.85 * a.walkBlend + breath * side * 0.045;
+            leg.rotation.z = -side * (0.08 * a.walkBlend + footLift * 0.48);
+            leg.position.x = side * (0.145 + footLift * 0.07);
+            leg.position.y = 0.16 - 0.08 * a.walkBlend + footLift * 0.14;
+          }
+          const arm = rigPart(a.bot, `arm_${sideName}`);
+          if (arm) {
+            arm.rotation.x =
+              -step * side * 0.95 * a.walkBlend +
+              breath * side * 0.09 -
+              (attacking
+                ? (sideName === "right" ? 1.4 : 0.5) * Math.max(0, strikePhase)
+                : 0);
+            arm.rotation.z =
+              -side *
+              (0.07 * a.walkBlend +
+                Math.max(0, -step * side) * a.walkBlend * 0.62);
+          }
         }
-        const arm = rigPart(a.bot, `arm_${sideName}`);
-        if (arm) {
-          arm.rotation.x =
-            -step * side * 0.95 * a.walkBlend +
-            breath * side * 0.09 -
-            (attacking
-              ? (sideName === "right" ? 1.4 : 0.5) * Math.max(0, strikePhase)
-              : 0);
-          arm.rotation.z =
-            -side *
-            (0.07 * a.walkBlend +
-              Math.max(0, -step * side) * a.walkBlend * 0.62);
-        }
-      }
       if (a.rig) {
         a.rig.position.copy(a.bot.position);
-        a.rig.rotation.y = moving
-          ? a.bot.rotation.y
+        // Heavy machines pivot on their tracks, so they turn more slowly.
+        const rigHeading = moving
+          ? a.heading
           : vehicleWorkHeading(b, s.bridges);
+        a.rigHeading = dampAngle(a.rigHeading, rigHeading, 4.5, dt);
+        a.rig.rotation.y = a.rigHeading;
         const work = !moving;
         const cycle =
           this.clock * (kind === "drill" ? 5.8 : 2.3) + b.index * 0.4;
@@ -1209,11 +1233,22 @@ export class World {
           arm = rigPart(a.rig, "arm"),
           bucket = rigPart(a.rig, "bucket");
         if (kind === "excavator") {
-          // Open bucket faces the ground at the bite, then curls toward the arm.
-          const dig = work ? (stroke + 1) / 2 : 0;
-          if (boom) boom.rotation.x = work ? 0.08 + dig * 0.21 : 0.02;
-          if (arm) arm.rotation.x = work ? 0.68 + dig * 0.27 : 0.72;
-          if (bucket) bucket.rotation.x = work ? 2.2 - dig * 0.65 : 1.8;
+          // Bite, crowd, lift, swing aside, dump and swing back. Easing toward
+          // the target keeps travel and work poses from snapping.
+          const target = work
+            ? excavatorDigPose(
+                this.clock + b.index * 0.9,
+                b.index % 2 ? -1.2 : 1.2,
+              )
+            : EXCAVATOR_TRAVEL_POSE;
+          const k = 1 - Math.exp(-(work ? 9 : 5) * dt);
+          for (const joint of ["boom", "arm", "bucket", "slew"] as const)
+            a.pose[joint] += (target[joint] - a.pose[joint]) * k;
+          if (boom) boom.rotation.x = a.pose.boom;
+          if (arm) arm.rotation.x = a.pose.arm;
+          if (bucket) bucket.rotation.x = a.pose.bucket;
+          const upper = rigPart(a.rig, "UpperBody");
+          if (upper) upper.rotation.y = a.pose.slew;
         } else if (kind === "drill") {
           const drillArm = rigPart(a.rig, "DrillArm");
           const drillHead = rigPart(a.rig, "DrillHead");
