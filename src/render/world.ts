@@ -328,6 +328,17 @@ export class World {
       if (team === "red") castle.rotation.y = Math.PI;
       this.scene.add(castle);
       this.castles.set(team, castle);
+      const roadSamples: { x: number; z: number; halfWidth: number }[] = [];
+      const addRoad = (curve: T.CatmullRomCurve3, width: number) => {
+        this.path(curve, width);
+        for (const point of curve.getPoints(80))
+          roadSamples.push({ x: point.x, z: point.z, halfWidth: width / 2 });
+      };
+      const clearOfRoad = (x: number, z: number, margin: number) =>
+        roadSamples.every(
+          (sample) =>
+            Math.hypot(x - sample.x, z - sample.z) > sample.halfWidth + margin,
+        );
       for (const x of [-7, 0, 7]) {
         const curve = new T.CatmullRomCurve3([
           new T.Vector3(x, 0.43, sz * 3.8),
@@ -335,9 +346,9 @@ export class World {
           new T.Vector3(x * 0.55, 0.43, sz * 8),
           new T.Vector3(M.castle[team][0], 0.43, sz * 8.3),
         ]);
-        this.path(curve, 1.1);
+        addRoad(curve, 1.1);
       }
-      this.path(
+      addRoad(
         new T.CatmullRomCurve3([
           new T.Vector3(-8, 0.43, center),
           new T.Vector3(0, 0.43, center - 1 * sz),
@@ -346,7 +357,7 @@ export class World {
         0.85,
       );
       // The quarry spur makes the work route legible from either castle.
-      this.path(
+      addRoad(
         new T.CatmullRomCurve3([
           new T.Vector3(M.castle[team][0], 0.43, center),
           new T.Vector3(0, 0.43, center - sz * 0.9),
@@ -430,6 +441,7 @@ export class World {
           (Math.abs(x - M.castle[team][0]) < 3.0 &&
             Math.abs(z - M.castle[team][1]) < 2.8) ||
           (Math.abs(x - qx) < 3.8 && Math.abs(z - sz * 10) < 3.4) ||
+          !clearOfRoad(x, z, 1.45) ||
           Math.abs(z - sz * 6.3) < 1.1 ||
           Math.abs(z - center) < 0.6
         )
@@ -443,7 +455,7 @@ export class World {
       for (let i = 0; i < 35; i++) {
         const x = -13.4 + rand() * 26.8,
           z = center + (rand() - 0.5) * 9.8;
-        if (Math.abs(z - center) < 1.5) continue;
+        if (Math.abs(z - center) < 1.5 || !clearOfRoad(x, z, 0.55)) continue;
         d.position.set(x, 0.42, z);
         d.scale.set(
           0.18 + rand() * 0.22,
@@ -456,6 +468,7 @@ export class World {
       for (let i = 0; i < 100; i++) {
         const x = -13.4 + rand() * 26.8,
           z = center + (rand() - 0.5) * 10.8;
+        if (!clearOfRoad(x, z, 0.12)) continue;
         d.position.set(x, 0.34, z);
         d.scale.setScalar(0.24 + rand() * 0.11);
         d.updateMatrix();

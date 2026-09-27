@@ -7,6 +7,7 @@ test("solo practice can be skipped at any time and starts a fresh CPU match", as
   await expect(page.locator("#title-modes")).toBeVisible();
   await expect(page.locator("#solo-menu")).toBeHidden();
   await page.locator("#start").click();
+  await expect(page.locator("#start")).toHaveCount(1);
   await expect(page.locator("#solo-menu")).toBeVisible();
   await expect(page.locator("#tutorial-start")).toBeVisible();
   await expect(page.locator("#cpu-start")).toBeVisible();
@@ -14,6 +15,10 @@ test("solo practice can be skipped at any time and starts a fresh CPU match", as
   await expect(page.locator("#title-modes")).toBeVisible();
   await page.locator("#start").click();
   await page.locator("#tutorial-start").click();
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "まずはゲームのルール",
+  );
+  await page.locator("#tutorial-next").click();
   await expect(page.locator("#tutorial-card")).toContainText("Botをタップ！");
   await expect(page.locator("#tutorial-skip")).toBeVisible();
   expect(await page.evaluate(() => window.infraQA.snapshot().time)).toBe(0);
@@ -45,7 +50,7 @@ test("single player can begin a CPU match without practice", async ({
   await page.locator("#solo-back").click();
   await expect(page.locator("#online-start")).toBeVisible();
   await page.locator("#start").click();
-  await page.getByRole("button", { name: "チャレンジ", exact: true }).click();
+  await page.getByRole("button", { name: "むずかしい", exact: true }).click();
   await page.locator("#cpu-start").click();
   await expect(page.locator("#tutorial")).toBeHidden();
   await expect(page.locator("#match-intro")).toBeVisible();
@@ -55,12 +60,17 @@ test("single player can begin a CPU match without practice", async ({
   );
 });
 
-test("solo practice teaches mining, bridge building and one castle attack", async ({
+test("solo practice teaches mining, routes, sabotage and clearing", async ({
   page,
 }, info) => {
   await page.goto("/?qa");
   await page.locator("#start").click();
   await page.locator("#tutorial-start").click();
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "まずはゲームのルール",
+  );
+  await expect(page.locator("#tutorial-card")).toContainText("道をふさぎ");
+  await page.locator("#tutorial-next").click();
   await expect(page.locator("#tutorial-card")).toContainText("Botをタップ！");
   await page.locator("#qa-freeze").click();
   const tapBot = async (id: string) => {
@@ -77,6 +87,9 @@ test("solo practice teaches mining, bridge building and one castle attack", asyn
   await page.locator('[data-action="mine"]').click();
   await expect(page.locator("#tutorial-card")).toContainText("採掘中！");
   await page.evaluate(() => window.infraQA.advance(13));
+  await expect(
+    page.locator("#floaters .resource-floater img").first(),
+  ).toHaveAttribute("src", /resources\/(stone|soil|iron)\.png$/);
   await expect(page.locator("#tutorial-card")).toContainText(
     "橋の場所をタップ！",
   );
@@ -90,7 +103,16 @@ test("solo practice teaches mining, bridge building and one castle attack", asyn
     .getByRole("button", { name: "自分の城につながる橋、つくれる" })
     .click();
   await expect(page.locator("#tutorial-card")).toContainText("橋をつくろう");
+  expect(
+    (await page.evaluate(() => window.infraQA.snapshot())).teams.blue.resources
+      .stone,
+  ).toBeGreaterThanOrEqual(50);
   await page.locator('[data-action="build"]').click();
+  await expect(page.locator("#tutorial-card")).toContainText("石50を使ったよ");
+  await expect(page.locator("#tutorial-card img")).toHaveAttribute(
+    "src",
+    /stone\.png$/,
+  );
   await page.evaluate(() => window.infraQA.advance(23));
   await expect(page.locator("#tutorial-card")).toContainText(
     "攻めるBotを選ぼう",
@@ -102,10 +124,42 @@ test("solo practice teaches mining, bridge building and one castle attack", asyn
   await expect(page.locator("#tutorial-card")).toContainText("進軍しよう！");
   await page.locator('[data-action="march"]').click();
   await page.evaluate(() => window.infraQA.advance(16));
-  await expect(page.locator("#tutorial-card")).toContainText("練習クリア！");
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "相手の道をふさごう",
+  );
   expect(
     (await page.evaluate(() => window.infraQA.snapshot())).teams.red.hp,
   ).toBe(14);
+  await page.keyboard.press("3");
+  await expect(page.locator("#tutorial-card")).toContainText("土を盛ろう");
+  await page.locator('[data-action="embank"]').click();
+  await page.evaluate(() => window.infraQA.advance(23));
+  expect(
+    (await page.evaluate(() => window.infraQA.snapshot())).bridges[2].blockedBy,
+  ).toBe("blue");
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "今度は橋を壊そう",
+  );
+  await page.keyboard.press("4");
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "ドリルで橋を壊そう",
+  );
+  await page.locator('[data-action="destroy"]').click();
+  await page.evaluate(() => window.infraQA.advance(27));
+  expect(
+    (await page.evaluate(() => window.infraQA.snapshot())).bridges[2].level,
+  ).toBe(0);
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "自分の道を直そう",
+  );
+  await page.keyboard.press("5");
+  await expect(page.locator("#tutorial-card")).toContainText("土をならそう");
+  await page.locator('[data-action="clear"]').click();
+  await page.evaluate(() => window.infraQA.advance(24));
+  expect(
+    (await page.evaluate(() => window.infraQA.snapshot())).bridges[0].blockedBy,
+  ).toBeNull();
+  await expect(page.locator("#tutorial-card")).toContainText("練習クリア！");
   await expect(page.locator("#tutorial-skip")).toBeVisible();
   await expect(page.locator("#tutorial")).toBeHidden({ timeout: 6000 });
   await expect(page.locator("#match-intro")).toBeVisible();

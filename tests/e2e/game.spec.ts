@@ -38,7 +38,7 @@ test("real UI: mine, build, march, attack, return, fifteen hits, results and res
   await expect(page.locator("#start")).toBeVisible({ timeout: 60000 });
   await page.screenshot({ path: `docs/qa/${info.project.name}-title.png` });
   await page.locator("#start").click();
-  await page.getByRole("button", { name: "はじめて", exact: true }).click();
+  await page.getByRole("button", { name: "かんたん", exact: true }).click();
   await page.locator("#cpu-start").click();
   await expect(page.locator("#hud")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);

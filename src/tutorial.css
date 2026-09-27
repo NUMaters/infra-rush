@@ -107,6 +107,28 @@
   line-height: 1.4;
   font-weight: 750;
 }
+.tutorial-message p img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+.tutorial-card.rules .tutorial-message {
+  align-items: flex-start;
+  padding: 5px 0;
+}
+#tutorial-next {
+  display: block;
+  width: 100%;
+  min-height: 45px;
+  margin-top: 7px;
+  border: 2px solid #fff;
+  border-radius: 12px;
+  background: #ffcf48;
+  color: #3d5261;
+  font-weight: 900;
+  box-shadow: 0 3px 0 #d99821;
+}
 .tutorial-progress {
   display: flex;
   gap: 5px;

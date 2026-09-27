@@ -27,7 +27,7 @@ test("title, match and result music follow the screen and audio controls", async
     ),
   ).toBe(true);
   await page.locator("#start").click();
-  await page.getByRole("button", { name: "はじめて", exact: true }).click();
+  await page.getByRole("button", { name: "かんたん", exact: true }).click();
   await expect.poll(() => paused("#bgm-title")).toBe(false);
 
   await page.locator("#title-sound").click();
