@@ -7,7 +7,8 @@ test("result trivia presents sourced facts with matching models", async ({
   await page.evaluate(() => localStorage.removeItem("infra-rush-last-trivia"));
   const finishSolo = async () => {
     await page.locator("#start").click();
-    await page.locator("#tutorial-skip").click();
+    await page.locator("#cpu-start").click();
+    await expect(page.locator("#match-intro")).toBeVisible();
     await expect(page.locator("#match-intro")).toBeHidden({ timeout: 15000 });
     await page.evaluate(() => {
       window.infraQA.setCpuEnabled(false);

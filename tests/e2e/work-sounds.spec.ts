@@ -27,7 +27,8 @@ test("mining, construction and drilling emit work sounds, while mute silences th
 
   await page.goto("/?qa");
   await page.locator("#start").click();
-  await page.locator("#tutorial-skip").click();
+  await page.locator("#cpu-start").click();
+  await expect(page.locator("#match-intro")).toBeVisible();
   await expect(page.locator("#match-intro")).toBeHidden({ timeout: 15000 });
   for (let i = 1; i <= 5; i++) {
     await choose(i);

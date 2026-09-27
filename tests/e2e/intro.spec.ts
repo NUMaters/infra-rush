@@ -16,7 +16,7 @@ test("team reveal and countdown hold the match clock, and backdrops close dialog
   await expect(page.locator("#online-lobby")).toBeHidden();
 
   await page.locator("#start").click();
-  await page.locator("#tutorial-skip").click();
+  await page.locator("#cpu-start").click();
   await expect(page.locator("#match-intro .intro-card.blue")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await expect(page.locator("#match-intro .intro-card.blue")).toContainText(

@@ -26,6 +26,7 @@ test("title, match and result music follow the screen and audio controls", async
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  await page.locator("#start").click();
   await page.getByRole("button", { name: "はじめて", exact: true }).click();
   await expect.poll(() => paused("#bgm-title")).toBe(false);
 
@@ -45,8 +46,7 @@ test("title, match and result music follow the screen and audio controls", async
   await page.locator("#modal-close").click();
   await expect.poll(() => paused("#bgm-title")).toBe(false);
 
-  await page.locator("#start").click();
-  await page.locator("#tutorial-skip").click();
+  await page.locator("#cpu-start").click();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await expect.poll(() => paused("#bgm")).toBe(false);
   await expect.poll(() => paused("#bgm-title")).toBe(true);

@@ -35,7 +35,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
  <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><h1>勝利への道を、つくろう。</h1><p>5体のBot。3つの橋。ひとつの勝利。<br>掘って、つないで、相手の城へ。</p></div>
- <div class="start-card"><label for="difficulty">CPUの強さ</label><div class="difficulty-options"><button data-difficulty="easy">はじめて</button><button data-difficulty="normal" class="active">スタンダード</button><button data-difficulty="hard">チャレンジ</button></div><button id="start" class="primary">${icon("helmet")}<span>工事をはじめる<small>操作を練習してからCPU戦へ</small></span>${icon("march")}</button><button id="online-start" class="secondary online-entry">マルチプレイ ${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div>
+ <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>シングルプレイ<small>ひとりで遊ぶ</small></span>${icon("march")}</button><button id="online-start" class="secondary online-entry">マルチプレイ ${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>シングルプレイ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>操作を練習してからCPU戦へ</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>すぐに対戦</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">はじめて</button><button data-difficulty="normal" class="active">スタンダード</button><button data-difficulty="hard">チャレンジ</button></div></fieldset></div></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span><span>音楽は右上のボタンから ${icon("sound")}</span></div>
 </section>
 <section id="hud" class="hidden">
@@ -331,6 +331,12 @@ function startTutorial() {
   $("#tutorial").classList.remove("hidden");
   renderUI();
   sound.play("complete");
+}
+function showSoloMenu(open: boolean) {
+  $("#title").classList.toggle("solo-open", open);
+  $("#title-modes").classList.toggle("hidden", open);
+  $("#solo-menu").classList.toggle("hidden", !open);
+  $(open ? "#tutorial-start" : "#start").focus({ preventScroll: true });
 }
 const tutorialSteps: TutorialStage[] = [
   "pick",
@@ -946,6 +952,7 @@ function backTitle() {
   $("#hud").classList.add("hidden");
   $("#latency").classList.add("hidden");
   $("#title").classList.remove("hidden");
+  showSoloMenu(false);
   state = createGame();
   world.reset();
   visualPositions.clear();
@@ -1018,7 +1025,21 @@ app.addEventListener("click", (e) => {
       case "start":
         sound.unlock();
         sound.play("ui");
+        showSoloMenu(true);
+        break;
+      case "solo-back":
+        sound.play("ui");
+        showSoloMenu(false);
+        break;
+      case "tutorial-start":
+        sound.unlock();
+        sound.play("ui");
         sceneTransition(button, startTutorial, 520);
+        break;
+      case "cpu-start":
+        sound.unlock();
+        sound.play("ui");
+        sceneTransition(button, start, 520);
         break;
       case "tutorial-skip":
         sound.play("ui");
@@ -1126,6 +1147,10 @@ document.addEventListener("keydown", (e) => {
   }
   if (e.key === "Escape" && !$("#online-lobby").classList.contains("hidden")) {
     closeOnlineLobby();
+    return;
+  }
+  if (e.key === "Escape" && !$("#solo-menu").classList.contains("hidden")) {
+    showSoloMenu(false);
     return;
   }
   if (!started || paused || introActive || state.status !== "playing") return;

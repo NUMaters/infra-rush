@@ -4,7 +4,16 @@ test("solo practice can be skipped at any time and starts a fresh CPU match", as
   page,
 }) => {
   await page.goto("/?qa");
+  await expect(page.locator("#title-modes")).toBeVisible();
+  await expect(page.locator("#solo-menu")).toBeHidden();
   await page.locator("#start").click();
+  await expect(page.locator("#solo-menu")).toBeVisible();
+  await expect(page.locator("#tutorial-start")).toBeVisible();
+  await expect(page.locator("#cpu-start")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#title-modes")).toBeVisible();
+  await page.locator("#start").click();
+  await page.locator("#tutorial-start").click();
   await expect(page.locator("#tutorial-card")).toContainText("Botをタップ！");
   await expect(page.locator("#tutorial-skip")).toBeVisible();
   expect(await page.evaluate(() => window.infraQA.snapshot().time)).toBe(0);
@@ -26,11 +35,32 @@ test("solo practice can be skipped at any time and starts a fresh CPU match", as
   await expect(page.locator("#hud")).toBeVisible();
 });
 
+test("single player can begin a CPU match without practice", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/?qa");
+  await page.locator("#start").click();
+  await expect(page.locator("#cpu-start")).toBeInViewport();
+  await page.locator("#solo-back").click();
+  await expect(page.locator("#online-start")).toBeVisible();
+  await page.locator("#start").click();
+  await page.getByRole("button", { name: "チャレンジ", exact: true }).click();
+  await page.locator("#cpu-start").click();
+  await expect(page.locator("#tutorial")).toBeHidden();
+  await expect(page.locator("#match-intro")).toBeVisible();
+  await expect(page.locator("#hud")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    320,
+  );
+});
+
 test("solo practice teaches mining, bridge building and one castle attack", async ({
   page,
 }, info) => {
   await page.goto("/?qa");
   await page.locator("#start").click();
+  await page.locator("#tutorial-start").click();
   await expect(page.locator("#tutorial-card")).toContainText("Botをタップ！");
   await page.locator("#qa-freeze").click();
   const tapBot = async (id: string) => {

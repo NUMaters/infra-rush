@@ -37,9 +37,9 @@ test("real UI: mine, build, march, attack, return, fifteen hits, results and res
   await page.goto("/?qa");
   await expect(page.locator("#start")).toBeVisible({ timeout: 60000 });
   await page.screenshot({ path: `docs/qa/${info.project.name}-title.png` });
-  await page.getByRole("button", { name: "はじめて", exact: true }).click();
   await page.locator("#start").click();
-  await page.locator("#tutorial-skip").click();
+  await page.getByRole("button", { name: "はじめて", exact: true }).click();
+  await page.locator("#cpu-start").click();
   await expect(page.locator("#hud")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
@@ -123,7 +123,7 @@ test("pause freezes clock, help resumes, sound and bridge targeting respond", as
 }) => {
   await page.goto("/?qa");
   await page.locator("#start").click();
-  await page.locator("#tutorial-skip").click();
+  await page.locator("#cpu-start").click();
   await expect(page.locator("#hud")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await expect(page.locator("#hud")).toBeVisible();
@@ -181,7 +181,7 @@ test("civil works: reinforcement, earthquake, repair, embankment, CPU clearance 
   await page.goto("/?qa");
   await expect(page.locator("#start")).toBeVisible({ timeout: 60000 });
   await page.locator("#start").click();
-  await page.locator("#tutorial-skip").click();
+  await page.locator("#cpu-start").click();
   await expect(page.locator("#hud")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await page.getByRole("button", { name: "時計停止", exact: true }).click();
@@ -259,7 +259,7 @@ test("camera: own team in foreground, gesture controls and compact direct comman
   await page.goto("/?qa");
   await expect(page.locator("#start")).toBeVisible({ timeout: 60000 });
   await page.locator("#start").click();
-  await page.locator("#tutorial-skip").click();
+  await page.locator("#cpu-start").click();
   await expect(page.locator("#hud")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await page.getByRole("button", { name: "時計停止", exact: true }).click();
@@ -285,7 +285,7 @@ test("camera: own team in foreground, gesture controls and compact direct comman
   await expect(page.locator("#task-panel")).toBeHidden();
   await page.reload();
   await page.locator("#start").click();
-  await page.locator("#tutorial-skip").click();
+  await page.locator("#cpu-start").click();
   await expect(page.locator("#hud")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await page.getByRole("button", { name: "時計停止", exact: true }).click();
@@ -349,7 +349,7 @@ test("camera: own team in foreground, gesture controls and compact direct comman
   }
   await page.reload();
   await page.locator("#start").click();
-  await page.locator("#tutorial-skip").click();
+  await page.locator("#cpu-start").click();
   await expect(page.locator("#hud")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
   await page.getByRole("button", { name: "時計停止", exact: true }).click();
