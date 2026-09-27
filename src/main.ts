@@ -1729,8 +1729,8 @@ try {
     `<div class="dialog"><h2>準備中に問題が発生しました</h2><p>${loadingFailed ? "ゲームデータの読み込みが止まりました。通信を確認して、もう一度お試しください。" : "3D描画を開始できませんでした。WebGL対応ブラウザでお試しください。"}</p><button onclick="location.reload()" class="primary">再読み込み</button></div>`;
 }
 // QA hooks are removed from production builds by Vite.
-if ("serviceWorker" in navigator && import.meta.env.PROD)
-  window.addEventListener("load", () => {
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  const registerOffline = () => {
     navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`)
       .then(async (registration) => {
@@ -1740,4 +1740,7 @@ if ("serviceWorker" in navigator && import.meta.env.PROD)
       .catch(() => {
         // The game stays playable if a browser disallows offline installation.
       });
-  });
+  };
+  if (document.readyState === "complete") registerOffline();
+  else window.addEventListener("load", registerOffline, { once: true });
+}
