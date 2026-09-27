@@ -8,6 +8,13 @@ declare global {
       attractSnapshot: () => GameState;
       advance: (s: number) => void;
       metrics: () => Record<string, number>;
+      inspectVehicle: (id: string) => {
+        asset: string;
+        output: number[] | null;
+        girder: number[] | null;
+        bitAxis: number[] | null;
+        bitRotation: number[] | null;
+      } | null;
       quake: () => void;
       setCpuEnabled: (enabled: boolean) => void;
       setCpu: (difficulty: "easy" | "normal" | "hard") => void;

@@ -68,6 +68,11 @@ elif name == "drill":
     groups["DrillArm"] = make_empty("DrillArm", (-.04, 0, .34), upper)
     groups["DrillHead"] = make_empty("DrillHead", (-.17, 0, .23), groups["DrillArm"])
     groups["drill_spin"] = make_empty("drill_spin", (-.25, 0, .22), groups["DrillHead"])
+    # The cone descends roughly 0.20 units over 0.38 units of travel.
+    # Align its local X axis with that shaft before parenting the bit meshes;
+    # rotating about an un-tilted X made the point tumble vertically.
+    groups["drill_spin"].rotation_euler.y = -math.atan2(.20, .38)
+    bpy.context.view_layer.update()
 elif name == "launcher":
     groups["GirderCarrier"] = make_empty("GirderCarrier", (0, 0, .36), upper)
     groups["Outrigger_front_left"] = make_empty("Outrigger_front_left", (-.43, -.07, .07), root)
@@ -130,7 +135,8 @@ if name == "dozer":
 elif name == "grader":
     make_empty("P_GradeContact", (0, -.1, .02), groups["grader_work_blade"])
 elif name == "drill":
-    make_empty("P_DrillContact", (-.48, 0, .12), groups["drill_spin"])
+    contact = make_empty("P_DrillContact", (-.48, 0, .12))
+    keep_world(contact, groups["drill_spin"])
 elif name == "launcher":
     make_empty("P_BridgeOutput", (.48, 0, .28), groups["GirderCarrier"])
 

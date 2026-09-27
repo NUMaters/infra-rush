@@ -1869,6 +1869,7 @@ try {
         attractSnapshot: () => structuredClone(titleState),
         advance: simulate,
         metrics: () => world.metrics(),
+        inspectVehicle: (id: string) => world.inspectVehicle(id),
         previewMarine: (
           kind: "fish" | "birds" | "dolphin" | "whale" | null,
           progress = 0.5,

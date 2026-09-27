@@ -290,6 +290,7 @@ export class World {
     if (!source) throw new Error(`Missing model ${name}`);
     const group: T.Group =
       name === "bot" ? (cloneSkeleton(source) as T.Group) : source.clone(true);
+    group.userData.assetName = name;
     group.traverse((o) => {
       if (o instanceof T.Mesh) {
         o.castShadow = true;
@@ -1267,7 +1268,18 @@ export class World {
           if (drillHead)
             drillHead.rotation.z = work ? 0.025 + stroke * 0.012 : 0;
           const drillSpin = rigPart(a.rig, "drill_spin");
-          if (drillSpin) drillSpin.rotation.x = work ? this.clock * 13 : 0;
+          if (drillSpin) {
+            const rest = (drillSpin.userData.restQuaternion ??=
+              drillSpin.quaternion.clone()) as T.Quaternion;
+            drillSpin.quaternion
+              .copy(rest)
+              .multiply(
+                new T.Quaternion().setFromAxisAngle(
+                  new T.Vector3(1, 0, 0),
+                  work ? this.clock * 13 : 0,
+                ),
+              );
+          }
           if (work) {
             a.rig.position.y += stroke * 0.018;
             a.rig.position.x += Math.sin(a.rig.rotation.y) * stroke * 0.08;
@@ -1321,7 +1333,7 @@ export class World {
         }
         const girder = rigPart(a.rig, "GirderCarrier");
         if (girder)
-          girder.position.z = work
+          girder.position.x = work
             ? clamp(b.progress / b.duration, 0, 1) * 1.05
             : 0;
         a.rig.traverse((o) => {
@@ -1420,6 +1432,25 @@ export class World {
       geometries: this.renderer.info.memory.geometries,
       textures: this.renderer.info.memory.textures,
       pixelRatio: this.renderer.getPixelRatio(),
+    };
+  }
+  inspectVehicle(id: string) {
+    const rig = this.actors.get(id)?.rig;
+    if (!rig) return null;
+    rig.updateWorldMatrix(true, true);
+    const output = rigPart(rig, "P_BridgeOutput");
+    const bit = rigPart(rig, "drill_spin");
+    const girder = rigPart(rig, "GirderCarrier");
+    const point = (object: T.Object3D | undefined) =>
+      object?.getWorldPosition(new T.Vector3()).toArray() ?? null;
+    return {
+      asset: rig.userData.assetName as string,
+      output: point(output),
+      girder: point(girder),
+      bitAxis: bit
+        ? new T.Vector3(1, 0, 0).transformDirection(bit.matrixWorld).toArray()
+        : null,
+      bitRotation: bit?.quaternion.toArray() ?? null,
     };
   }
   previewMarine(kind: MarineKind | null, progress = 0.5) {

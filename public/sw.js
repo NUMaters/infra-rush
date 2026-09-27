@@ -1,4 +1,4 @@
-const CACHE = "infra-rush-v2";
+const CACHE = "infra-rush-v3";
 const ROOT = new URL(self.registration.scope);
 
 async function cacheOne(cache, url) {
@@ -16,6 +16,8 @@ async function cacheGameAssets() {
   const manifest = await fetch(new URL("models/manifest.json", ROOT)).then((r) => r.json());
   const assets = [
     ...manifest.map(({ asset }) => new URL(`models/${asset}.glb`, ROOT).href),
+    ...["excavator", "dozer", "grader", "drill", "launcher"].map((name) =>
+      new URL(`models/${name}-red.glb`, ROOT).href),
     ...["soil", "stone", "iron"].map((name) => new URL(`ui/resources/${name}.png`, ROOT).href),
     ...["stone-bridge", "steel-bridge", "excavator", "dozer", "launcher", "grader", "soil", "stone-resource"].map((name) => new URL(`ui/trivia/${name}.png`, ROOT).href),
     ...["infra-rush-title", "infra-rush-loop", "infra-rush-victory", "infra-rush-retry"].map((name) => new URL(`audio/${name}.mp3`, ROOT).href),
