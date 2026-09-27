@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "format": "prettier --write src tests master *.json *.ts *.html",
     "format:check": "prettier --check src tests master *.json *.ts *.html",
-    "assets": "/Applications/Blender.app/Contents/MacOS/Blender --background --python assets/blender/build.py",
+    "assets": "/Applications/Blender.app/Contents/MacOS/Blender --background --python assets/blender/build.py && /Applications/Blender.app/Contents/MacOS/Blender --background --python assets/blender/build_drill_reference.py",
     "build:portable": "node scripts/build-portable.mjs",
     "build:qa": "node scripts/build-portable.mjs --qa",
     "preview:portable": "python3 scripts/serve-preview.py --directory dist --port 5177"

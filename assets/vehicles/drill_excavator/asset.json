@@ -1,0 +1,26 @@
+{
+  "id": "drill_excavator",
+  "category": "vehicles",
+  "source": "source/drill_excavator.blend",
+  "model": "export/drill.glb",
+  "scale": 1.0,
+  "mountPoints": [
+    "P_BotSeat",
+    "P_BotEntry",
+    "P_DrillContact",
+    "P_WorkPoint"
+  ],
+  "animations": {
+    "approach": "Approach",
+    "drill": "Drill",
+    "retract": "Retract"
+  },
+  "teamColorMaterials": [
+    "team"
+  ],
+  "damageStates": [],
+  "referenceFiles": [
+    "../../../docs/references/1nrTX_XQGdDGJ9LWzkfiUqPTcklEBide-.png"
+  ],
+  "notes": "Dedicated reference-first model; hierarchy DrillExcavator/Root/Track_L,Track_R,UpperBody/Cabin/BotSeat,DrillArm/DrillHead."
+}

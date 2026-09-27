@@ -1087,11 +1087,10 @@ export class World {
           if (arm) arm.rotation.x = work ? 0.68 + dig * 0.27 : 0.72;
           if (bucket) bucket.rotation.x = work ? 2.2 - dig * 0.65 : 1.8;
         } else if (kind === "drill") {
-          if (boom) boom.rotation.x = work ? -0.26 + stroke * 0.025 : -0.18;
-          if (arm) arm.rotation.x = work ? 1.2 + stroke * 0.045 : 0.95;
-          if (bucket) {
-            bucket.rotation.x = work ? 0.68 : 0.36;
-          }
+          const drillArm = rigPart(a.rig, "DrillArm");
+          const drillHead = rigPart(a.rig, "DrillHead");
+          if (drillArm) drillArm.rotation.x = work ? -0.10 + stroke * 0.025 : 0;
+          if (drillHead) drillHead.rotation.x = work ? 0.04 + stroke * 0.02 : 0;
           const drillSpin = rigPart(a.rig, "drill_spin");
           if (drillSpin) drillSpin.rotation.z = work ? this.clock * 13 : 0;
           if (work) {
