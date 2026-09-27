@@ -2,14 +2,17 @@
 
 ゲーム起動時に、実際に配信している GLB を Blender に読み込んで撮影した 8 秒の映像を再生する。映像は読み込みが終わるまでループし、初回の 8 秒も見せてから従来のタイトル画面に切り替える。動きを減らす設定では静止画を表示し、追加待機をしない。
 
+カメラを低く近づけて各モデルの大きさを見せる。掘削・押し出し・橋の接続では、可動部に合わせて破片、衝撃の輪、短いカメラの寄りをキーフレームで撮影する。`scripts/edit-opening.mjs` で4場面をテンポよくつなぎ、最後の2秒は0.5秒ごとに見せ場を連続させる。カットの境目には大きな効果音風の文字と短い画面演出を重ねる。これらの画面演出は `src/main.ts` と `src/style.css` にあり、動きを減らす設定では停止する。
+
 ## カット構成
 
 | 時間 | 被写体と専用の動き |
 | --- | --- |
-| 0–2 秒 | WorkBot 2 体が歩いて登場し、手を振る |
-| 2–4 秒 | 掘削機のブーム・アーム・バケットが掘る。横で Bot が合図する |
-| 4–6 秒 | ブルドーザーが進み、Bot も並走する |
-| 6–8 秒 | 橋桁が城へ向けて伸び、Bot が完成を喜ぶ |
+| 0–1.5 秒 | WorkBot 2 体がカメラに向かって登場 |
+| 1.5–3 秒 | 掘削機が掘り、破片と衝撃の輪が広がる |
+| 3–4.5 秒 | ブルドーザーが土を押して前進し、土砂が飛ぶ |
+| 4.5–6 秒 | 橋桁が城へ伸び、接続時に光の破片が散る |
+| 6–8 秒 | Bot・掘削・整地・架橋の見せ場を0.5秒ずつ畳みかける |
 
 撮影には `public/models` の `bot.glb`、`excavator.glb`、`dozer.glb`、`soil.glb`、`launcher.glb`、`stone-bridge.glb`、`castle.glb` を使用する。映像のためのカメラ、照明、舞台、小物は `assets/blender/render_opening.py` で生成する。Bot は GLB の歩行・手振りアクションを使用し、重機の可動部と橋桁には専用キーフレームを設定している。
 
@@ -20,8 +23,11 @@ Blender 5.2、ffmpeg、cwebp を使用する。作業ディレクトリはリポ
 ```sh
 /Applications/Blender.app/Contents/MacOS/Blender -b -t 4 --python assets/blender/render_opening.py -- --preview
 /Applications/Blender.app/Contents/MacOS/Blender -b -t 4 --python assets/blender/render_opening.py
-ffmpeg -framerate 20 -i .qa-preview/opening-frames/frame-%04d.png -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -movflags +faststart -an public/media/opening.mp4
-cwebp -q 78 .qa-preview/opening-frames/frame-0010.png -o public/media/opening-poster.webp
+node scripts/edit-opening.mjs
+ffmpeg -framerate 20 -i .qa-preview/opening-cut/frame-%04d.png -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -movflags +faststart -an public/media/opening.mp4
+cwebp -q 78 .qa-preview/opening-frames/frame-0063.png -o public/media/opening-poster.webp
 ```
 
-PNG は `.qa-preview/opening-frames` に生成され、Git には含めない。配信する映像と静止画は `public/media` に配置する。動画は音声なしで自動再生し、既存のタイトル BGM が切り替え時に再生される。
+特定のカットだけ撮り直す場合は、Blender コマンドの最後に `-- --frames=121-160` のようにフレーム範囲を指定してから、編集とエンコードを再実行する。
+
+PNG は `.qa-preview/opening-frames` と `.qa-preview/opening-cut` に生成され、Git には含めない。配信する映像と静止画は `public/media` に配置する。動画は音声なしで自動再生し、既存のタイトル BGM が切り替え時に再生される。

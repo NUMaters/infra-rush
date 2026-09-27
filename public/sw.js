@@ -1,4 +1,4 @@
-const CACHE = "infra-rush-v4";
+const CACHE = "infra-rush-v5";
 const ROOT = new URL(self.registration.scope);
 
 async function cacheOne(cache, url) {

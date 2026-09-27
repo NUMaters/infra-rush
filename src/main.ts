@@ -40,11 +40,12 @@ function html(selector: string, markup: string) {
 }
 const app = $("#app");
 app.innerHTML = `<main id="world"></main><div id="vignette"></div>
-<section id="loading" aria-label="ゲームを読み込み中" style="background-image:url('${import.meta.env.BASE_URL}media/opening-poster.webp')">
+<section id="loading" data-shot="0" aria-label="ゲームを読み込み中" style="background-image:url('${import.meta.env.BASE_URL}media/opening-poster.webp')">
  <video id="opening-video" class="opening-video" src="${import.meta.env.BASE_URL}media/opening.mp4" poster="${import.meta.env.BASE_URL}media/opening-poster.webp" muted autoplay playsinline loop preload="auto" aria-hidden="true"></video>
  <div class="opening-tint" aria-hidden="true"></div>
+ <div class="opening-impact" aria-hidden="true"></div>
  <div class="opening-brand" aria-hidden="true">INFRA <b>RUSH!</b><span>オープニング</span></div>
- <div class="opening-caption" aria-hidden="true"><span>Botたち、出発！</span></div>
+ <div class="opening-caption" aria-hidden="true"><span class="cut-in">出動！</span></div>
  <div class="opening-status"><div class="match-spinner loading-spinner" role="progressbar" aria-label="読み込み中" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><p>読み込み中…</p><div class="opening-progress" aria-hidden="true"><span></span></div></div>
 </section>
 <section id="title" class="hidden">
@@ -77,29 +78,68 @@ const openingReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
 ).matches;
 const openingStartedAt = performance.now();
-const openingCaptions = [
-  "Botたち、出発！",
-  "掘って、つくろう！",
-  "道をならそう！",
-  "橋をつないで、お城へ！",
+const openingBeats = [
+  { until: 1.5, caption: "出動！" },
+  { until: 3, caption: "ズドン！" },
+  { until: 4.5, caption: "ドドド！" },
+  { until: 6, caption: "橋がドーン！" },
+  { until: 6.5, caption: "GO！" },
+  { until: 7, caption: "掘れ！" },
+  { until: 7.5, caption: "押せ！" },
+  { until: 8, caption: "つながった！" },
 ];
-openingVideo.addEventListener("timeupdate", () => {
+const syncOpeningBeat = () => {
+  const beat = openingBeats.findIndex(
+    ({ until }) => openingVideo.currentTime < until,
+  );
+  const shot = Math.max(0, beat);
+  const loading = $("#loading");
   const caption = $("#loading .opening-caption span");
-  const next =
-    openingCaptions[Math.min(3, Math.floor(openingVideo.currentTime / 2))];
+  const next = openingBeats[shot].caption;
   if (caption.textContent !== next) {
     caption.textContent = next;
     caption.classList.remove("cut-in");
+    caption.classList.toggle("quick", shot >= 4);
     void caption.offsetWidth;
     caption.classList.add("cut-in");
+    loading.dataset.shot = String(shot % 4);
+    if (shot <= 4) {
+      const impact = $("#loading .opening-impact");
+      impact.classList.remove("hit");
+      void impact.offsetWidth;
+      impact.classList.add("hit");
+      loading.classList.remove("opening-kick");
+      void loading.offsetWidth;
+      loading.classList.add("opening-kick");
+    }
   }
+};
+if (openingVideo.requestVideoFrameCallback) {
+  const onOpeningFrame = () => {
+    syncOpeningBeat();
+    if (!openingVideo.paused)
+      openingVideo.requestVideoFrameCallback(onOpeningFrame);
+  };
+  openingVideo.requestVideoFrameCallback(onOpeningFrame);
+} else openingVideo.addEventListener("timeupdate", syncOpeningBeat);
+const showOpeningPoster = () => {
+  $("#loading").dataset.shot = "1";
+  const caption = $("#loading .opening-caption span");
+  caption.textContent = "ズドン！";
+  caption.classList.remove("cut-in");
+};
+openingVideo.addEventListener("error", () => {
+  openingVideo.classList.add("opening-video-fallback");
+  showOpeningPoster();
 });
 if (openingReducedMotion) {
   openingVideo.removeAttribute("autoplay");
   openingVideo.pause();
+  showOpeningPoster();
 } else
   void openingVideo.play().catch(() => {
     openingVideo.classList.add("opening-video-fallback");
+    showOpeningPoster();
   });
 let state = createGame();
 let cpu = new CPU();
