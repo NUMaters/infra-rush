@@ -1,12 +1,12 @@
-export type MusicScene = "title" | "game" | "victory" | "retry";
+export type MusicScene = "title" | "game" | "urgent" | "victory" | "retry";
 export type WorkSound = "mine" | "build" | "embank" | "clear" | "destroy";
 
 const workIntervals: Record<WorkSound, number> = {
-  mine: 1.25,
-  build: 1.05,
-  embank: 1.35,
-  clear: 1.25,
-  destroy: 0.62,
+  mine: 1.08,
+  build: 0.92,
+  embank: 1.18,
+  clear: 1.08,
+  destroy: 0.72,
 };
 const workPriority: WorkSound[] = [
   "destroy",
@@ -19,12 +19,14 @@ const workPriority: WorkSound[] = [
 const musicFiles: Record<MusicScene, string> = {
   title: "infra-rush-title.mp3",
   game: "infra-rush-loop.mp3",
+  urgent: "infra-rush-urgent.mp3",
   victory: "infra-rush-victory.mp3",
   retry: "infra-rush-retry.mp3",
 };
 const musicVolume: Record<MusicScene, number> = {
   title: 0.19,
-  game: 0.23,
+  game: 0.27,
+  urgent: 0.3,
   victory: 0.19,
   retry: 0.18,
 };
@@ -116,6 +118,11 @@ export class Sound {
     void next.music.play().catch(() => {
       // Browsers may wait for the first tap before allowing title music.
     });
+  }
+  setUrgent(urgent: boolean) {
+    if (this.scene !== "game" && this.scene !== "urgent") return;
+    const next = urgent ? "urgent" : "game";
+    if (this.scene !== next) this.setMusicScene(next);
   }
   pauseMusic() {
     if (this.scene) this.tracks.get(this.scene)?.music.pause();
@@ -233,7 +240,48 @@ export class Sound {
       source.start(t + time);
       source.stop(t + time + duration);
     };
-    if (kind === "complete" || kind === "end") {
+    const impact = (
+      frequency: number,
+      time: number,
+      duration: number,
+      volume: number,
+    ) => {
+      const body = c.createOscillator();
+      const overtone = c.createOscillator();
+      const filter = c.createBiquadFilter();
+      const gain = c.createGain();
+      body.type = "triangle";
+      overtone.type = "sine";
+      body.frequency.setValueAtTime(frequency * variation * 1.55, t + time);
+      body.frequency.exponentialRampToValueAtTime(
+        frequency * variation,
+        t + time + duration,
+      );
+      overtone.frequency.setValueAtTime(frequency * variation * 2.37, t + time);
+      overtone.frequency.exponentialRampToValueAtTime(
+        frequency * variation * 2.18,
+        t + time + duration,
+      );
+      filter.type = "lowpass";
+      filter.frequency.value = 900;
+      gain.gain.setValueAtTime(0.0001, t + time);
+      gain.gain.exponentialRampToValueAtTime(volume, t + time + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + time + duration);
+      body.connect(filter);
+      overtone.connect(filter);
+      filter.connect(gain);
+      gain.connect(c.destination);
+      body.start(t + time);
+      overtone.start(t + time);
+      body.stop(t + time + duration);
+      overtone.stop(t + time + duration);
+    };
+    if (kind === "complete") {
+      impact(175, 0, 0.25, 0.055);
+      [392, 523, 659].forEach((f, i) =>
+        note(f, 0.07 + i * 0.08, 0.28, "triangle", 0.032),
+      );
+    } else if (kind === "end") {
       [523, 659, 784, 1046].forEach((f, i) =>
         note(f, i * 0.075, 0.25, "triangle", 0.055),
       );
@@ -244,25 +292,25 @@ export class Sound {
     } else if (kind === "earthquake" || kind === "collapse") {
       [45, 53, 70].forEach((f, i) => note(f, i * 0.13, 0.7, "sawtooth", 0.035));
     } else if (kind === "mine") {
-      scrape(0, 0.23, 720, 0.055);
-      note(170 * variation, 0.02, 0.13, "triangle", 0.047);
-      note(890 * variation, 0.18, 0.12, "sine", 0.023);
+      scrape(0, 0.31, 560, 0.07);
+      impact(105, 0.02, 0.23, 0.075);
+      note(430 * variation, 0.12, 0.16, "sine", 0.014);
     } else if (kind === "build") {
-      scrape(0, 0.08, 2500, 0.035);
-      note(760 * variation, 0.015, 0.17, "triangle", 0.038);
-      note(1140 * variation, 0.04, 0.18, "sine", 0.021);
-      note(980 * variation, 0.15, 0.12, "triangle", 0.02);
+      scrape(0, 0.14, 1450, 0.038);
+      impact(165, 0.015, 0.3, 0.085);
+      note(486 * variation, 0.035, 0.26, "triangle", 0.018);
+      note(635 * variation, 0.08, 0.2, "sine", 0.012);
     } else if (kind === "destroy") {
-      scrape(0, 0.34, 920, 0.085);
-      note(105 * variation, 0, 0.26, "sawtooth", 0.038);
-      note(145 * variation, 0.1, 0.11, "triangle", 0.028);
+      scrape(0, 0.41, 680, 0.09);
+      impact(82, 0, 0.33, 0.095);
+      impact(120, 0.18, 0.2, 0.055);
     } else if (kind === "embank") {
-      scrape(0, 0.27, 340, 0.05);
-      note(115 * variation, 0, 0.24, "triangle", 0.043);
-      note(175 * variation, 0.16, 0.11, "triangle", 0.025);
+      scrape(0, 0.37, 280, 0.068);
+      impact(82, 0.035, 0.27, 0.075);
+      impact(115, 0.19, 0.18, 0.042);
     } else if (kind === "clear") {
-      scrape(0, 0.31, 1150, 0.052);
-      note(270 * variation, 0.06, 0.15, "triangle", 0.027);
+      scrape(0, 0.37, 820, 0.064);
+      impact(100, 0.07, 0.24, 0.065);
     } else if (kind === "return") note(220, 0, 0.18, "sine", 0.025);
     else if (kind === "resource") note(1000, 0, 0.07, "sine", 0.012);
     else if (kind === "select") {

@@ -989,6 +989,12 @@ function costText(action: Action) {
 }
 function renderUI() {
   if (!started) return;
+  if (!paused)
+    sound.setUrgent(
+      state.status === "playing" &&
+        !tutorialStage &&
+        state.teams[playerTeam].hp * 3 < M.castle.hp,
+    );
   $("#pause").classList.toggle("hidden", !!tutorialStage);
   $("#hud .help").classList.toggle("hidden", !!tutorialStage);
   for (const team of ["blue", "red"] as const) {

@@ -354,7 +354,7 @@ function finish(s: GameState, b: Bot) {
           ? "橋ができた！"
           : b.action === "clear"
             ? "道が通れるようになった！"
-            : "仕事が終わった！",
+            : "施工完了！",
     });
   }
   returning(s, b);

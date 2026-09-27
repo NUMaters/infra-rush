@@ -534,7 +534,7 @@ func (g *Game) finishBot(b *Bot) {
 			}
 		}
 		p := Point{bridge.X, 0}
-		message := "仕事が終わった！"
+		message := "施工完了！"
 		if is(b.Action, "build") {
 			message = "橋ができた！"
 		}
