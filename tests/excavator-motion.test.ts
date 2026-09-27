@@ -26,11 +26,11 @@ describe("excavator dig cycle", () => {
     const bite = excavatorDigPose(0, 1.2);
     expect(bite.slew).toBeCloseTo(0);
     const dump = excavatorDigPose(EXCAVATOR_DIG_SECONDS * 0.73, 1.2);
-    expect(dump.slew).toBeCloseTo(1.2);
+    expect(dump.slew).toBeCloseTo(0.42);
     expect(dump.bucket).toBeGreaterThan(bite.bucket);
     expect(
       excavatorDigPose(EXCAVATOR_DIG_SECONDS * 0.73, -1.2).slew,
-    ).toBeCloseTo(-1.2);
+    ).toBeCloseTo(-0.42);
   });
 });
 

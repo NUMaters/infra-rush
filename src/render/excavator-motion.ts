@@ -1,7 +1,6 @@
-// Excavator joint poses, in radians on the GLB pivots. Positive X on the
-// boom lowers it forward, positive X on the arm pulls it toward the cab, and
-// positive X on the bucket opens it (teeth down, then opening down to dump).
-// Slew turns the whole upper body on the tracks.
+// Excavator joint poses, in radians on the supplied model's pivots. Its boom
+// and dipper are a single rigid textured mesh; the boom lowers/raises that
+// assembly, the bucket curls, and the upper body slews on the tracks.
 export interface ExcavatorPose {
   boom: number;
   arm: number;
@@ -12,25 +11,25 @@ export interface ExcavatorPose {
 // Arm folded up with the bucket tucked in front of the tracks, clear of the
 // ground, as a real machine carries it between sites.
 export const EXCAVATOR_TRAVEL_POSE: ExcavatorPose = {
-  boom: -0.35,
-  arm: 0.1,
-  bucket: -0.6,
+  boom: -0.15,
+  arm: 0,
+  bucket: -0.15,
   slew: 0,
 };
 
 export const EXCAVATOR_DIG_SECONDS = 4.4;
 
-const bite: ExcavatorPose = { boom: 0.45, arm: -0.7, bucket: 1, slew: 0 };
-const scooped: ExcavatorPose = { boom: 0.5, arm: -0.15, bucket: -0.6, slew: 0 };
+const bite: ExcavatorPose = { boom: 0.35, arm: 0, bucket: 0.35, slew: 0 };
+const scooped: ExcavatorPose = { boom: 0.3, arm: 0, bucket: -0.35, slew: 0 };
 const lifted: ExcavatorPose = {
-  boom: -0.4,
-  arm: -0.05,
-  bucket: -0.35,
+  boom: -0.12,
+  arm: 0,
+  bucket: -0.25,
   slew: 0,
 };
-const swung: ExcavatorPose = { ...lifted, slew: 1 };
-const dumped: ExcavatorPose = { boom: -0.3, arm: -0.6, bucket: 2.4, slew: 1 };
-const reaching: ExcavatorPose = { boom: 0.2, arm: -0.7, bucket: 1, slew: 0.15 };
+const swung: ExcavatorPose = { ...lifted, slew: 0.35 };
+const dumped: ExcavatorPose = { boom: -0.08, arm: 0, bucket: 0.65, slew: 0.35 };
+const reaching: ExcavatorPose = { boom: 0.2, arm: 0, bucket: 0.25, slew: 0.08 };
 
 // One dig cycle: bite with the open bucket, crowd the arm in while curling
 // the load, lift, swing aside, dump, then swing back and reach for the next

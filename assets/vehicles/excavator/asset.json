@@ -8,16 +8,11 @@
     "P_BotSeat",
     "P_DigContact"
   ],
-  "animations": {
-    "dig": "Dig",
-    "load": "Load"
-  },
-  "teamColorMaterials": [
-    "team"
-  ],
+  "animations": {},
+  "teamColorMaterials": [],
   "damageStates": [],
   "referenceFiles": [
     "../../../docs/references/1mrnEluiU6tqH5dCtVgzYpyyLDZwp2U2d.png"
   ],
-  "notes": "Large blue open bucket, tall white cab, orange engine and thick articulated arm."
+  "notes": "User-supplied textured GLB. Root/UpperBody/boom/bucket and pilot mount are Blender-authored; runtime animates the rigid fused boom-dipper and bucket. Original source/supplied-excavator.glb is preserved."
 }

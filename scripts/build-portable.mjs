@@ -47,6 +47,7 @@ await atomicCopy("node_modules/three/LICENSE", `${out}/vendor/THREE-LICENSE`);
 for (const name of [
   "loaders/GLTFLoader.js",
   "utils/BufferGeometryUtils.js",
+  "utils/SkeletonUtils.js",
   "controls/OrbitControls.js",
 ])
   await atomicCopy(

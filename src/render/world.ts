@@ -306,11 +306,17 @@ export class World {
       if (pilot?.parent) {
         const replacement = this.model("bot", team);
         replacement.name = "WorkBotPilot";
-        replacement.position.copy(pilot.position);
-        replacement.quaternion.copy(pilot.quaternion);
-        replacement.scale.copy(pilot.scale);
-        pilot.parent.add(replacement);
-        pilot.visible = false;
+        if (name === "excavator") {
+          // The supplied model has an empty, correctly scaled seat mount.
+          // Keep it visible so the pilot and its arm bones can animate there.
+          pilot.add(replacement);
+        } else {
+          replacement.position.copy(pilot.position);
+          replacement.quaternion.copy(pilot.quaternion);
+          replacement.scale.copy(pilot.scale);
+          pilot.parent.add(replacement);
+          pilot.visible = false;
+        }
       }
     } else if (name === "drill") {
       const seat = rigPart(group, "BotSeat");
@@ -1281,14 +1287,27 @@ export class World {
             ? stroke * 0.045
             : Math.sin(this.clock * 4) * 0.025;
           for (const side of ["left", "right"] as const) {
-            const hand = rigPart(pilot, `arm_${side}`);
+            const hand =
+              rigPart(pilot, `arm_${side}`) ??
+              (kind === "excavator"
+                ? rigPart(pilot, side === "left" ? "Arm.L" : "Arm.R")
+                : undefined);
             if (!hand) continue;
-            hand.rotation.x =
-              -0.65 -
-              (work
-                ? Math.sin(cycle + (side === "left" ? 0 : 1.1)) * 0.2
-                : 0.06);
-            hand.rotation.y = side === "left" ? -0.22 : 0.22;
+            if (kind === "excavator") {
+              const rest = (hand.userData.restX ??= hand.rotation.x) as number;
+              hand.rotation.x =
+                rest +
+                (work
+                  ? Math.sin(cycle + (side === "left" ? 0 : 1.1)) * 0.15
+                  : 0);
+            } else {
+              hand.rotation.x =
+                -0.65 -
+                (work
+                  ? Math.sin(cycle + (side === "left" ? 0 : 1.1)) * 0.2
+                  : 0.06);
+              hand.rotation.y = side === "left" ? -0.22 : 0.22;
+            }
           }
           const wheel = rigPart(a.rig, "steering wheel");
           if (wheel) wheel.rotation.z = work ? stroke * 0.11 : 0;

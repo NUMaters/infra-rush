@@ -22,6 +22,13 @@ declare global {
       suppressQuake: () => void;
       projectBot: (id: string) => { x: number; y: number };
       projectBridge: (id: string) => { x: number; y: number };
+      command: (
+        team: "blue" | "red",
+        botId: string,
+        action: "mine",
+        target?: string,
+      ) => unknown;
+      focus: (x: number, z: number, zoom?: number) => void;
     };
   }
 }
