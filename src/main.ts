@@ -47,6 +47,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="opening-brand" aria-hidden="true">INFRA <b>RUSH!</b><span>オープニング</span></div>
  <div class="opening-caption" aria-hidden="true"><span class="cut-in">出動！</span></div>
  <div class="opening-status"><div class="match-spinner loading-spinner" role="progressbar" aria-label="読み込み中" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><p>読み込み中…</p><div class="opening-progress" aria-hidden="true"><span></span></div></div>
+ <div id="opening-controls" class="opening-controls hidden" role="group" aria-label="オープニングの操作"><p>ムービーの再生を待っています</p><button id="opening-replay" type="button">▶ ムービーを再生</button><button id="opening-skip" type="button" disabled>タイトルへ進む</button></div>
 </section>
 <section id="title" class="hidden">
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -78,6 +79,30 @@ const openingReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
 ).matches;
 const openingStartedAt = performance.now();
+const openingControls = $("#opening-controls");
+const openingReplay = $("#opening-replay") as HTMLButtonElement;
+const openingSkip = $("#opening-skip") as HTMLButtonElement;
+let openingWorldReady = false;
+let openingClosed = false;
+let openingFirstFrameAt = 0;
+let openingLastFrameAt = openingStartedAt;
+let openingLastMediaTime = 0;
+let openingMaxMediaTime = 0;
+let openingGateResolved = false;
+let resolveOpeningFirstFrame: () => void;
+const openingFirstFrame = new Promise<void>((resolve) => {
+  resolveOpeningFirstFrame = resolve;
+});
+let resolveOpeningGate: () => void;
+const openingGate = new Promise<void>((resolve) => {
+  resolveOpeningGate = resolve;
+});
+const completeOpeningGate = () => {
+  if (openingGateResolved) return;
+  openingGateResolved = true;
+  openingControls.classList.add("hidden");
+  resolveOpeningGate();
+};
 const openingBeats = [
   { until: 1.5, caption: "出動！" },
   { until: 3, caption: "ズドン！" },
@@ -114,33 +139,90 @@ const syncOpeningBeat = () => {
     }
   }
 };
-if (openingVideo.requestVideoFrameCallback) {
-  const onOpeningFrame = () => {
-    syncOpeningBeat();
-    if (!openingVideo.paused)
-      openingVideo.requestVideoFrameCallback(onOpeningFrame);
-  };
-  openingVideo.requestVideoFrameCallback(onOpeningFrame);
-} else openingVideo.addEventListener("timeupdate", syncOpeningBeat);
 const showOpeningPoster = () => {
   $("#loading").dataset.shot = "1";
   const caption = $("#loading .opening-caption span");
   caption.textContent = "ズドン！";
   caption.classList.remove("cut-in");
 };
-openingVideo.addEventListener("error", () => {
-  openingVideo.classList.add("opening-video-fallback");
-  showOpeningPoster();
+const showOpeningControls = (message: string, poster = false) => {
+  if (openingClosed || openingGateResolved || openingReducedMotion) return;
+  if (poster) {
+    openingVideo.classList.add("opening-video-fallback");
+    showOpeningPoster();
+  }
+  $("#opening-controls p").textContent = message;
+  openingSkip.disabled = !openingWorldReady;
+  openingControls.classList.remove("hidden");
+};
+const onOpeningFrame = (mediaTime: number) => {
+  if (openingClosed || mediaTime < 0.05) return;
+  const now = performance.now();
+  if (!openingFirstFrameAt) {
+    openingFirstFrameAt = now;
+    resolveOpeningFirstFrame();
+  }
+  openingLastFrameAt = now;
+  openingControls.classList.add("hidden");
+  syncOpeningBeat();
+  const looped =
+    mediaTime + 0.5 < openingLastMediaTime && openingMaxMediaTime >= 3.5;
+  openingMaxMediaTime = Math.max(openingMaxMediaTime, mediaTime);
+  openingLastMediaTime = mediaTime;
+  // Wait for displayed video frames, not time spent loading the 3D world.
+  if ((mediaTime >= 7.35 || looped) && now - openingFirstFrameAt >= 6000)
+    completeOpeningGate();
+};
+if (openingVideo.requestVideoFrameCallback) {
+  const onVideoFrame = (_: number, metadata: VideoFrameCallbackMetadata) => {
+    onOpeningFrame(metadata.mediaTime);
+    if (!openingClosed) openingVideo.requestVideoFrameCallback(onVideoFrame);
+  };
+  openingVideo.requestVideoFrameCallback(onVideoFrame);
+} else
+  openingVideo.addEventListener("timeupdate", () =>
+    onOpeningFrame(openingVideo.currentTime),
+  );
+const playOpening = (retry = false) => {
+  if (retry) {
+    openingFirstFrameAt = 0;
+    openingLastFrameAt = performance.now();
+    openingLastMediaTime = 0;
+    openingMaxMediaTime = 0;
+    openingVideo.pause();
+    openingVideo.load();
+    try {
+      openingVideo.currentTime = 0;
+    } catch {
+      // Seeking is unavailable until the media metadata loads.
+    }
+  }
+  openingVideo.classList.remove("opening-video-fallback");
+  void openingVideo
+    .play()
+    .catch(() =>
+      showOpeningControls("再生するにはボタンを押してください", true),
+    );
+};
+openingReplay.addEventListener("click", () => playOpening(true));
+openingSkip.addEventListener("click", () => {
+  if (openingWorldReady) completeOpeningGate();
 });
+openingVideo.addEventListener("error", () => {
+  showOpeningControls("映像を読み込めませんでした。もう一度再生できます", true);
+});
+const openingWatchdog = window.setInterval(() => {
+  if (openingClosed || openingGateResolved || openingReducedMotion) return;
+  if (document.visibilityState !== "visible") return;
+  if (performance.now() - openingLastFrameAt > 4000)
+    showOpeningControls("ムービーが止まっています。再生を試してください");
+}, 1000);
 if (openingReducedMotion) {
   openingVideo.removeAttribute("autoplay");
   openingVideo.pause();
   showOpeningPoster();
-} else
-  void openingVideo.play().catch(() => {
-    openingVideo.classList.add("opening-video-fallback");
-    showOpeningPoster();
-  });
+  completeOpeningGate();
+} else playOpening();
 let state = createGame();
 let cpu = new CPU();
 let titleState = createGame();
@@ -1883,6 +1965,11 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 try {
+  if (!openingReducedMotion)
+    await Promise.race([
+      openingFirstFrame,
+      new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+    ]);
   sound.setMusicScene("title");
   world = new World($("#world"));
   world.onPick = (kind, id) => {
@@ -1893,14 +1980,6 @@ try {
     } else if (kind === "bridge") chooseBridge(id);
     else if (selected) closePanel();
   };
-  const openingMinimum = new Promise<void>((resolve) =>
-    setTimeout(
-      resolve,
-      openingReducedMotion
-        ? 0
-        : Math.max(0, 8000 - (performance.now() - openingStartedAt)),
-    ),
-  );
   await Promise.race([
     world.load((n) => {
       $("#loading .loading-spinner").setAttribute(
@@ -1914,8 +1993,15 @@ try {
       setTimeout(() => reject(new Error("Asset load timed out")), 45000),
     ),
   ]);
+  openingWorldReady = true;
+  openingSkip.disabled = false;
+  $("#loading .opening-status p").textContent = openingGateResolved
+    ? "準備できたよ！"
+    : openingFirstFrameAt
+      ? "ムービーを再生中…"
+      : "映像を準備中…";
+  await openingGate;
   $("#loading .opening-status p").textContent = "準備できたよ！";
-  await openingMinimum;
   ready = true;
   resetTitleDemo();
   $("#title").classList.remove("hidden");
@@ -1927,6 +2013,8 @@ try {
     setTimeout(resolve, openingReducedMotion ? 0 : 700),
   );
   $("#loading").classList.add("hidden");
+  openingClosed = true;
+  clearInterval(openingWatchdog);
   openingVideo.pause();
   $("#title").classList.remove("title-arriving");
   if (
@@ -2018,6 +2106,8 @@ try {
   }
 } catch (error) {
   console.error(error);
+  openingClosed = true;
+  clearInterval(openingWatchdog);
   openingVideo.pause();
   $("#loading").classList.add("opening-failed");
   const loadingFailed =

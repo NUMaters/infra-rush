@@ -286,6 +286,47 @@ button svg {
   background: #ffd451;
   transition: width 240ms ease;
 }
+.opening-controls {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: min(440px, calc(100vw - 32px));
+  padding: 20px;
+  border: 3px solid white;
+  border-radius: 22px;
+  background: #123f67e8;
+  box-shadow: 9px 11px 0 #0c294c88;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+#loading .opening-controls p {
+  flex-basis: 100%;
+  margin: 0 0 6px;
+  color: white;
+  font-size: 16px;
+  font-weight: 900;
+}
+.opening-controls button {
+  min-height: 48px;
+  padding: 8px 14px;
+  border: 3px solid white;
+  border-radius: 14px;
+  background: #ffd451;
+  color: #153956;
+  font-weight: 900;
+  box-shadow: 0 4px 0 #143755;
+}
+.opening-controls button:last-child {
+  background: #e7f8ff;
+}
+.opening-controls button:disabled {
+  opacity: 0.5;
+}
 #loading.opening-failed {
   background: #eef9fc;
 }

@@ -1,5 +1,28 @@
-const CACHE = "infra-rush-v5";
+const CACHE = "infra-rush-v6";
 const ROOT = new URL(self.registration.scope);
+const OPENING_MOVIE = new URL("media/opening.mp4", ROOT).href;
+
+async function openingRange(request) {
+  const cached = await (await caches.open(CACHE)).match(OPENING_MOVIE);
+  if (!cached) return fetch(request);
+  const match = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") ?? "");
+  if (!match) return fetch(request);
+  const bytes = await cached.arrayBuffer();
+  const total = bytes.byteLength;
+  const start = match[1] ? Number(match[1]) : Math.max(0, total - Number(match[2]));
+  const end = match[2] && match[1] ? Math.min(Number(match[2]), total - 1) : total - 1;
+  if (start > end || start >= total)
+    return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${total}` } });
+  return new Response(bytes.slice(start, end + 1), {
+    status: 206,
+    headers: {
+      "Accept-Ranges": "bytes",
+      "Content-Length": String(end - start + 1),
+      "Content-Range": `bytes ${start}-${end}/${total}`,
+      "Content-Type": "video/mp4",
+    },
+  });
+}
 
 async function cacheOne(cache, url) {
   if (await cache.match(url)) return;
@@ -37,6 +60,10 @@ self.addEventListener("install", (event) => {
         new URL("icons/icon-192.png", ROOT).href,
         new URL("icons/icon-512.png", ROOT).href,
       ]);
+      await Promise.all([
+        cacheOne(cache, OPENING_MOVIE),
+        cacheOne(cache, new URL("media/opening-poster.webp", ROOT).href),
+      ]);
       const html = await (await cache.match(ROOT.href)).text();
       const entrypoints = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g)].map(
         ([, path]) => new URL(path, ROOT).href,
@@ -68,7 +95,12 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET" || request.headers.has("range") || new URL(request.url).origin !== ROOT.origin) return;
+  if (request.method !== "GET" || new URL(request.url).origin !== ROOT.origin) return;
+  if (request.headers.has("range")) {
+    if (new URL(request.url).pathname === new URL(OPENING_MOVIE).pathname)
+      event.respondWith(openingRange(request));
+    return;
+  }
   event.respondWith(
     fetch(request)
       .then((response) => {
