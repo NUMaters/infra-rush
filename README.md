@@ -63,6 +63,8 @@ go run ./server -addr :8080 -static dist -master master
 
 ## 技術スタック
 
+実装済みの技術・データフローは[現行技術の棚卸し](docs/architecture/CURRENT_TECHNOLOGY.md)、AWS への段階的な移行案と構成図は[AWS アーキテクチャ設計](docs/architecture/AWS_ARCHITECTURE.md)にまとめています。AWS 構成は設計案で、現行の公開環境とは異なります。
+
 - **フロントエンド:** TypeScript、Vite、Three.js。ゲーム画面、3Dマップ、Bot・重機のアニメーション、操作UIをブラウザで描画します。
 - **1人用ゲームロジック:** TypeScript。CPUの判断と資源・橋・勝敗をクライアント側で処理します。
 - **オンラインサーバー:** Go、`gorilla/websocket`。試合状態をサーバーで管理し、WebSocketで指示と状態をやり取りします。
