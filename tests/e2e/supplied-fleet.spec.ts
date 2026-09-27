@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 for (const team of ["blue", "red"] as const) {
   test(team + " supplied fleet and work axes", async ({ page }, testInfo) => {
-    test.setTimeout(240000);
+    test.setTimeout(360000);
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     const models = ["dozer", "grader", "drill", "launcher"];
@@ -109,7 +109,7 @@ for (const team of ["blue", "red"] as const) {
       expect(before?.roofTop).not.toBeNull();
       expect(before!.helmetTop!).toBeLessThan(before!.roofTop! - 0.03);
       if (task.asset === "launcher") {
-        await page.evaluate(() => window.infraQA.advance(3));
+        await page.evaluate(() => window.infraQA.advance(10));
         await page.waitForTimeout(250);
         const after = await page.evaluate(
           (id) => window.infraQA.inspectVehicle(id),
@@ -119,8 +119,14 @@ for (const team of ["blue", "red"] as const) {
         expect(after?.output).not.toBeNull();
         const dx = after!.output![0] - before!.output![0];
         const dz = after!.output![2] - before!.output![2];
-        expect(dz * (team === "blue" ? 1 : -1)).toBeGreaterThan(0.35);
+        expect(dz * (team === "blue" ? 1 : -1)).toBeGreaterThan(1);
         expect(Math.abs(dx)).toBeLessThan(0.35);
+        expect(before?.girder).not.toBeNull();
+        expect(after?.girder).not.toBeNull();
+        const supportTravel = Math.hypot(
+          ...after!.girder!.map((value, i) => value - before!.girder![i]),
+        );
+        expect(supportTravel).toBeLessThan(0.15);
       }
       if (task.asset === "drill") {
         await page.evaluate(() => window.infraQA.advance(0.2));

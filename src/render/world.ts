@@ -45,6 +45,76 @@ function rigPart(root: T.Object3D, name: string): T.Object3D | undefined {
   });
   return found;
 }
+// The supplied launcher includes its front support in GirderCarrier. Moving
+// that whole group used to pull the support clear of the chassis. Keep the
+// source machine fixed and telescope a matching truss/deck through its guide.
+function launcherExtension(team: Team): T.Group {
+  const group = new T.Group();
+  group.name = "LauncherExtension";
+  group.position.set(0.18, 0, 0);
+  const paint = new T.MeshStandardMaterial({
+    color: TEAM[team],
+    roughness: 0.57,
+    metalness: 0.035,
+  });
+  const yellow = new T.MeshStandardMaterial({
+    color: 0xffc746,
+    roughness: 0.57,
+    metalness: 0.035,
+  });
+  const deck = new T.MeshStandardMaterial({
+    color: 0xd4dce2,
+    roughness: 0.68,
+    metalness: 0.02,
+  });
+  const box = (
+    width: number,
+    height: number,
+    depth: number,
+    x: number,
+    y: number,
+    z: number,
+    material: T.Material,
+  ) => {
+    const mesh = new T.Mesh(new T.BoxGeometry(width, height, depth), material);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+  };
+  const brace = (a: T.Vector3, b: T.Vector3) => {
+    const span = new T.Vector3().subVectors(b, a);
+    const mesh = new T.Mesh(
+      new T.CylinderGeometry(0.012, 0.012, span.length(), 6),
+      paint,
+    );
+    mesh.position.copy(a).add(b).multiplyScalar(0.5);
+    mesh.quaternion.setFromUnitVectors(
+      new T.Vector3(0, 1, 0),
+      span.normalize(),
+    );
+    mesh.castShadow = true;
+    group.add(mesh);
+  };
+  // Coordinates are local to the source carrier: X forward, Y up, Z across.
+  box(0.74, 0.055, 0.25, 0.37, -0.08, 0, deck);
+  for (const z of [-0.065, 0.065]) {
+    box(0.74, 0.026, 0.025, 0.37, 0.085, z, paint);
+    box(0.74, 0.026, 0.025, 0.37, 0.003, z, paint);
+    for (let i = 0; i < 5; i++) {
+      const x = i * 0.148;
+      brace(new T.Vector3(x, 0.008, z), new T.Vector3(x + 0.148, 0.08, z));
+      brace(new T.Vector3(x, 0.08, z), new T.Vector3(x + 0.148, 0.008, z));
+    }
+  }
+  // Open end frame keeps the truss readable without hiding its deck.
+  for (const z of [-0.105, 0.105])
+    box(0.045, 0.13, 0.035, 0.72, 0.025, z, yellow);
+  box(0.045, 0.03, 0.23, 0.72, 0.105, 0, yellow);
+  box(0.045, 0.025, 0.23, 0.72, -0.04, 0, yellow);
+  group.visible = false;
+  return group;
+}
 function strengthenWalk(animations: T.AnimationClip[]) {
   const idle = animations.find((clip) => clip.name === "ACT_Idle");
   const walk = animations.find((clip) => clip.name === "ACT_Walk");
@@ -354,6 +424,8 @@ export class World {
         // WorkBot beneath the mount lets both teams animate their drivers.
         pilot.add(replacement);
       }
+      if (name === "launcher" || name === "launcher-red")
+        rigPart(group, "GirderCarrier")?.add(launcherExtension(team));
     }
     return group;
   }
@@ -1351,11 +1423,15 @@ export class World {
           const wheel = rigPart(a.rig, "steering wheel");
           if (wheel) wheel.rotation.z = work ? stroke * 0.11 : 0;
         }
-        const girder = rigPart(a.rig, "GirderCarrier");
-        if (girder)
-          girder.position.x = work
-            ? clamp(b.progress / b.duration, 0, 1) * 1.05
-            : 0;
+        const extension = rigPart(a.rig, "LauncherExtension");
+        if (extension) {
+          const reach = work ? clamp(b.progress / b.duration, 0, 1) : 0;
+          extension.visible = work;
+          extension.scale.x = 0.1 + reach * 0.9;
+          const output = rigPart(a.rig, "P_BridgeOutput");
+          if (output)
+            output.position.x = work ? 0.18 + 0.74 * extension.scale.x : 0.48;
+        }
         a.rig.traverse((o) => {
           if (o.name.startsWith("Outrigger_")) o.scale.y = work ? 1 : 0.5;
         });

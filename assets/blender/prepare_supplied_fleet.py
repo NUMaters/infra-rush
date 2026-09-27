@@ -22,7 +22,7 @@ CONFIG = {
                   turn=math.pi / 2, pilot=(.20, 0, .13), pilot_turn=-math.pi / 2,
                   glass=(17, 23, 31, 32),
                   drill_tip=(44, 53, 59, 62, 65, 69, 78, 81, 87, 90)),
-    "launcher": dict(folder="bridge_launcher", source="bridge_launcher.blend", scale=4.1,
+    "launcher": dict(folder="bridge_launcher", source="bridge_launcher.blend", scale=4.6,
                      turn=-math.pi / 2, pilot=(-.29, 0, .13), pilot_turn=-math.pi / 2,
                      glass=(8,), girder=(0, 4, 5, 6, 15, 23, 25, 29, 30, 33,
                                          40, 43, 46, 54, 59, 65)),
