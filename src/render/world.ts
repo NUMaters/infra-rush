@@ -7,6 +7,7 @@ import { side } from "../game/engine";
 import type { Bot, GameEvent, GameState, Point, Team } from "../game/types";
 import { vehicleWorkHeading } from "./vehicle-heading";
 import { seaMaterial, shoreGeometry, shoreMaterial } from "./water";
+import { MarineLife, type MarineKind } from "./marine-life";
 
 const TEAM = { blue: 0x1689ff, red: 0xf34b53 };
 const DEFAULT_ZOOM = 1.03;
@@ -61,6 +62,7 @@ export class World {
   private particles: Particle[] = [];
   private dynamic = new T.Group();
   private waterTime = { value: 0 };
+  private marine: MarineLife;
   private foam: T.ShaderMaterial;
   private clock = 0;
   private shake = 0;
@@ -120,6 +122,7 @@ export class World {
     sea.rotation.x = -Math.PI / 2;
     sea.position.y = -0.7;
     this.scene.add(sea);
+    this.marine = new MarineLife(this.scene);
     this.route = new T.Line(
       new T.BufferGeometry(),
       new T.LineDashedMaterial({
@@ -856,6 +859,7 @@ export class World {
   resize() {
     this.width = this.canvas.parentElement?.clientWidth ?? innerWidth;
     this.height = this.canvas.parentElement?.clientHeight ?? innerHeight;
+    this.marine.setCompact(this.width < 700);
     this.renderer.setSize(this.width, this.height);
     const aspect = this.width / this.height;
     const vertical = Math.max(14.3, 15.2 / aspect);
@@ -942,6 +946,7 @@ export class World {
   update(s: GameState, dt: number, elapsed = dt) {
     this.clock += dt;
     this.waterTime.value = this.clock;
+    this.marine.update(this.clock);
     this.frameTimes.push(elapsed * 1000);
     if (this.frameTimes.length > 180) this.frameTimes.shift();
     this.fps =
@@ -1089,7 +1094,7 @@ export class World {
         } else if (kind === "drill") {
           const drillArm = rigPart(a.rig, "DrillArm");
           const drillHead = rigPart(a.rig, "DrillHead");
-          if (drillArm) drillArm.rotation.x = work ? -0.10 + stroke * 0.025 : 0;
+          if (drillArm) drillArm.rotation.x = work ? -0.1 + stroke * 0.025 : 0;
           if (drillHead) drillHead.rotation.x = work ? 0.04 + stroke * 0.02 : 0;
           const drillSpin = rigPart(a.rig, "drill_spin");
           if (drillSpin) drillSpin.rotation.z = work ? this.clock * 13 : 0;
@@ -1132,8 +1137,9 @@ export class World {
         }
         const girder = rigPart(a.rig, "GirderCarrier");
         if (girder)
-          girder.position.z =
-            work ? clamp(b.progress / b.duration, 0, 1) * 4.4 : 0;
+          girder.position.z = work
+            ? clamp(b.progress / b.duration, 0, 1) * 4.4
+            : 0;
         a.rig.traverse((o) => {
           if (o.name.startsWith("Outrigger_")) o.scale.y = work ? 1 : 0.5;
         });
@@ -1231,5 +1237,12 @@ export class World {
       textures: this.renderer.info.memory.textures,
       pixelRatio: this.renderer.getPixelRatio(),
     };
+  }
+  previewMarine(kind: MarineKind | null, progress = 0.5) {
+    this.marine.previewAt(kind, progress);
+    this.marine.update(this.clock);
+  }
+  marineSnapshot() {
+    return this.marine.snapshot();
   }
 }

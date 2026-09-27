@@ -1712,6 +1712,11 @@ try {
         attractSnapshot: () => structuredClone(titleState),
         advance: simulate,
         metrics: () => world.metrics(),
+        previewMarine: (
+          kind: "fish" | "birds" | "dolphin" | "whale" | null,
+          progress = 0.5,
+        ) => world.previewMarine(kind, progress),
+        marineSnapshot: () => world.marineSnapshot(),
         setCpu: (level: Difficulty) => {
           cpu = new CPU(level);
         },
