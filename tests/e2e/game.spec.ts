@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import type { GameState } from "../../src/game/types";
+import type { Action, GameState } from "../../src/game/types";
 declare global {
   interface Window {
     infraQA: {
@@ -25,9 +25,9 @@ declare global {
       command: (
         team: "blue" | "red",
         botId: string,
-        action: "mine",
+        action: Action,
         target?: string,
-      ) => unknown;
+      ) => { ok: boolean; reason?: string };
       focus: (x: number, z: number, zoom?: number) => void;
     };
   }
@@ -252,6 +252,7 @@ test("civil works: reinforcement, earthquake, repair, embankment, CPU clearance 
   await page.locator("#cpu-start").click();
   await expect(page.locator("#hud")).toBeVisible();
   await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
+  await page.evaluate(() => window.infraQA.suppressQuake());
   await page.getByRole("button", { name: "時計停止", exact: true }).click();
   for (let i = 0; i < 5; i++) {
     await selectBot(page, i);

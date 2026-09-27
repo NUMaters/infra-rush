@@ -4,19 +4,14 @@
   "source": "source/bulldozer.blend",
   "model": "export/dozer.glb",
   "scale": 1.0,
-  "mountPoints": [
-    "P_BotSeat",
-    "P_SoilPush"
-  ],
+  "mountPoints": ["P_BotSeat", "P_SoilPush"],
   "animations": {
-    "push": "PushSoil"
+    "push": "runtime blade push cycle"
   },
-  "teamColorMaterials": [
-    "team"
-  ],
+  "teamColorMaterials": ["blue and red textured GLB variants"],
   "damageStates": [],
   "referenceFiles": [
     "../../../docs/references/1bBrCmDSU9MdVCiEwnXWEjphb17FyEERH.png"
   ],
-  "notes": "Oversized concave orange blade, thick tracks, white cab and rear vented engine."
+  "notes": "User-supplied sculpt; transparent cab panes, reduced paint gloss, pivoted blade, and seated animated WorkBot. Red variant: export/dozer-red.glb."
 }

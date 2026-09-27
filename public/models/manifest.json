@@ -19,39 +19,39 @@
   },
   {
     "asset": "dozer",
-    "triangles": 51196,
-    "meshes": 36,
-    "bytes": 2355948
+    "triangles": 154819,
+    "meshes": 90,
+    "bytes": 6331236
   },
   {
     "asset": "grader",
-    "triangles": 41020,
-    "meshes": 35,
-    "bytes": 1711424
+    "triangles": 175247,
+    "meshes": 196,
+    "bytes": 6855476
   },
   {
     "asset": "launcher",
-    "triangles": 67980,
-    "meshes": 53,
-    "bytes": 3196060
+    "triangles": 148794,
+    "meshes": 73,
+    "bytes": 6485812
   },
   {
     "asset": "drill",
-    "triangles": 50848,
-    "meshes": 28,
-    "bytes": 2294072
+    "triangles": 156486,
+    "meshes": 105,
+    "bytes": 6375792
   },
   {
     "asset": "stone-bridge",
-    "triangles": 31564,
+    "triangles": 27552,
     "meshes": 12,
-    "bytes": 1517728
+    "bytes": 1319176
   },
   {
     "asset": "steel-bridge",
-    "triangles": 36888,
-    "meshes": 12,
-    "bytes": 1662108
+    "triangles": 29564,
+    "meshes": 13,
+    "bytes": 1379180
   },
   {
     "asset": "tree",

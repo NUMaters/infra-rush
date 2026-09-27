@@ -238,9 +238,13 @@ export class World {
       "excavator",
       "excavator-red",
       "dozer",
+      "dozer-red",
       "grader",
+      "grader-red",
       "launcher",
+      "launcher-red",
       "drill",
+      "drill-red",
       "stone-bridge",
       "steel-bridge",
       "tree",
@@ -277,7 +281,11 @@ export class World {
     this.buildMap();
   }
   model(name: string, team: Team = "blue") {
-    if (name === "excavator" && team === "red") name = "excavator-red";
+    if (
+      team === "red" &&
+      ["excavator", "dozer", "grader", "launcher", "drill"].includes(name)
+    )
+      name += "-red";
     const source = this.templates.get(name);
     if (!source) throw new Error(`Missing model ${name}`);
     const group: T.Group =
@@ -303,32 +311,27 @@ export class World {
         }
       }
     });
-    if (["excavator", "excavator-red", "dozer", "grader", "launcher"].includes(name)) {
+    if (
+      [
+        "excavator",
+        "excavator-red",
+        "dozer",
+        "dozer-red",
+        "grader",
+        "grader-red",
+        "launcher",
+        "launcher-red",
+        "drill",
+        "drill-red",
+      ].includes(name)
+    ) {
       const pilot = rigPart(group, "pilot");
       if (pilot?.parent) {
         const replacement = this.model("bot", team);
         replacement.name = "WorkBotPilot";
-        if (name === "excavator" || name === "excavator-red") {
-          // The supplied model has an empty, correctly scaled seat mount.
-          // Keep it visible so the pilot and its arm bones can animate there.
-          pilot.add(replacement);
-        } else {
-          replacement.position.copy(pilot.position);
-          replacement.quaternion.copy(pilot.quaternion);
-          replacement.scale.copy(pilot.scale);
-          pilot.parent.add(replacement);
-          pilot.visible = false;
-        }
-      }
-    } else if (name === "drill") {
-      const seat = rigPart(group, "BotSeat");
-      if (seat) {
-        for (const child of seat.children)
-          if (child.name.startsWith("Bot ")) child.visible = false;
-        const replacement = this.model("bot", team);
-        replacement.name = "WorkBotPilot";
-        replacement.scale.setScalar(0.88);
-        seat.add(replacement);
+        // The supplied models have scale-corrected seat mounts. Keeping the
+        // WorkBot beneath the mount lets both teams animate their drivers.
+        pilot.add(replacement);
       }
     }
     return group;
@@ -1260,10 +1263,11 @@ export class World {
         } else if (kind === "drill") {
           const drillArm = rigPart(a.rig, "DrillArm");
           const drillHead = rigPart(a.rig, "DrillHead");
-          if (drillArm) drillArm.rotation.x = work ? -0.1 + stroke * 0.025 : 0;
-          if (drillHead) drillHead.rotation.x = work ? 0.04 + stroke * 0.02 : 0;
+          if (drillArm) drillArm.rotation.z = work ? -0.07 + stroke * 0.018 : 0;
+          if (drillHead)
+            drillHead.rotation.z = work ? 0.025 + stroke * 0.012 : 0;
           const drillSpin = rigPart(a.rig, "drill_spin");
-          if (drillSpin) drillSpin.rotation.z = work ? this.clock * 13 : 0;
+          if (drillSpin) drillSpin.rotation.x = work ? this.clock * 13 : 0;
           if (work) {
             a.rig.position.y += stroke * 0.018;
             a.rig.position.x += Math.sin(a.rig.rotation.y) * stroke * 0.08;
@@ -1278,10 +1282,9 @@ export class World {
           workBlade.rotation.z = work ? stroke * 0.035 : 0;
           if (kind === "grader")
             workBlade.rotation.y = work ? 0.24 + stroke * 0.04 : 0.14;
-          workBlade.position.y =
-            kind === "grader"
-              ? 0.31 + (work ? stroke * 0.045 : 0.12)
-              : 0.38 + (work ? stroke * 0.035 : 0.11);
+          const bladeRest = (workBlade.userData.restY ??=
+            workBlade.position.y) as number;
+          workBlade.position.y = bladeRest + (work ? stroke * 0.018 : 0.035);
         }
         const pilot = rigPart(a.rig, "pilot");
         if (pilot) {
@@ -1291,11 +1294,13 @@ export class World {
           for (const side of ["left", "right"] as const) {
             const hand =
               rigPart(pilot, `arm_${side}`) ??
-              (kind === "excavator"
-                ? rigPart(pilot, side === "left" ? "Arm.L" : "Arm.R")
-                : undefined);
+              rigPart(pilot, side === "left" ? "Arm.L" : "Arm.R");
             if (!hand) continue;
-            if (kind === "excavator") {
+            if (
+              ["excavator", "dozer", "grader", "drill", "launcher"].includes(
+                kind,
+              )
+            ) {
               const rest = (hand.userData.restX ??= hand.rotation.x) as number;
               hand.rotation.x =
                 rest +
@@ -1317,7 +1322,7 @@ export class World {
         const girder = rigPart(a.rig, "GirderCarrier");
         if (girder)
           girder.position.z = work
-            ? clamp(b.progress / b.duration, 0, 1) * 4.4
+            ? clamp(b.progress / b.duration, 0, 1) * 1.05
             : 0;
         a.rig.traverse((o) => {
           if (o.name.startsWith("Outrigger_")) o.scale.y = work ? 1 : 0.5;

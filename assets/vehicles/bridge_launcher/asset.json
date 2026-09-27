@@ -4,22 +4,16 @@
   "source": "source/bridge_launcher.blend",
   "model": "export/launcher.glb",
   "scale": 1.0,
-  "mountPoints": [
-    "P_BotSeat",
-    "P_BridgeSegmentSocket",
-    "P_BridgeOutput"
-  ],
+  "mountPoints": ["P_BotSeat", "P_BridgeSegmentSocket", "P_BridgeOutput"],
   "animations": {
-    "deploy": "DeployOutriggers",
-    "launch": "LaunchGirder"
+    "deploy": "runtime outrigger cycle",
+    "launch": "runtime girder extension"
   },
-  "teamColorMaterials": [
-    "team"
-  ],
+  "teamColorMaterials": ["blue and red textured GLB variants"],
   "damageStates": [],
   "referenceFiles": [
     "../../../docs/references/1VvnzqS2HrSDoOsVi5p0NJK_MAJmCUvVk.png",
     "../../../docs/references/1T7bxSD-voxS8uK_EcWYdRPBAh7ypmcyX.png"
   ],
-  "notes": "Compact white Bot cab, tall blue lattice truss, carried pale girder and four yellow feet."
+  "notes": "User-supplied sculpt; transparent cab pane, reduced paint gloss, pivoted carried girder and outriggers, and seated animated WorkBot. Red variant: export/launcher-red.glb."
 }
