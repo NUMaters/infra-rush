@@ -1203,7 +1203,7 @@ function showTrivia(
     target === "#title-trivia-content"
       ? "title-trivia-next"
       : "result-trivia-next";
-  host.innerHTML = `<div class="trivia-top"><span>土木まめちしき</span><small>${index + 1}/${civilTrivia.length}</small></div><div class="trivia-content"><div class="trivia-visual"><img class="trivia-model" src="${import.meta.env.BASE_URL}ui/trivia/${fact.model}.png" alt="${fact.modelName}のゲーム内モデル"><span class="trivia-model-name">${fact.modelName}</span></div><div class="trivia-bubble"><small>${fact.topic}</small><h3>${fact.title}</h3><p>${fact.text}</p></div></div><div class="trivia-bottom"><a href="${fact.source}" target="_blank" rel="noopener noreferrer">出典：${fact.sourceLabel} ↗</a><button id="${nextButtonId}" type="button">次の話を聞く ${icon("march")}</button></div>`;
+  host.innerHTML = `<div class="trivia-top"><span>土木まめちしき</span><small>${index + 1}/${civilTrivia.length}</small></div><div class="trivia-content"><div class="trivia-visual"><img class="trivia-model" src="${import.meta.env.BASE_URL}ui/trivia/${fact.model}.png" alt="${fact.modelName}のゲーム内モデル"><div class="trivia-model-wait" role="status" aria-label="3Dモデルを読み込み中"><span class="match-spinner" aria-hidden="true"></span><small>読み込み中…</small></div><span class="trivia-model-name">${fact.modelName}</span></div><div class="trivia-bubble"><small>${fact.topic}</small><h3>${fact.title}</h3><p>${fact.text}</p></div></div><div class="trivia-bottom"><a href="${fact.source}" target="_blank" rel="noopener noreferrer">出典：${fact.sourceLabel} ↗</a><button id="${nextButtonId}" type="button">次の話を聞く ${icon("march")}</button></div>`;
   triviaViewer.show(
     host.querySelector<HTMLElement>(".trivia-visual")!,
     fact.model,

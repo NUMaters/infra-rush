@@ -30,22 +30,20 @@ export class TriviaViewer {
   async show(host: HTMLElement, name: ModelName) {
     this.stop();
     const generation = this.generation;
+    let renderer: WebGLRenderer | null = null;
     try {
       const gltf = await new GLTFLoader().loadAsync(
         `${import.meta.env.BASE_URL}models/${name}.glb`,
       );
       if (generation !== this.generation || !host.isConnected) return;
 
-      const renderer = new WebGLRenderer({ alpha: true, antialias: true });
+      renderer = new WebGLRenderer({ alpha: true, antialias: true });
+      const stageRenderer = renderer;
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
       renderer.setSize(host.clientWidth, host.clientHeight);
       renderer.domElement.className = "trivia-canvas";
       renderer.domElement.setAttribute("role", "img");
       renderer.domElement.setAttribute("aria-label", `${name}の動く3Dモデル`);
-      host.append(renderer.domElement);
-      host.querySelector(".trivia-model")?.classList.add("fallback-hidden");
-      this.renderer = renderer;
-
       const scene = new Scene();
       scene.add(new AmbientLight(0xffffff, 2.1));
       const sun = new DirectionalLight(0xffffff, 2.7);
@@ -69,6 +67,10 @@ export class TriviaViewer {
       );
       camera.position.set(radius * 0.95, radius * 0.7, radius * 1.25);
       camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+      host.append(renderer.domElement);
+      host.querySelector(".trivia-model-wait")?.remove();
+      this.renderer = renderer;
 
       const movingPart =
         name === "excavator"
@@ -114,11 +116,15 @@ export class TriviaViewer {
           if (pilotArm)
             pilotArm.rotation.x = pilotArmRotation + Math.sin(t * 4) * 0.16;
         }
-        renderer.render(scene, camera);
+        stageRenderer.render(scene, camera);
       };
       this.frame = requestAnimationFrame(animate);
     } catch {
-      // Keep the existing static image if WebGL or a model cannot be loaded.
+      renderer?.dispose();
+      renderer?.domElement.remove();
+      if (generation !== this.generation || !host.isConnected) return;
+      host.querySelector(".trivia-model-wait")?.remove();
+      host.querySelector(".trivia-model")?.classList.add("fallback-visible");
     }
   }
 }
