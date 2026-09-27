@@ -1,0 +1,10 @@
+{
+  "worker_bot": "characters/worker_bot/asset.json",
+  "excavator": "vehicles/excavator/asset.json",
+  "bulldozer": "vehicles/bulldozer/asset.json",
+  "motor_grader": "vehicles/motor_grader/asset.json",
+  "bridge_launcher": "vehicles/bridge_launcher/asset.json",
+  "drill_excavator": "vehicles/drill_excavator/asset.json",
+  "stone_bridge": "bridges/stone_bridge/asset.json",
+  "steel_bridge": "bridges/steel_bridge/asset.json"
+}

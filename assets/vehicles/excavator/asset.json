@@ -1,0 +1,23 @@
+{
+  "id": "excavator",
+  "category": "vehicles",
+  "source": "source/excavator.blend",
+  "model": "export/excavator.glb",
+  "scale": 1.0,
+  "mountPoints": [
+    "P_BotSeat",
+    "P_DigContact"
+  ],
+  "animations": {
+    "dig": "Dig",
+    "load": "Load"
+  },
+  "teamColorMaterials": [
+    "team"
+  ],
+  "damageStates": [],
+  "referenceFiles": [
+    "../../../docs/references/1mrnEluiU6tqH5dCtVgzYpyyLDZwp2U2d.png"
+  ],
+  "notes": "Large blue open bucket, tall white cab, orange engine and thick articulated arm."
+}

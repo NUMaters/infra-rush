@@ -1,0 +1,20 @@
+{
+  "id": "stone_bridge",
+  "category": "bridges",
+  "source": "source/stone_bridge.blend",
+  "model": "export/stone-bridge.glb",
+  "scale": 1.0,
+  "mountPoints": [],
+  "animations": {},
+  "teamColorMaterials": [
+    "team"
+  ],
+  "damageStates": [
+    "Healthy"
+  ],
+  "referenceFiles": [
+    "../../../docs/references/1XbCwOrDq2IhssDZkKU0mDQMDqp5FJRlw.png",
+    "../../../docs/references/18dgRP4e-0tB_Lv_74Sl9ZHK_xIWTST5o.png"
+  ],
+  "notes": "Stone slab road, four carved banner posts and side support beams; game damage uses separate crack overlays."
+}

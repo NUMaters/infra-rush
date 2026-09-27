@@ -1,0 +1,19 @@
+{
+  "id": "steel_bridge",
+  "category": "bridges",
+  "source": "source/steel_bridge.blend",
+  "model": "export/steel-bridge.glb",
+  "scale": 1.0,
+  "mountPoints": [],
+  "animations": {},
+  "teamColorMaterials": [
+    "team"
+  ],
+  "damageStates": [
+    "Healthy"
+  ],
+  "referenceFiles": [
+    "../../../docs/references/1S3DRIAvjFTZosd-GJgkM1emLk1QmOKoU.png"
+  ],
+  "notes": "Riveted six-span deck with side lattice beams and four lit banner posts; game damage uses separate crack and exposed-structure overlays."
+}

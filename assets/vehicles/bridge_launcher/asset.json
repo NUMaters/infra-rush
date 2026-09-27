@@ -1,0 +1,25 @@
+{
+  "id": "bridge_launcher",
+  "category": "vehicles",
+  "source": "source/bridge_launcher.blend",
+  "model": "export/launcher.glb",
+  "scale": 1.0,
+  "mountPoints": [
+    "P_BotSeat",
+    "P_BridgeSegmentSocket",
+    "P_BridgeOutput"
+  ],
+  "animations": {
+    "deploy": "DeployOutriggers",
+    "launch": "LaunchGirder"
+  },
+  "teamColorMaterials": [
+    "team"
+  ],
+  "damageStates": [],
+  "referenceFiles": [
+    "../../../docs/references/1VvnzqS2HrSDoOsVi5p0NJK_MAJmCUvVk.png",
+    "../../../docs/references/1T7bxSD-voxS8uK_EcWYdRPBAh7ypmcyX.png"
+  ],
+  "notes": "Compact white Bot cab, tall blue lattice truss, carried pale girder and four yellow feet."
+}

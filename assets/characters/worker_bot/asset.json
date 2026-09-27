@@ -1,0 +1,22 @@
+{
+  "id": "worker_bot",
+  "category": "characters",
+  "source": "source/worker_bot.blend",
+  "model": "export/bot.glb",
+  "scale": 1.0,
+  "mountPoints": [
+    "P_InteractPoint"
+  ],
+  "animations": {
+    "walk": "Walk",
+    "work": "Work"
+  },
+  "teamColorMaterials": [
+    "team"
+  ],
+  "damageStates": [],
+  "referenceFiles": [
+    "../../../docs/references/16VE0Sft-tV2VhA78yvOGWuFPgKrqKxrB.png"
+  ],
+  "notes": "Reference-specific rounded Bot; runtime limb pivots and edit-ready armature."
+}

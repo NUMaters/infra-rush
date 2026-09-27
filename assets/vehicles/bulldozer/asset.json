@@ -1,0 +1,22 @@
+{
+  "id": "bulldozer",
+  "category": "vehicles",
+  "source": "source/bulldozer.blend",
+  "model": "export/dozer.glb",
+  "scale": 1.0,
+  "mountPoints": [
+    "P_BotSeat",
+    "P_SoilPush"
+  ],
+  "animations": {
+    "push": "PushSoil"
+  },
+  "teamColorMaterials": [
+    "team"
+  ],
+  "damageStates": [],
+  "referenceFiles": [
+    "../../../docs/references/1bBrCmDSU9MdVCiEwnXWEjphb17FyEERH.png"
+  ],
+  "notes": "Oversized concave orange blade, thick tracks, white cab and rear vented engine."
+}

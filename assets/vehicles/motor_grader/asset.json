@@ -1,0 +1,23 @@
+{
+  "id": "motor_grader",
+  "category": "vehicles",
+  "source": "source/motor_grader.blend",
+  "model": "export/grader.glb",
+  "scale": 1.0,
+  "mountPoints": [
+    "P_BotSeat",
+    "P_GradeContact"
+  ],
+  "animations": {
+    "grade": "Grade",
+    "steer": "Steer"
+  },
+  "teamColorMaterials": [
+    "team"
+  ],
+  "damageStates": [],
+  "referenceFiles": [
+    "../../../docs/references/1JCvLEcOnf4hCnQaQwWeUcbP5kktsLypK.png"
+  ],
+  "notes": "Six large tires, long articulated nose, central angled blade, white Bot cab."
+}

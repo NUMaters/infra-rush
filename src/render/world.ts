@@ -1130,12 +1130,12 @@ export class World {
           const wheel = rigPart(a.rig, "steering wheel");
           if (wheel) wheel.rotation.z = work ? stroke * 0.11 : 0;
         }
-        const girder = rigPart(a.rig, "girder");
+        const girder = rigPart(a.rig, "GirderCarrier");
         if (girder)
           girder.position.z =
-            1.2 + (work ? clamp(b.progress / b.duration, 0, 1) * 4.4 : 0);
+            work ? clamp(b.progress / b.duration, 0, 1) * 4.4 : 0;
         a.rig.traverse((o) => {
-          if (o.name.startsWith("outrigger")) o.scale.y = work ? 1 : 0.5;
+          if (o.name.startsWith("Outrigger_")) o.scale.y = work ? 1 : 0.5;
         });
         if (work && (kind === "grader" || kind === "dozer")) {
           // A short pass follows the vehicle's forward axis into the soil.

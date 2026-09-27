@@ -1,9 +1,9 @@
 [
   {
     "asset": "bot",
-    "triangles": 6384,
-    "meshes": 13,
-    "bytes": 221996
+    "triangles": 17108,
+    "meshes": 15,
+    "bytes": 548972
   },
   {
     "asset": "castle",
@@ -13,45 +13,45 @@
   },
   {
     "asset": "excavator",
-    "triangles": 25552,
-    "meshes": 26,
-    "bytes": 1277192
+    "triangles": 53736,
+    "meshes": 41,
+    "bytes": 2490172
   },
   {
     "asset": "dozer",
-    "triangles": 22576,
-    "meshes": 23,
-    "bytes": 1105864
+    "triangles": 51196,
+    "meshes": 36,
+    "bytes": 2355948
   },
   {
     "asset": "grader",
-    "triangles": 21064,
-    "meshes": 22,
-    "bytes": 1022392
+    "triangles": 41020,
+    "meshes": 35,
+    "bytes": 1711424
   },
   {
     "asset": "launcher",
-    "triangles": 31084,
-    "meshes": 34,
-    "bytes": 1520984
+    "triangles": 67980,
+    "meshes": 53,
+    "bytes": 3196060
   },
   {
     "asset": "drill",
-    "triangles": 25856,
-    "meshes": 33,
-    "bytes": 1323152
+    "triangles": 50848,
+    "meshes": 28,
+    "bytes": 2294072
   },
   {
     "asset": "stone-bridge",
-    "triangles": 20432,
-    "meshes": 6,
-    "bytes": 1125372
+    "triangles": 31564,
+    "meshes": 12,
+    "bytes": 1517728
   },
   {
     "asset": "steel-bridge",
-    "triangles": 23764,
-    "meshes": 5,
-    "bytes": 1301924
+    "triangles": 36888,
+    "meshes": 12,
+    "bytes": 1662108
   },
   {
     "asset": "tree",
