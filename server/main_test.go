@@ -32,8 +32,12 @@ func TestLockedRoomSequenceAndReconnect(t *testing.T) {
 	h.handle(a, incoming{Type: "hello"})
 	h.handle(b, incoming{Type: "hello"})
 	h.handle(a, incoming{Type: "create"})
-	if a.room == nil || !regexp.MustCompile(`^[A-Z2-9]{5}$`).MatchString(a.room.id) {
+	if a.room == nil || !regexp.MustCompile(`^[0-9]{5}$`).MatchString(a.room.id) {
 		t.Fatalf("invalid room id: %v", a.room)
+	}
+	h.handle(b, incoming{Type: "join", RoomID: "AB123"})
+	if b.room != nil {
+		t.Fatal("accepted a nonnumeric invitation")
 	}
 	h.handle(b, incoming{Type: "join", RoomID: a.room.id})
 	if b.room != a.room || b.team != "red" {

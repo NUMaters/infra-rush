@@ -34,9 +34,9 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
 <section id="title" class="hidden">
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
- <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><h1>勝利への道を、つくろう。</h1><p>5体のBot。3つの橋。ひとつの勝利。<br>掘って、つないで、相手の城へ。</p></div>
+ <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><div class="title-tagline"><h1>橋をかけて、城へ！</h1><p>掘る。つなぐ。攻める。</p></div></div>
  <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("helmet")}<span>みんなで遊ぶ</span>${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
- <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span><span>音楽は右上のボタンから ${icon("sound")}</span></div>
+ <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span></div>
 </section>
 <section id="hud" class="hidden">
  <header class="match-header"><div class="team-score blue" id="blue-score"><div class="score-top"><span>${icon("castle")}<small>あなたの城</small></span><b id="blue-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="blue-hp" style="--castle-hp:${M.castle.hp}" role="progressbar" aria-label="あなたの城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div><div class="timer"><small>のこり時間</small><b id="timer">06:00</b></div><div class="team-score red" id="red-score"><div class="score-top"><span>${icon("castle")}<small>相手の城</small></span><b id="red-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="red-hp" style="--castle-hp:${M.castle.hp}" role="progressbar" aria-label="相手の城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div></header>
@@ -56,6 +56,10 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
 <section id="result" class="overlay hidden"></section><div id="scene-wipe" aria-hidden="true"></div>`;
 let state = createGame();
 let cpu = new CPU();
+let titleState = createGame();
+let titleBlueCPU = new CPU("normal", "blue");
+let titleRedCPU = new CPU("normal", "red");
+let titleAccumulator = 0;
 let cpuEnabled = true;
 let difficulty: Difficulty = "normal";
 let started = false,
@@ -76,6 +80,12 @@ let onlinePhase:
 let onlineStatus = "";
 let nameDraft = "";
 let joinDraft = "";
+let keypadOpen = false;
+let pendingInvite = /^[0-9]{5}$/.test(
+  new URLSearchParams(location.search).get("room") ?? "",
+)
+  ? new URLSearchParams(location.search).get("room")!
+  : "";
 let pingAt = 0;
 const visualPositions = new Map<string, Point>();
 const sound = new Sound();
@@ -669,23 +679,41 @@ function cancelIntro() {
   introStage = -1;
   $("#match-intro").classList.add("hidden");
 }
+function resetTitleDemo() {
+  titleState = createGame();
+  for (const team of ["blue", "red"] as const) {
+    titleState.teams[team].resources.stone = M.tasks.build.cost.stone! - 2;
+  }
+  titleBlueCPU = new CPU("normal", "blue");
+  titleRedCPU = new CPU("normal", "red");
+  titleAccumulator = 0;
+}
+function updateTitleDemo(dt: number) {
+  titleAccumulator += dt * 4;
+  while (titleAccumulator >= M.game.tick) {
+    titleBlueCPU.update(titleState);
+    titleRedCPU.update(titleState);
+    tick(titleState, M.game.tick);
+    titleAccumulator -= M.game.tick;
+  }
+  if (titleState.status !== "playing") resetTitleDemo();
+}
 function renderOnlineLobby() {
   const lobby = $("#online-lobby");
   if (lobby.classList.contains("hidden")) return;
   const connected = online?.connected ?? false;
-  const status =
-    onlineStatus || (connected ? "オンライン" : "サーバーに接続中…");
+  const status = onlineStatus || (connected ? "" : "対戦の準備中…");
   let content = "";
   if (onlinePhase === "menu") {
-    content = `<h2>マルチプレイ</h2><p>誰かとすぐ対戦するか、5文字の部屋IDで友だちを招待できます。</p>
+    content = `<h2>みんなで遊ぶ</h2><p>相手を探すか、数字5桁の招待コードで友だちと遊ぼう。</p>
       ${status === "公開対戦サーバーの設定が必要です" ? '<p role="status">公開版の対戦サーバーは準備中です。1人プレイは遊べます。</p>' : ""}
       <button id="online-random" class="primary" ${connected ? "" : "disabled"}>ランダム対戦 ${icon("march")}</button>
-      <button id="online-create" class="secondary" ${connected ? "" : "disabled"}>部屋をロックして招待</button>
-      <div class="room-join"><label for="room-id-input">部屋IDで参加</label><div><input id="room-id-input" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCDE" value="${escapeHtml(joinDraft)}"><button id="online-join" class="secondary" ${connected ? "" : "disabled"}>参加</button></div></div>`;
+      <button id="online-create" class="secondary" ${connected ? "" : "disabled"}>専用部屋を作成する</button>
+      <div class="room-join"><label>招待コードで参加</label><div><button id="room-id-input" type="button" aria-label="招待コードを入力" aria-expanded="${keypadOpen}">${joinDraft || "数字5桁を入力"}</button><button id="online-join" class="secondary" ${connected && joinDraft.length === 5 ? "" : "disabled"}>参加</button></div>${keypadOpen ? `<div class="room-keypad" aria-label="招待コード用テンキー">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" data-keypad="${n}">${n}</button>`).join("")}<button type="button" data-keypad="erase" aria-label="一文字消す">⌫</button><button type="button" data-keypad="0">0</button><button type="button" data-keypad="done">完了</button></div>` : ""}</div>`;
   } else if (onlinePhase === "queueing") {
     content = `<div class="match-spinner" aria-hidden="true"></div><h2>相手を探しています</h2><p>ランダム対戦を選んだ人とマッチングします。</p>`;
   } else if (onlinePhase === "waiting") {
-    content = `<div class="eyebrow">招待する</div><h2>友だちを待っています</h2><p>この5文字の部屋IDを伝えてください。</p><button id="copy-room" class="room-code" aria-label="部屋IDをコピー">${onlineRoom}</button><p>相手が「部屋IDで参加」から入力するとマッチします。</p>`;
+    content = `<div class="eyebrow">専用部屋</div><h2>友だちを待っています</h2><p>招待コードは数字5桁です。</p><button id="copy-room" class="room-code" aria-label="招待コードをコピー">${onlineRoom}</button><button id="share-room" class="primary" type="button">SNSで招待する ${icon("march")}</button><p>リンクを開くと、この部屋へ直接参加できます。</p>`;
   } else if (onlinePhase === "ready") {
     const me = onlinePlayers[playerTeam];
     const opponent = onlinePlayers[playerTeam === "blue" ? "red" : "blue"];
@@ -693,19 +721,19 @@ function renderOnlineLobby() {
       <label for="online-name">あなたの名前</label><input id="online-name" maxlength="16" autocomplete="nickname" value="${escapeHtml(nameDraft || me?.name || (playerTeam === "blue" ? "プレイヤー1" : "プレイヤー2"))}">
       <p class="ready-status">${opponent?.ready ? "相手は準備OK！" : "相手の準備を待っています"}</p><button id="online-ready" class="primary" ${me?.ready || !connected ? "disabled" : ""}>${me?.ready ? "準備OK · 相手を待っています" : "準備OK！ 試合へ"}</button>`;
   }
-  lobby.innerHTML = `<article class="dialog online-dialog"><button id="online-close" class="circle close-online" aria-label="オンライン対戦を閉じる">${icon("close")}</button>${content}<small class="online-status">${escapeHtml(status)}</small></article>`;
+  lobby.innerHTML = `<article class="dialog online-dialog ${onlinePhase === "menu" && keypadOpen ? "keypad-open" : ""}"><button id="online-close" class="circle close-online" aria-label="オンライン対戦を閉じる">${icon("close")}</button>${content}${status ? `<small class="online-status">${escapeHtml(status)}</small>` : ""}</article>`;
 }
 function showOnline() {
   mode = "online";
   onlinePhase = "menu";
-  onlineStatus = "サーバーに接続中…";
+  onlineStatus = "";
   $("#online-lobby").classList.remove("hidden");
   if (!online) {
     online = new OnlineClient();
     online.onStatus = (status) => {
       onlineStatus =
         status === "connected"
-          ? "サーバーに接続しました"
+          ? ""
           : status === "reconnecting"
             ? "再接続中… サーバーを確認してください"
             : status === "unavailable"
@@ -717,6 +745,10 @@ function showOnline() {
       if (status === "connected") {
         pingAt = Date.now();
         online?.send({ type: "ping" });
+        if (pendingInvite) {
+          online?.send({ type: "join", roomId: pendingInvite });
+          pendingInvite = "";
+        }
       }
     };
     online.onMessage = handleOnlineMessage;
@@ -1077,6 +1109,7 @@ function backTitle() {
   $("#title").classList.remove("hidden");
   showSoloMenu(false);
   state = createGame();
+  resetTitleDemo();
   world.reset();
   visualPositions.clear();
   world.setHomeTeam("blue");
@@ -1126,7 +1159,15 @@ app.addEventListener("click", (e) => {
   audioGestureSeen = true;
   tapBurst(button);
   if (button.dataset.action) doAction(button.dataset.action as Action);
-  else if (button.dataset.difficulty) {
+  else if (button.dataset.keypad) {
+    const key = button.dataset.keypad;
+    if (key === "erase") joinDraft = joinDraft.slice(0, -1);
+    else if (key === "done") keypadOpen = false;
+    else if (joinDraft.length < 5) joinDraft += key;
+    onlineStatus = "";
+    sound.play("ui");
+    renderOnlineLobby();
+  } else if (button.dataset.difficulty) {
     sound.unlock();
     sound.resumeMusic();
     sound.play("ui");
@@ -1198,16 +1239,17 @@ app.addEventListener("click", (e) => {
         online?.send({ type: "create" });
         break;
       case "online-join":
-        joinDraft = (
-          document.querySelector<HTMLInputElement>("#room-id-input")?.value ??
-          joinDraft
-        )
-          .toUpperCase()
-          .trim();
-        if (!/^[A-Z0-9]{5}$/.test(joinDraft)) {
-          onlineStatus = "部屋IDは5文字で入力してください";
+        if (!/^[0-9]{5}$/.test(joinDraft)) {
+          onlineStatus = "招待コードは数字5桁です";
           renderOnlineLobby();
-        } else online?.send({ type: "join", roomId: joinDraft });
+        } else {
+          keypadOpen = false;
+          online?.send({ type: "join", roomId: joinDraft });
+        }
+        break;
+      case "room-id-input":
+        keypadOpen = !keypadOpen;
+        renderOnlineLobby();
         break;
       case "online-ready":
         nameDraft = (
@@ -1222,10 +1264,25 @@ app.addEventListener("click", (e) => {
         break;
       case "copy-room":
         void navigator.clipboard?.writeText(onlineRoom).then(() => {
-          onlineStatus = "部屋IDをコピーしました";
+          onlineStatus = "招待コードをコピーしました";
           renderOnlineLobby();
         });
         break;
+      case "share-room": {
+        const inviteURL = new URL(import.meta.env.BASE_URL, location.href);
+        inviteURL.searchParams.set("room", onlineRoom);
+        const message = `INFRA RUSHで一緒に遊ぼう！\n招待コード: ${onlineRoom}\n${inviteURL.href}`;
+        if (navigator.share)
+          void navigator
+            .share({ title: "INFRA RUSH に招待", text: message })
+            .catch(() => {});
+        else
+          void navigator.clipboard?.writeText(message).then(() => {
+            onlineStatus = "招待メッセージをコピーしました";
+            renderOnlineLobby();
+          });
+        break;
+      }
       case "close-panel":
         closePanel();
         break;
@@ -1259,13 +1316,6 @@ app.addEventListener("click", (e) => {
 app.addEventListener("input", (e) => {
   const input = e.target as HTMLInputElement;
   if (input.id === "online-name") nameDraft = input.value;
-  if (input.id === "room-id-input") {
-    input.value = input.value
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "")
-      .slice(0, 5);
-    joinDraft = input.value;
-  }
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !$("#modal").classList.contains("hidden")) {
@@ -1366,6 +1416,8 @@ function frame(now: number) {
   const dt = Math.min(0.1, elapsed);
   last = now;
   updateIntro(now);
+  const lobbyVisible = !$("#online-lobby").classList.contains("hidden");
+  if (!started && !document.hidden && !lobbyVisible) updateTitleDemo(dt);
   if (mode === "online" && online?.connected && Date.now() - pingAt > 10000) {
     pingAt = Date.now();
     online.send({ type: "ping" });
@@ -1396,7 +1448,7 @@ function frame(now: number) {
       !qaFrozen &&
       state.status === "playing",
   );
-  let displayState = state;
+  let displayState = started ? state : titleState;
   if (mode === "online" && started) {
     const alpha = Math.min(1, dt * 15);
     displayState = {
@@ -1420,7 +1472,7 @@ function frame(now: number) {
       }),
     };
   }
-  world.update(displayState, dt, elapsed);
+  if (started || !lobbyVisible) world.update(displayState, dt, elapsed);
   uiClock += dt;
   if (uiClock > 0.15) {
     renderUI();
@@ -1491,10 +1543,12 @@ try {
     ),
   ]);
   ready = true;
+  resetTitleDemo();
   $("#loading").classList.add("hidden");
   $("#title").classList.remove("hidden");
   sound.setMusicScene("title");
   requestAnimationFrame(frame);
+  if (pendingInvite) showOnline();
   $("#bridge-labels").addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-target]");
     if (b) chooseBridge(b.dataset.target!);
@@ -1521,6 +1575,7 @@ try {
     Object.assign(window, {
       infraQA: {
         snapshot: () => structuredClone(state),
+        attractSnapshot: () => structuredClone(titleState),
         advance: simulate,
         metrics: () => world.metrics(),
         setCpu: (level: Difficulty) => {

@@ -3,6 +3,14 @@ import { expect, test } from "@playwright/test";
 const onlineTestURL =
   (globalThis as { process?: { env?: Record<string, string | undefined> } })
     .process?.env?.ONLINE_TEST_URL ?? "http://localhost:8080/?qa";
+const enterCode = async (
+  page: import("@playwright/test").Page,
+  code: string,
+) => {
+  await page.locator("#room-id-input").click();
+  for (const digit of code)
+    await page.locator(`[data-keypad="${digit}"]`).click();
+};
 
 test("random match starts with editable names and shared resources", async ({
   browser,
@@ -92,7 +100,7 @@ test("random match starts with editable names and shared resources", async ({
   }
 });
 
-test("locked room displays a five-character ID and accepts a friend", async ({
+test("private room shares a five-digit invite and accepts a friend", async ({
   browser,
 }) => {
   const a = await browser.newContext();
@@ -110,9 +118,22 @@ test("locked room displays a five-character ID and accepts a friend", async ({
     }
     await host.locator("#online-create").click();
     const roomID = await host.locator("#copy-room").innerText();
-    expect(roomID).toMatch(/^[A-Z2-9]{5}$/);
-    await guest.locator("#room-id-input").fill(roomID.toLowerCase());
-    await guest.locator("#online-join").click();
+    expect(roomID).toMatch(/^[0-9]{5}$/);
+    await host.evaluate(() => {
+      Object.defineProperty(navigator, "share", {
+        value: async (data: ShareData) => {
+          (window as Window & { sharedInvite?: ShareData }).sharedInvite = data;
+        },
+      });
+    });
+    await host.locator("#share-room").click();
+    const invitation = await host.evaluate(
+      () => (window as Window & { sharedInvite?: ShareData }).sharedInvite,
+    );
+    expect(invitation?.text).toContain(`招待コード: ${roomID}`);
+    const inviteURL = invitation?.text?.match(/https?:\/\/\S+/)?.[0];
+    expect(inviteURL).toContain(`room=${roomID}`);
+    await guest.goto(inviteURL!);
     await expect(host.locator("#online-name")).toBeVisible();
     await expect(guest.locator("#online-name")).toBeVisible();
     await expect(host.locator("#online-name")).toHaveValue("プレイヤー1");
@@ -145,7 +166,7 @@ test("a player can reconnect and continue issuing sequenced commands", async ({
     }
     await host.locator("#online-create").click();
     const roomID = await host.locator("#copy-room").innerText();
-    await guest.locator("#room-id-input").fill(roomID);
+    await enterCode(guest, roomID);
     await guest.locator("#online-join").click();
     await host.locator("#online-ready").click();
     await guest.locator("#online-ready").click();

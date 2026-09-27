@@ -231,6 +231,26 @@ h1 {
   font-size: 15px;
   line-height: 1.9;
 }
+.title-tagline {
+  display: inline-block;
+  padding: 10px 16px 11px;
+  border: 2px solid #ffffffd9;
+  border-radius: 17px;
+  background: #f3ffeedf;
+  box-shadow: 0 5px 16px #144b4770;
+  backdrop-filter: blur(10px);
+}
+.title-tagline h1 {
+  margin: 0;
+  color: #184961;
+  text-shadow: 0 1px #fff;
+}
+.title-tagline p {
+  margin: 2px 0 0;
+  color: #256b78;
+  font-weight: 900;
+  line-height: 1.3;
+}
 .start-card {
   position: absolute;
   z-index: 1;
@@ -1244,6 +1264,17 @@ h1 {
   top: 13px;
   right: 13px;
 }
+.online-dialog.keypad-open > h2,
+.online-dialog.keypad-open > p,
+.online-dialog.keypad-open > #online-random,
+.online-dialog.keypad-open > #online-create {
+  display: none;
+}
+.online-dialog.keypad-open .room-join {
+  margin-top: 0;
+  padding-top: 20px;
+  border-top: 0;
+}
 .online-dialog > .primary,
 .online-dialog > .secondary {
   width: 100%;
@@ -1291,19 +1322,49 @@ h1 {
   display: flex;
   gap: 8px;
 }
-.room-join input {
+.room-join #room-id-input {
   flex: 1;
   min-width: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
+  min-height: 52px;
+  letter-spacing: 0.12em;
+  background: #fff;
+  border: 2px solid #93cfe7;
+  border-radius: 12px;
+  color: #225876;
+  font-size: 14px;
+  font-weight: 900;
 }
-.room-join button {
+.room-join > div:not(.room-keypad) > button:last-child {
   flex: 0 0 82px;
   margin: 0;
   border-radius: 12px;
   background: #dff1f8;
   color: #235876;
   font-weight: 900;
+}
+.room-join .room-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 9px;
+}
+.room-keypad button {
+  min-height: 48px;
+  border: 2px solid #fff;
+  border-radius: 11px;
+  background: #e5f6fc;
+  color: #225876;
+  font-size: 20px;
+  font-weight: 900;
+  box-shadow: 0 3px 0 #9dc4d4;
+}
+.room-keypad button[data-keypad="done"] {
+  background: #ffcf48;
+  font-size: 15px;
+}
+#share-room {
+  width: 100%;
+  margin: 5px 0 8px;
 }
 .room-code {
   display: block;
@@ -1643,7 +1704,7 @@ h1 {
     font-size: 21px;
   }
   .title-copy p {
-    font-size: 12px;
+    font-size: 13px;
   }
   .start-card {
     left: 50%;

@@ -106,6 +106,16 @@ func randomCode(n int) string {
 	}
 	return string(b)
 }
+func roomCode() string {
+	var digits [5]byte
+	if _, err := rand.Read(digits[:]); err != nil {
+		panic(err)
+	}
+	for i := range digits {
+		digits[i] = '0' + digits[i]%10
+	}
+	return string(digits[:])
+}
 func newHub(conf *Config) *hub {
 	return &hub{rooms: map[string]*room{}, tokens: map[string]*peer{}, config: conf}
 }
@@ -164,9 +174,9 @@ func (h *hub) createRoom(p *peer, locked bool) {
 		h.send(p, map[string]any{"type": "error", "message": "すでに部屋にいます"})
 		return
 	}
-	id := randomCode(5)
+	id := roomCode()
 	for h.rooms[id] != nil {
-		id = randomCode(5)
+		id = roomCode()
 	}
 	r := &room{id: id, locked: locked, players: [2]*peer{p, nil}, created: time.Now()}
 	h.rooms[id] = r
@@ -336,9 +346,9 @@ func (h *hub) handle(p *peer, m incoming) {
 		h.createRoom(p, true)
 	case "join":
 		h.removeQueue(p)
-		id := strings.ToUpper(strings.TrimSpace(m.RoomID))
-		if len(id) != 5 {
-			h.send(p, map[string]any{"type": "error", "message": "部屋IDは5文字です"})
+		id := strings.TrimSpace(m.RoomID)
+		if len(id) != 5 || strings.Trim(id, "0123456789") != "" {
+			h.send(p, map[string]any{"type": "error", "message": "招待コードは数字5桁です"})
 			return
 		}
 		r := h.rooms[id]

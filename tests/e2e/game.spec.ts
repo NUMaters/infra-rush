@@ -5,6 +5,7 @@ declare global {
   interface Window {
     infraQA: {
       snapshot: () => GameState;
+      attractSnapshot: () => GameState;
       advance: (s: number) => void;
       metrics: () => Record<string, number>;
       quake: () => void;

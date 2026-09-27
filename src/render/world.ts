@@ -401,11 +401,6 @@ export class World {
       cart.position.set(qx + 0.5, 0.38, sz * 8.5);
       cart.rotation.y = team === "red" ? Math.PI / 5 : -Math.PI / 5;
       this.scene.add(cart);
-      const excavator = this.model("excavator", team);
-      excavator.position.set(qx - 1.4, 0.39, sz * 10.35);
-      excavator.rotation.y = team === "blue" ? 1.1 : -2.05;
-      excavator.scale.setScalar(0.84);
-      this.scene.add(excavator);
       for (const [cx, cz] of [
         [qx - 2.8, sz * 9.2],
         [
