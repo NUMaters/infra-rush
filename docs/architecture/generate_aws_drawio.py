@@ -30,8 +30,8 @@ ET.SubElement(cells, "mxCell", id="0")
 ET.SubElement(cells, "mxCell", id="1", parent="0")
 
 
-def box(id: str, label: str, x: int, y: int, w: int, h: int, *, fill="#ffffff", stroke="#cbd5e1", font=25, bold=False, rounded=12, align="center", dashed=False, sw=2, color="#142133", pad_left=8) -> None:
-    style = f"rounded=1;arcSize={rounded};whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};strokeWidth={sw};fontColor={color};fontSize={font};fontFamily=Arial;align={align};verticalAlign=middle;spacing=8;spacingLeft={pad_left};"
+def box(id: str, label: str, x: int, y: int, w: int, h: int, *, fill="#ffffff", stroke="#cbd5e1", font=25, bold=False, rounded=12, align="center", dashed=False, sw=2, color="#142133", pad_left=8, v_align="middle", pad_bottom=8) -> None:
+    style = f"rounded=1;arcSize={rounded};whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};strokeWidth={sw};fontColor={color};fontSize={font};fontFamily=Arial;align={align};verticalAlign={v_align};spacing=8;spacingLeft={pad_left};spacingBottom={pad_bottom};"
     if bold: style += "fontStyle=1;"
     if dashed: style += "dashed=1;dashPattern=5 4;"
     c = ET.SubElement(cells, "mxCell", id=id, value=html.escape(label), style=style, vertex="1", parent="1")
@@ -45,8 +45,8 @@ def text(id: str, label: str, x: int, y: int, w: int, h: int, *, font=26, color=
     ET.SubElement(c,"mxGeometry",x=str(x),y=str(y),width=str(w),height=str(h),attrib={"as":"geometry"})
 
 
-def arrow(id: str, source: str, target: str, label="", *, color="#475569", dashed=False, exit_x=None, exit_y=None, entry_x=None, entry_y=None) -> None:
-    style=f"edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor={color};strokeWidth=3;endArrow=block;endFill=1;fontSize=18;fontColor={color};labelBackgroundColor=#ffffff;"
+def arrow(id: str, source: str, target: str, label="", *, color="#475569", dashed=False, exit_x=None, exit_y=None, entry_x=None, entry_y=None, label_bg="#050a12") -> None:
+    style=f"edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor={color};strokeWidth=3;endArrow=block;endFill=1;fontSize=18;fontColor={color};labelBackgroundColor={label_bg};"
     if dashed: style += "dashed=1;dashPattern=6 4;"
     if exit_x is not None: style += f"exitX={exit_x};exitY={exit_y};exitDx=0;exitDy=0;"
     if entry_x is not None: style += f"entryX={entry_x};entryY={entry_y};entryDx=0;entryDy=0;"
@@ -64,77 +64,74 @@ def icon(name: str, id: str, x: int, y: int, size=58):
     ET.SubElement(c,"mxGeometry",x=str(x),y=str(y),width=str(size),height=str(size),attrib={"as":"geometry"})
 
 
+def service(name: str, id: str, label: str, x: int, y: int, w: int, h: int, *, size=72, color="#cbd5e1", font=18) -> None:
+    box(id,label,x,y,w,h,fill="none",stroke="none",font=font,bold=True,color=color,v_align="bottom",pad_bottom=0)
+    icon(name,id+"i",x+(w-size)//2,y+4,size)
+
+
 if not ICON_ZIP.exists():
     urllib.request.urlretrieve(ICON_URL, ICON_ZIP)
 if hashlib.sha256(ICON_ZIP.read_bytes()).hexdigest() != ICON_SHA256:
     raise SystemExit(f"Official AWS icon ZIP checksum mismatch: {ICON_ZIP}")
 
 with zipfile.ZipFile(ICON_ZIP) as z:
-    box("bg","",0,0,3100,2050,fill="#f8fafc",stroke="#f8fafc",rounded=0,sw=0)
-    text("title","INFRA RUSH｜AWS 本番構成と CPU バランス調整",80,45,2880,75,font=44,bold=True)
-    text("subtitle","設計案（未デプロイ）  •  東京リージョン ap-northeast-1  •  2 AZ  •  2026-09-28",85,125,2800,44,font=23,color="#475569")
+    box("bg","",0,0,3100,2050,fill="#050a12",stroke="#050a12",rounded=0,sw=0)
+    text("title","INFRA RUSH｜AWS 本番構成と CPU バランス調整",80,45,2880,75,font=44,bold=True,color="#f8fafc")
+    text("subtitle","設計案（未デプロイ）  •  東京リージョン ap-northeast-1  •  2 AZ  •  2026-09-28",85,125,2800,44,font=23,color="#94a3b8")
 
     # Top-level lanes and public edge.
-    box("edge_lane","",70,205,740,640,fill="#eff6ff",stroke="#60a5fa",font=28,bold=True)
-    text("edge_header","1  利用者・配信・入口",105,225,650,46,font=28,bold=True)
-    box("aws_lane","",850,205,2160,1130,fill="#ffffff",stroke="#64748b",font=30,bold=True)
-    text("aws_header","2  AWS Cloud / 東京リージョン",905,225,1950,50,font=30,bold=True)
-    box("user","ブラウザ / PWA\n2人対戦・CPU戦",105,295,220,118,fill="#ffffff",stroke="#94a3b8",font=23,bold=True)
-    box("r53","Route 53\nDNS",385,295,165,118,fill="#ffffff",stroke="#8b5cf6",font=18,bold=True,align="left",pad_left=60)
-    icon("Amazon-Route-53","r53i",397,327,46)
-    box("cf","CloudFront\n静的配信",590,295,185,118,fill="#ffffff",stroke="#8b5cf6",font=18,bold=True,align="left",pad_left=65)
-    icon("Amazon-CloudFront","cfi",602,327,46)
-    box("waf","AWS WAF\nHTTP / WS\n接続制限",385,505,190,125,fill="#ffffff",stroke="#dc2626",font=18,bold=True,align="left",pad_left=62)
-    icon("AWS-WAF","wafi",397,542,46)
-    box("alb","ALB / TLS 443\nWSS・匿名 POST",595,505,190,125,fill="#ffffff",stroke="#a855f7",font=18,bold=True,align="left",pad_left=64)
-    icon("Elastic-Load-Balancing","albi",607,544,46)
-    box("acm","ACM: CloudFront は us-east-1、ALB は東京\nWebSocket 接続後の制限はアプリ内で実施",105,690,675,105,fill="#e2e8f0",stroke="#cbd5e1",font=21)
-    arrow("a_user_dns","user","r53",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5)
-    arrow("a_dns_cf","r53","cf",exit_x=1,exit_y=.35,entry_x=0,entry_y=.35)
-    arrow("a_dns_waf","r53","waf","api.example.com",exit_x=.5,exit_y=1,entry_x=.5,entry_y=0)
-    arrow("a_waf_alb","waf","alb",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5)
+    box("edge_lane","",70,205,740,640,fill="#080f1b",stroke="#06b6d4",font=28,bold=True,dashed=True)
+    text("edge_header","1  Global Edge / 利用者・配信",105,225,650,46,font=28,bold=True,color="#22d3ee")
+    box("aws_lane","",850,205,2160,1130,fill="#080f1b",stroke="#06b6d4",font=30,bold=True,dashed=True)
+    text("aws_header","2  AWS Cloud / 東京リージョン",905,225,1950,50,font=30,bold=True,color="#22d3ee")
+    box("user","ブラウザ / PWA\n2人対戦・CPU戦",105,295,220,118,fill="none",stroke="none",font=22,bold=True,color="#e2e8f0")
+    service("Amazon-Route-53","r53","Route 53\nDNS",385,295,165,125,size=68)
+    service("Amazon-CloudFront","cf","CloudFront\n静的配信",590,295,185,125,size=68)
+    service("AWS-WAF","waf","AWS WAF\nHTTP / WS 接続制限",385,505,190,125,size=68)
+    service("Elastic-Load-Balancing","alb","ALB / TLS 443\nWSS・匿名 POST",595,505,190,125,size=68)
+    box("acm","ACM: CloudFront は us-east-1、ALB は東京\nWebSocket 接続後の制限はアプリ内で実施",105,690,675,105,fill="#111827",stroke="#334155",font=21,color="#cbd5e1")
+    arrow("a_user_dns","user","r53",color="#38bdf8",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5)
+    arrow("a_dns_cf","r53","cf",color="#a78bfa",exit_x=1,exit_y=.35,entry_x=0,entry_y=.35)
+    arrow("a_dns_waf","r53","waf","api.example.com",color="#a78bfa",dashed=True,exit_x=.5,exit_y=1,entry_x=.5,entry_y=0)
+    arrow("a_waf_alb","waf","alb",color="#fb7185",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5)
 
     # Region-managed services above VPC.
-    box("static","S3 非公開静的サイト\nOAC / versioning",910,295,270,120,fill="#ecfdf5",stroke="#22c55e",font=19,bold=True,align="left",pad_left=75)
-    icon("Amazon-Simple-Storage-Service","statici",929,328,52)
-    box("dynamo","DynamoDB\n部屋索引 / journal / snapshot\n匿名 matches・feedback",1230,295,360,120,fill="#eef2ff",stroke="#6366f1",font=18,bold=True,align="left",pad_left=76)
-    icon("Amazon-DynamoDB","dynamoi",1249,328,52)
-    box("event","EventBridge Scheduler\n日次の匿名データ出力",1640,295,320,120,fill="#fdf2f8",stroke="#ec4899",font=18,bold=True,align="left",pad_left=76)
-    icon("Amazon-EventBridge","eventi",1659,328,52)
-    box("data_s3","S3 非公開データ湖\n集計・監査 / lifecycle",2010,295,310,120,fill="#ecfdf5",stroke="#22c55e",font=18,bold=True,align="left",pad_left=76)
-    icon("Amazon-Simple-Storage-Service","data_s3i",2029,328,52)
-    box("ops","CloudWatch / Alarms\n接続・tick・失敗・費用",2370,295,280,120,fill="#fef3c7",stroke="#f59e0b",font=18,bold=True,align="left",pad_left=76)
-    icon("Amazon-CloudWatch","opsi",2389,328,52)
-    box("ecr","ECR / Secrets Manager\n署名鍵・認証情報",2690,295,265,120,fill="#f1f5f9",stroke="#94a3b8",font=17,bold=True,align="left",pad_left=72)
-    icon("AWS-Secrets-Manager","secretsi",2709,328,50)
-    arrow("a_cf_s3","cf","static","OAC",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5)
-    arrow("a_event_s3","event","data_s3","日次バッチ",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5)
+    service("Amazon-Simple-Storage-Service","static","S3 非公開静的サイト\nOAC / versioning",910,295,270,125,size=68)
+    service("Amazon-DynamoDB","dynamo","DynamoDB\n部屋索引 / journal / snapshot\n匿名 matches・feedback",1230,295,360,125,size=68,font=17)
+    service("Amazon-EventBridge","event","EventBridge Scheduler\n日次の匿名データ出力",1640,295,320,125,size=68)
+    service("Amazon-Simple-Storage-Service","data_s3","S3 非公開データ湖\n集計・監査 / lifecycle",2010,295,310,125,size=68)
+    service("Amazon-CloudWatch","ops","CloudWatch / Alarms\n接続・tick・失敗・費用",2370,295,280,125,size=68)
+    service("AWS-Secrets-Manager","ecr","ECR / Secrets Manager\n署名鍵・認証情報",2690,295,265,125,size=68)
+    arrow("a_cf_s3","cf","static","OAC",color="#84cc16",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5)
+    arrow("a_event_s3","event","data_s3","日次バッチ",color="#ec4899",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5)
 
     # VPC, AZ and subnet containment. The service cards sit inside app/data subnets.
-    box("vpc","",910,485,2040,785,fill="#f0fdf4",stroke="#22c55e",font=26,bold=True)
-    text("vpc_header","VPC 10.42.0.0/16  |  IGW → 公開 ALB  |  NAT なし  |  private endpoint 経由",960,505,1900,45,font=25,bold=True,color="#15803d")
-    box("az_a","",945,575,950,600,fill="#f8fafc",stroke="#60a5fa",font=27,bold=True)
-    box("az_b","",1945,575,950,600,fill="#f8fafc",stroke="#60a5fa",font=27,bold=True)
-    text("az_a_header","Availability Zone A",980,588,800,35,font=25,bold=True,color="#2563eb")
-    text("az_b_header","Availability Zone B",1980,588,800,35,font=25,bold=True,color="#2563eb")
+    box("vpc","",910,485,2040,785,fill="#0d1120",stroke="#8b5cf6",font=26,bold=True)
+    text("vpc_header","VPC 10.42.0.0/16  |  IGW → 公開 ALB  |  NAT なし  |  private endpoint 経由",960,505,1900,45,font=25,bold=True,color="#c4b5fd")
+    box("az_a","",945,575,950,600,fill="#0d1626",stroke="#38bdf8",font=27,bold=True,dashed=True)
+    box("az_b","",1945,575,950,600,fill="#0d1626",stroke="#38bdf8",font=27,bold=True,dashed=True)
+    text("az_a_header","Availability Zone A",980,588,800,35,font=25,bold=True,color="#67e8f9")
+    text("az_b_header","Availability Zone B",1980,588,800,35,font=25,bold=True,color="#67e8f9")
     for suffix,x,public,app,data in [("a",970,"10.42.0.0/24","10.42.10.0/24","10.42.20.0/24"),("b",1970,"10.42.1.0/24","10.42.11.0/24","10.42.21.0/24")]:
-        box(f"public_{suffix}",f"Public subnet {public}  •  ALB node",x,635,900,92,fill="#e0f2fe",stroke="#38bdf8",font=22,bold=True)
-        box(f"app_{suffix}","",x,755,900,248,fill="#eff6ff",stroke="#3b82f6",font=22,bold=True)
-        text(f"app_header_{suffix}",f"Private app subnet {app}  •  ECS Fargate",x+35,770,825,42,font=21,bold=True,color="#1d4ed8")
-        box(f"data_{suffix}","",x,1030,900,100,fill="#f5f3ff",stroke="#8b5cf6",font=22,bold=True)
-        box(f"gw_{suffix}","WS Gateway\n接続 / 再接続 / 匿名 API",x+35,835,380,110,fill="#ffffff",stroke="#2563eb",font=22,bold=True)
-        box(f"worker_{suffix}","Game Worker\n20 Hz / 部屋所有 / ACK",x+475,835,380,110,fill="#ffffff",stroke="#2563eb",font=22,bold=True)
+        box(f"public_{suffix}",f"Public subnet {public}  •  ALB node",x,635,900,92,fill="#eff5e9",stroke="#86b76b",font=22,bold=True,color="#166534")
+        box(f"app_{suffix}","",x,755,900,248,fill="#e8f5fa",stroke="#38bdf8",font=22,bold=True)
+        text(f"app_header_{suffix}",f"Private app subnet {app}  •  ECS Fargate",x+35,770,825,42,font=21,bold=True,color="#0369a1")
+        box(f"data_{suffix}","",x,1030,900,100,fill="#e8f5fa",stroke="#38bdf8",font=22,bold=True)
+        box(f"gw_{suffix}","WS Gateway\n接続 / 再接続 / 匿名 API",x+35,835,380,110,fill="none",stroke="none",font=21,bold=True,v_align="bottom",pad_bottom=4)
+        icon("Amazon-Elastic-Container-Service",f"gwi_{suffix}",x+199,828,50)
+        box(f"worker_{suffix}","Game Worker\n20 Hz / 部屋所有 / ACK",x+475,835,380,110,fill="none",stroke="none",font=21,bold=True,v_align="bottom",pad_bottom=4)
+        icon("Amazon-Elastic-Container-Service",f"workeri_{suffix}",x+639,828,50)
         icon("Amazon-ElastiCache",f"valkeyi_{suffix}",x+90,1050,52)
         text(f"valkeyt_{suffix}",f"Private data subnet {data}  •  ElastiCache Serverless for Valkey\n待機列 / presence / pub-sub",x+160,1045,680,75,font=19,bold=True)
-        arrow(f"gw_worker_{suffix}",f"gw_{suffix}",f"worker_{suffix}","内部 RPC",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5)
-    arrow("alb_pub","alb","public_a","443",exit_x=1,exit_y=.7,entry_x=0,entry_y=.5)
+        arrow(f"gw_worker_{suffix}",f"gw_{suffix}",f"worker_{suffix}","内部 RPC",color="#0f766e",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5,label_bg="#e8f5fa")
+    arrow("alb_pub","alb","public_a","443",color="#a78bfa",exit_x=1,exit_y=.7,entry_x=0,entry_y=.5)
     # The ALB is multi-AZ; drawing a second cross-zone edge would run through the A subnet label.
-    box("endpoints","S3・DynamoDB: Gateway endpoint  |  ECR API/DKR・Logs・Secrets: Interface endpoint を両 AZ\nGateway min 2 / max 12、Worker min 2 / max 20。接続数・部屋数・tick p95 でスケール",950,1185,1940,66,fill="#dcfce7",stroke="#4ade80",font=19)
-    box("routing","SG: ALB→Gateway 8080、Gateway→Worker RPC、Gateway/Worker→Valkey 6379 のみ\n部屋 owner は DynamoDB lease + epoch。1 秒 snapshot と指示 journal を復旧に使用",925,1285,2060,90,fill="#ffffff",stroke="#94a3b8",font=21)
+    box("endpoints","S3・DynamoDB: Gateway endpoint  |  ECR API/DKR・Logs・Secrets: Interface endpoint を両 AZ\nGateway min 2 / max 12、Worker min 2 / max 20。接続数・部屋数・tick p95 でスケール",950,1185,1940,66,fill="#11263a",stroke="#0e7490",font=19,color="#dbeafe")
+    box("routing","SG: ALB→Gateway 8080、Gateway→Worker RPC、Gateway/Worker→Valkey 6379 のみ\n部屋 owner は DynamoDB lease + epoch。1 秒 snapshot と指示 journal を復旧に使用",925,1285,2060,90,fill="#111827",stroke="#475569",font=21,color="#cbd5e1")
 
     # Dedicated MLOps swimlane with generous spacing.
-    box("mlops_lane","",70,1420,2940,550,fill="#fff7ed",stroke="#fb923c",font=29,bold=True)
-    text("mlops_header","3  CPU バランス調整 / MLOps  ─  現行のルールベース調整器を AWS データ経路へ移行",115,1450,2780,50,font=28,bold=True,color="#9a3412")
+    box("mlops_lane","",70,1420,2940,550,fill="#080f1b",stroke="#f97316",font=29,bold=True,dashed=True)
+    text("mlops_header","3  CPU バランス調整 / MLOps  ─  現行のルールベース調整器を AWS データ経路へ移行",115,1450,2780,50,font=28,bold=True,color="#fb923c")
     steps=[
         ("m1","① データ収集","CPU 対戦結果・任意の感想\nUUID で重複排除 / TTL",115),
         ("m2","② 集計・保管","DynamoDB → 日次バッチ\n非公開 S3 / 個人情報除外",530),
@@ -145,10 +142,10 @@ with zipfile.ZipFile(ICON_ZIP) as z:
         ("m7","⑦ 監視・復旧","CloudWatch + 変更後の指標\n異常時 freeze / 旧版へ戻す",2605),
     ]
     for sid,title,body,x in steps:
-        box(sid,title+"\n"+body,x,1520,365,195,fill="#ffffff",stroke="#fdba74",font=21,bold=True)
+        box(sid,title+"\n"+body,x,1520,365,195,fill="#111827",stroke="#fb923c",font=21,bold=True,color="#f8fafc")
     for n in range(1,7):
         arrow(f"ml{n}",f"m{n}",f"m{n+1}",exit_x=1,exit_y=.5,entry_x=0,entry_y=.5,color="#ea580c")
-    box("mlops_note","認証: GitHub Actions OIDC → 読取専用 S3 ロール。候補の公開は承認付きワークフローで行う。新しい対戦から再計測し、次の調整へ。\n調整バッチ停止時も対戦サービスは継続。現行は学習済みモデルや SageMaker を使わないため、不要な常時推論基盤は置かない。",115,1775,2840,145,fill="#ffedd5",stroke="#fb923c",font=21)
+    box("mlops_note","認証: GitHub Actions OIDC → 読取専用 S3 ロール。候補の公開は承認付きワークフローで行う。新しい対戦から再計測し、次の調整へ。\n調整バッチ停止時も対戦サービスは継続。現行は学習済みモデルや SageMaker を使わないため、不要な常時推論基盤は置かない。",115,1775,2840,145,fill="#1f2937",stroke="#9a3412",font=21,color="#e2e8f0")
 
 OUT.write_bytes(ET.tostring(root,encoding="utf-8",xml_declaration=True))
 print(OUT)
