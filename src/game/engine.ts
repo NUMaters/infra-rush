@@ -131,11 +131,19 @@ export function canCommand(
     )
       return "先に自分の城の近くに橋をつくろう";
   } else {
-    if (!b.level) return "橋がありません";
-    if (["upgrade", "repair", "clear"].includes(c.action) && b.owner !== team)
+    if (!b.level && c.action !== "embank") return "橋がありません";
+    if (
+      ["upgrade", "repair", "clear"].includes(c.action) &&
+      (b.owner ?? b.exclusive) !== team
+    )
       return "自分の橋で作業しよう";
-    if (["destroy", "embank"].includes(c.action) && b.owner !== other(team))
+    if (
+      ["destroy", "embank"].includes(c.action) &&
+      (b.owner ?? b.exclusive) !== other(team)
+    )
       return "相手の橋で作業しよう";
+    if (c.action === "embank" && b.id === "center" && !b.owner)
+      return "真ん中の橋は完成後に作業しよう";
     if (c.action === "upgrade" && (b.level < b.capacity || b.damage))
       return "先に橋を直そう";
     if (c.action === "upgrade" && b.capacity >= M.bridges.maxLevel)
@@ -282,11 +290,15 @@ function finish(s: GameState, b: Bot) {
       emit(s, { kind: "end", team: b.team, text: "勝利への道、開通！" });
     }
   } else if (bridge) {
+    const owner = bridge.owner ?? bridge.exclusive;
     if (
       b.action !== "build" &&
-      (!bridge.level ||
+      ((!bridge.level && b.action !== "embank") ||
         (["upgrade", "repair", "clear"].includes(b.action!) &&
-          bridge.owner !== b.team))
+          owner !== b.team) ||
+        (["embank", "destroy"].includes(b.action!) &&
+          owner !== other(b.team)) ||
+        (b.action === "clear" && !bridge.blockedBy))
     ) {
       pay(s, b.team, b.paid, 1);
       returning(s, b, "作業先がなくなったので資源が戻りました");
@@ -298,7 +310,6 @@ function finish(s: GameState, b: Bot) {
         bridge.level = 1;
         bridge.capacity = 1;
         bridge.damage = 0;
-        bridge.blockedBy = null;
         stats.built++;
         break;
       case "upgrade":
@@ -324,7 +335,6 @@ function finish(s: GameState, b: Bot) {
         if (bridge.level === 0) {
           bridge.owner = null;
           bridge.capacity = 0;
-          bridge.blockedBy = null;
           emit(s, {
             kind: "collapse",
             position: [bridge.x, 0],
@@ -349,11 +359,18 @@ function finish(s: GameState, b: Bot) {
 }
 export function earthquake(s: GameState) {
   emit(s, { kind: "earthquake", text: "地震だ！ 橋は大丈夫？" });
-  for (const b of s.bridges)
-    if (b.level && random(s) < M.earthquake.damageProbability[b.level]) {
-      b.level = Math.max(M.earthquake.minimumLevel, b.level - 1);
-      b.damage = Math.min(2, b.damage + 1);
+  for (const b of s.bridges) {
+    b.blockedBy = null;
+    if (!b.level) continue;
+    if (random(s) >= M.earthquake.damageProbability[b.level]) continue;
+    b.level = Math.max(M.earthquake.minimumLevel, b.level - 1);
+    b.damage = Math.min(2, b.damage + 1);
+    if (b.level === 0) {
+      b.owner = null;
+      b.capacity = 0;
+      emit(s, { kind: "collapse", position: [b.x, 0], text: "橋がこわれた！" });
     }
+  }
   s.warned = false;
   s.nextQuake = nextQuake(s);
 }
@@ -363,8 +380,20 @@ export function tick(s: GameState, dt: number) {
   if (s.time >= M.game.duration) {
     s.time = M.game.duration;
     s.status = "finished";
-    s.winner = "draw";
-    emit(s, { kind: "end", text: "タイムアップ！ 引き分け" });
+    s.winner =
+      s.teams.blue.hp === s.teams.red.hp
+        ? "draw"
+        : s.teams.blue.hp > s.teams.red.hp
+          ? "blue"
+          : "red";
+    emit(s, {
+      kind: "end",
+      team: s.winner === "draw" ? undefined : s.winner,
+      text:
+        s.winner === "draw"
+          ? "タイムアップ！ 引き分け"
+          : "タイムアップ！ 城を守りきった！",
+    });
     return;
   }
   if (!s.warned && s.time >= s.nextQuake - M.earthquake.warningSeconds) {

@@ -53,6 +53,7 @@ export class World {
       steel: T.Group;
       mound: T.Group;
       cracks: T.Group;
+      exposed: T.Group;
       debris: T.Group;
     }
   >();
@@ -612,19 +613,64 @@ export class World {
       cracks.position.set(site.x, 0.5, 0);
       cracks.visible = false;
       for (let i = 0; i < 5; i++) {
+        const offset = (i - 2) * 0.94;
         const pts = [
-          new T.Vector3(-0.7, 0.02, i - 2),
-          new T.Vector3(-0.2, 0.025, i - 1.8),
-          new T.Vector3(0, 0.025, i - 2),
-          new T.Vector3(0.5, 0.025, i - 1.8),
+          new T.Vector3(-1.1, 0.01, offset - 0.2),
+          new T.Vector3(-0.57, 0.02, offset + 0.13),
+          new T.Vector3(-0.19, 0.015, offset - 0.07),
+          new T.Vector3(0.22, 0.025, offset + 0.2),
+          new T.Vector3(0.78, 0.015, offset - 0.08),
         ];
-        const l = new T.Line(
-          new T.BufferGeometry().setFromPoints(pts),
-          new T.LineBasicMaterial({ color: 0x58494a }),
+        const l = new T.Mesh(
+          new T.TubeGeometry(
+            new T.CatmullRomCurve3(pts),
+            9,
+            0.014 + (i % 2) * 0.006,
+            4,
+            false,
+          ),
+          new T.MeshStandardMaterial({ color: 0x413e43, roughness: 1 }),
         );
         cracks.add(l);
       }
       this.scene.add(cracks);
+      const exposed = new T.Group();
+      exposed.position.set(site.x, 0.49, 0);
+      const gap = new T.Mesh(
+        new T.BoxGeometry(1.35, 0.018, 0.55),
+        new T.MeshStandardMaterial({ color: 0x383943, roughness: 0.95 }),
+      );
+      gap.rotation.y = -0.18;
+      exposed.add(gap);
+      const rust = new T.MeshStandardMaterial({
+        color: 0x9b6850,
+        metalness: 0.55,
+        roughness: 0.58,
+      });
+      for (const z of [-0.17, 0.04, 0.24]) {
+        const bar = new T.Mesh(
+          new T.CylinderGeometry(0.035, 0.035, 1.5, 6),
+          rust,
+        );
+        bar.rotation.z = Math.PI / 2;
+        bar.position.set(0, 0.035, z);
+        exposed.add(bar);
+      }
+      for (const [x, z] of [
+        [-0.85, -0.35],
+        [0.82, 0.31],
+        [-0.65, 0.38],
+      ] as const) {
+        const chip = new T.Mesh(
+          new T.DodecahedronGeometry(0.21, 0),
+          new T.MeshStandardMaterial({ color: 0xb6b0a7, flatShading: true }),
+        );
+        chip.position.set(x, 0.06, z);
+        chip.rotation.y = x + z;
+        exposed.add(chip);
+      }
+      exposed.visible = false;
+      this.scene.add(exposed);
       const debris = new T.Group();
       debris.position.set(site.x, -0.5, 0);
       for (let i = 0; i < 8; i++)
@@ -638,7 +684,14 @@ export class World {
         );
       debris.visible = false;
       this.scene.add(debris);
-      this.bridges.set(site.id, { stone, steel, mound, cracks, debris });
+      this.bridges.set(site.id, {
+        stone,
+        steel,
+        mound,
+        cracks,
+        exposed,
+        debris,
+      });
     }
   }
   private path(curve: T.CatmullRomCurve3, width: number) {
@@ -976,20 +1029,39 @@ export class World {
         this.clock * 13 + b.index * 1.7 + (b.team === "red" ? 0.8 : 0);
       const step = Math.sin(phase);
       a.bot.position.y += Math.abs(step) * 0.065 * a.walkBlend;
-      a.bot.rotation.z = step * 0.055 * a.walkBlend;
+      const idle = b.state === "IDLE" ? 1 : 0;
+      const breath = Math.sin(this.clock * 2.7 + b.index * 1.9) * idle;
+      const attacking = b.state === "ATTACKING_CASTLE";
+      const strikePhase = attacking
+        ? Math.sin((b.progress / Math.max(b.duration, 0.1)) * Math.PI * 2)
+        : 0;
+      a.bot.position.y += breath * 0.023;
+      a.bot.rotation.z = step * 0.055 * a.walkBlend + breath * 0.035;
+      a.bot.rotation.x = attacking ? 0.28 * Math.max(0, strikePhase) : 0;
+      if (attacking) {
+        const lunge = Math.max(0, strikePhase) * 0.22;
+        a.bot.position.x += Math.sin(a.bot.rotation.y) * lunge;
+        a.bot.position.z += Math.cos(a.bot.rotation.y) * lunge;
+      }
       for (const sideName of ["left", "right"] as const) {
         const side = sideName === "left" ? 1 : -1;
         const footLift = Math.max(0, step * side) * a.walkBlend;
         const leg = rigPart(a.bot, `leg_${sideName}`);
         if (leg) {
-          leg.rotation.x = step * side * 0.85 * a.walkBlend;
+          leg.rotation.x =
+            step * side * 0.85 * a.walkBlend + breath * side * 0.045;
           leg.rotation.z = -side * (0.08 * a.walkBlend + footLift * 0.48);
           leg.position.x = side * (0.145 + footLift * 0.07);
           leg.position.y = 0.16 - 0.08 * a.walkBlend + footLift * 0.14;
         }
         const arm = rigPart(a.bot, `arm_${sideName}`);
         if (arm) {
-          arm.rotation.x = -step * side * 0.95 * a.walkBlend;
+          arm.rotation.x =
+            -step * side * 0.95 * a.walkBlend +
+            breath * side * 0.09 -
+            (attacking
+              ? (sideName === "right" ? 1.4 : 0.5) * Math.max(0, strikePhase)
+              : 0);
           arm.rotation.z =
             -side *
             (0.07 * a.walkBlend +
@@ -1009,11 +1081,11 @@ export class World {
           arm = rigPart(a.rig, "arm"),
           bucket = rigPart(a.rig, "bucket");
         if (kind === "excavator") {
-          // Lower the bucket into the quarry, curl it to hold material, then lift.
+          // Open bucket faces the ground at the bite, then curls toward the arm.
           const dig = work ? (stroke + 1) / 2 : 0;
-          if (boom) boom.rotation.x = work ? -0.28 - dig * 0.08 : -0.18;
-          if (arm) arm.rotation.x = work ? 1.12 + dig * 0.25 : 0.95;
-          if (bucket) bucket.rotation.x = work ? 0.12 + dig * 0.3 : 0.2;
+          if (boom) boom.rotation.x = work ? 0.08 + dig * 0.21 : 0.02;
+          if (arm) arm.rotation.x = work ? 0.68 + dig * 0.27 : 0.72;
+          if (bucket) bucket.rotation.x = work ? 2.2 - dig * 0.65 : 1.8;
         } else if (kind === "drill") {
           if (boom) boom.rotation.x = work ? -0.26 + stroke * 0.025 : -0.18;
           if (arm) arm.rotation.x = work ? 1.2 + stroke * 0.045 : 0.95;
@@ -1024,7 +1096,8 @@ export class World {
           if (drillSpin) drillSpin.rotation.z = work ? this.clock * 13 : 0;
           if (work) {
             a.rig.position.y += stroke * 0.018;
-            a.rig.position.x += Math.cos(cycle * 1.7) * 0.012;
+            a.rig.position.x += Math.sin(a.rig.rotation.y) * stroke * 0.08;
+            a.rig.position.z += Math.cos(a.rig.rotation.y) * stroke * 0.08;
           }
         }
         const workBlade = rigPart(
@@ -1033,6 +1106,8 @@ export class World {
         );
         if (workBlade && (kind === "grader" || kind === "dozer")) {
           workBlade.rotation.z = work ? stroke * 0.035 : 0;
+          if (kind === "grader")
+            workBlade.rotation.y = work ? 0.24 + stroke * 0.04 : 0.14;
           workBlade.position.y =
             kind === "grader"
               ? 0.31 + (work ? stroke * 0.045 : 0.12)
@@ -1083,13 +1158,14 @@ export class World {
         signal.visible = signal.visible && b.level === 0 && !b.lock;
         signal.scale.setScalar(1 + Math.sin(this.clock * 4) * 0.13);
       }
-      view.stone.visible = b.level === 1;
-      view.steel.visible = b.level >= 2;
+      view.stone.visible = b.level > 0 && b.capacity === 1;
+      view.steel.visible = b.level > 0 && b.capacity >= 2;
       view.debris.visible = b.level === 0 && b.damage > 0;
       view.cracks.visible = b.damage > 0 && b.level > 0;
       view.cracks.scale.x = b.damage === 2 ? 1.6 : 1;
+      view.exposed.visible = b.damage >= 2 && b.level > 0;
       view.mound.visible = !!b.blockedBy;
-      view.mound.position.z = b.owner === "blue" ? 4 : -4;
+      view.mound.position.z = (b.owner ?? b.exclusive) === "blue" ? 4 : -4;
       for (const obj of [view.stone, view.steel]) {
         obj.traverse((o) => {
           if (o instanceof T.Mesh && (o.material as T.Material).name === "team")
@@ -1109,7 +1185,7 @@ export class World {
       if (worker) {
         view.mound.visible = true;
         const clearing = worker.state === "CLEARING_EMBANKMENT";
-        view.mound.position.z = b.owner === "blue" ? 4 : -4;
+        view.mound.position.z = (b.owner ?? b.exclusive) === "blue" ? 4 : -4;
         view.mound.scale.y = clearing
           ? Math.max(0.03, 1 - worker.progress / worker.duration)
           : 0.15 + (0.85 * worker.progress) / worker.duration;

@@ -261,14 +261,67 @@ describe("bridges, ownership and route validation", () => {
   });
 });
 describe("earthquake, game timer and determinism", () => {
-  it("earthquake never collapses a bridge", () => {
+  it("starts the easy CPU shortly after the opening animation", () => {
     const s = createGame();
+    const cpu = new CPU("easy");
+    s.time = 7.9;
+    cpu.update(s);
+    expect(
+      s.bots.filter((b) => b.team === "red").every((b) => b.state === "IDLE"),
+    ).toBe(true);
+    s.time = 8.1;
+    cpu.update(s);
+    expect(
+      s.bots.filter((b) => b.team === "red").some((b) => b.action === "mine"),
+    ).toBe(true);
+  });
+  it("allows pre-embankment at an enemy bridge site and preserves it through construction", () => {
+    const s = createGame();
+    s.nextQuake = 1e9;
+    fund(s, "blue");
+    fund(s, "red");
+    doTask(s, "embank", "red", "blue");
+    expect(s.bridges[2]).toMatchObject({ level: 0, blockedBy: "blue" });
+    doTask(s, "build", "red", "red");
+    expect(s.bridges[2]).toMatchObject({
+      owner: "red",
+      level: 1,
+      blockedBy: "blue",
+    });
+    expect(
+      canCommand(s, "red", { botId: "red-0", action: "march" }),
+    ).not.toBeNull();
+  });
+  it("lets the owner upgrade central bridge and the opponent block and damage it", () => {
+    const s = createGame();
+    s.nextQuake = 1e9;
+    fund(s, "blue");
+    fund(s, "red");
     bridge(s);
+    doTask(s, "build", "center");
+    doTask(s, "upgrade", "center");
+    expect(s.bridges[1]).toMatchObject({
+      owner: "blue",
+      level: 2,
+      capacity: 2,
+    });
+    doTask(s, "embank", "center", "red");
+    expect(s.bridges[1].blockedBy).toBe("red");
+    doTask(s, "destroy", "center", "red");
+    expect(s.bridges[1]).toMatchObject({ level: 1, damage: 1 });
+  });
+  it("earthquake removes one level and clears embankments", () => {
+    const s = createGame();
+    bridge(s, "blue", 2);
     bridge(s, "red", 3);
-    for (let i = 0; i < 100; i++) earthquake(s);
+    s.bridges[0].blockedBy = "red";
+    earthquake(s);
     expect(s.bridges[0].level).toBe(1);
-    expect(s.bridges[2].level).toBeGreaterThanOrEqual(1);
+    expect(s.bridges[2].level).toBe(2);
+    expect(s.bridges[0].blockedBy).toBeNull();
     expect(s.bridges[0].damage).toBeGreaterThan(0);
+    earthquake(s);
+    expect(s.bridges[0]).toMatchObject({ level: 0, owner: null, capacity: 0 });
   });
   it("allows repair of visually damaged Lv1", () => {
     const s = createGame();
@@ -279,12 +332,15 @@ describe("earthquake, game timer and determinism", () => {
     expect(b.damage).toBe(0);
     expect(b.level).toBe(1);
   });
-  it("draws on timeout regardless of HP", () => {
+  it("awards timeout to the team with more castle HP, drawing only on equal HP", () => {
     const s = createGame();
     s.teams.blue.hp = 2;
     advance(s, 360.1);
-    expect(s.winner).toBe("draw");
+    expect(s.winner).toBe("red");
     expect(s.time).toBe(360);
+    const equal = createGame();
+    advance(equal, 360.1);
+    expect(equal.winner).toBe("draw");
   });
   it("is reproducible from seed and commands", () => {
     const a = createGame(71),

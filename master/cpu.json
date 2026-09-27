@@ -6,7 +6,7 @@
     "central": false,
     "sabotage": false,
     "maintenance": false,
-    "initialDelay": 25
+    "initialDelay": 8
   },
   "normal": {
     "interval": 1.6,

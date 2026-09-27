@@ -144,7 +144,7 @@ def vehicle(kind):
    for y in [-1.45,.35,1.0]:wheel(x,y,.4,.4)
   box('long frame',(0,-.35,.73),(.4,3.0,.25),'team');cabin(.5)
   old=parent;parent=empty('grader_work_blade',(0,-.40,.31))
-  box('blade',(0,0,0),(2.0,.24,.52),'steel');box('blade edge',(0,-.15,-.23),(2.1,.08,.10),'orange')
+  box('blade',(0,0,0),(2.15,.24,.52),'orange');box('blade edge',(0,-.15,-.23),(2.25,.08,.10),'gold')
   for x in [-.5,.5]:beam('blade hydraulic',(x,0,.44),(x,0,.07),.10,'orange')
   parent=old
  else:tracks();cabin(.2 if kind!='launcher' else .85)
@@ -411,7 +411,8 @@ def refinement(kind):
   if grader_blade:
    old=parent;parent=grader_blade
    for x in [-.65,.65]:beam('grader blade lift',(x,.21,.37),(x,-.05,.06),.11,'orange')
-   box('grader dark blade',(0,-.14,.01),(2.04,.04,.40),'track',.02)
+   box('grader blade backplate',(0,-.03,.05),(2.18,.05,.34),'steel',.02)
+   box('grader cutting edge',(0,-.19,-.22),(2.28,.08,.09),'gold',.014)
    parent=old
  if kind=='launcher':
   # The launcher reference has a tall, double-sided truss, stacked orange

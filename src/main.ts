@@ -6,7 +6,13 @@ import type { Difficulty } from "./game/master";
 import { canCommand, command, createGame, taskSpec, tick } from "./game/engine";
 import { CPU } from "./game/cpu";
 import { resolveTaskTarget } from "./game/intent";
-import type { Action, BotState, Point, Resource } from "./game/types";
+import type {
+  Action,
+  BotState,
+  GameState,
+  Point,
+  Resource,
+} from "./game/types";
 import { World } from "./render/world";
 import { Sound } from "./ui/audio";
 import type { WorkSound } from "./ui/audio";
@@ -36,7 +42,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
  <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><div class="title-tagline"><h1>橋をかけて、城へ！</h1><p>掘る。つなぐ。攻める。</p></div></div>
- <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("helmet")}<span>みんなで遊ぶ</span>${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
+ <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("users")}<span>みんなで遊ぶ</span>${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span></div>
 </section>
 <section id="hud" class="hidden">
@@ -291,23 +297,27 @@ function chooseBridge(id: string) {
   const bot = bridgeBuilder(id);
   if (!bot) return;
   if (tutorialStage === "bridge" && id === "blue") setTutorialStage("build");
-  chooseBot(bot, id === "center" ? id : null);
+  chooseBot(bot, id);
 }
 function bridgeBuilder(id: string): string | null {
   const bridge = state.bridges.find((b) => b.id === id);
-  if (!bridge || bridge.level || bridge.lock) return null;
+  if (!bridge || bridge.lock) return null;
   const candidates = [
     ...state.bots.filter((b) => b.id === selected),
     ...state.bots.filter((b) => b.id !== selected && b.team === playerTeam),
   ];
   return (
-    candidates.find(
-      (bot) =>
-        canCommand(state, playerTeam, {
-          botId: bot.id,
-          action: "build",
-          target: id,
-        }) === null,
+    candidates.find((bot) =>
+      (
+        ["build", "upgrade", "repair", "embank", "clear", "destroy"] as Action[]
+      ).some(
+        (action) =>
+          canCommand(state, playerTeam, {
+            botId: bot.id,
+            action,
+            target: id,
+          }) === null,
+      ),
     )?.id ?? null
   );
 }
@@ -759,6 +769,7 @@ function updateJoinKeypad() {
 }
 function showOnline() {
   mode = "online";
+  keypadOpen = false;
   showOpponentConnection(false);
   onlinePhase = "menu";
   onlineStatus = "";
@@ -1095,7 +1106,7 @@ function showPause() {
   clearTimeout(modalCloseTimer);
   $("#modal").classList.remove("hidden", "leaving");
   $("#modal").innerHTML =
-    `<article class="dialog compact"><div class="eyebrow">TAKE A BREAK</div><h2>ちょっと、ひと休み。</h2><p>${mode === "online" ? "オンラインの試合は進行中です。" : "CPUとタイマーも停止しています。"}</p><button id="modal-close" class="primary">ゲームに戻る ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
+    `<article class="dialog compact"><div class="eyebrow">TAKE A BREAK</div><h2>ちょっと、ひと休み。</h2><p>${mode === "online" ? "オンラインの試合は進行中です。" : "CPUとタイマーも停止しています。"}</p><button id="modal-close" class="primary">ゲームに戻る ${icon("march")}</button><button id="back-title" class="secondary">${icon("home")}<span>タイトルへ戻る</span></button></article>`;
 }
 function hideModal() {
   const modal = $("#modal");
@@ -1170,7 +1181,7 @@ function finish() {
       .padStart(
         2,
         "0",
-      )}</b><small>工事時間</small></div></div></div><section id="result-trivia" class="result-trivia" aria-label="土木まめちしき"></section><div class="result-actions"><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一戦、つくろう"} ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></div></article>`;
+      )}</b><small>工事時間</small></div></div></div><section id="result-trivia" class="result-trivia" aria-label="土木まめちしき"></section><div class="result-actions"><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一度遊ぶ"} ${icon("march")}</button><button id="back-title" class="secondary">${icon("home")}<span>タイトルへ戻る</span></button></div></article>`;
   firstResultTrivia();
   sound.play("end");
   sound.setMusicScene(win ? "victory" : "retry");
@@ -1631,9 +1642,9 @@ function frame(now: number) {
       );
       el.style.left = `${p.x}px`;
       el.style.top = `${p.y}px`;
-      const markup = `${buildable ? "<b>!</b>" : ""}${b.level ? `<span class="bridge-strength" aria-label="橋の強さ${b.level}段階">${"●".repeat(b.level)}${"○".repeat(3 - b.level)}</span>` : ""}`;
+      const markup = buildable ? "<b>!</b>" : "";
       if (el.innerHTML !== markup) el.innerHTML = markup;
-      el.classList.toggle("hidden", !buildable && !b.level);
+      el.classList.toggle("hidden", !buildable);
     }
     world.setSiteAvailability(availableSites);
   }
@@ -1707,8 +1718,35 @@ try {
         setCpuEnabled: (enabled: boolean) => {
           cpuEnabled = enabled;
         },
+        setResources: (
+          team: Team,
+          resources: Partial<Record<Resource, number>>,
+        ) => {
+          Object.assign(state.teams[team].resources, resources);
+        },
+        command: (team: Team, botId: string, action: Action, target?: string) =>
+          command(state, team, { botId, action, target }),
         quake: () => {
           state.nextQuake = state.time + 1;
+        },
+        suppressQuake: () => {
+          state.nextQuake = Number.MAX_SAFE_INTEGER;
+        },
+        setBridge: (
+          id: string,
+          patch: Partial<GameState["bridges"][number]>,
+        ) => {
+          Object.assign(
+            state.bridges.find((bridge) => bridge.id === id)!,
+            patch,
+          );
+        },
+        focus: (x: number, z: number, zoom = 2.6) => {
+          world.camera.position.set(x + 9, 8, z + 12);
+          world.controls.target.set(x, 0, z);
+          world.camera.zoom = zoom;
+          world.camera.updateProjectionMatrix();
+          world.controls.update();
         },
         projectBot: (id: string) => {
           const b = state.bots.find((b) => b.id === id)!;

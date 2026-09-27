@@ -7,7 +7,8 @@ import type { Bot, Bridge, Point } from "../game/types";
 // mound at the enemy bridge exit, not the opposite shore.
 export function vehicleWorkHeading(
   bot: Pick<Bot, "team" | "action" | "target" | "position">,
-  bridges: readonly Pick<Bridge, "id" | "x" | "owner">[],
+  bridges: readonly (Pick<Bridge, "id" | "x" | "owner"> &
+    Partial<Pick<Bridge, "exclusive">>)[],
 ): number {
   let target: Point | null = null;
   if (bot.action === "mine") target = quarry(bot.team);
@@ -16,7 +17,7 @@ export function vehicleWorkHeading(
     if (bridge) {
       target =
         bot.action === "embank" || bot.action === "clear"
-          ? [bridge.x, bridge.owner === "blue" ? 4 : -4]
+          ? [bridge.x, (bridge.owner ?? bridge.exclusive) === "blue" ? 4 : -4]
           : [bridge.x, 0];
     }
   }

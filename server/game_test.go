@@ -84,6 +84,37 @@ func TestSabotageAndRepair(t *testing.T) {
 	}
 }
 
+func TestPreEmbankEarthquakeAndTimeout(t *testing.T) {
+	g := newGame(configForTest(t), 19)
+	g.NextQuake = 1e9
+	g.Teams["blue"].Resources["soil"] = 100
+	g.Teams["red"].Resources["stone"] = 100
+	if err := g.command("blue", Command{BotID: "blue-0", Action: "embank", Target: "red"}); err != nil {
+		t.Fatal(err)
+	}
+	advance(g, 35)
+	if g.bridge("red").BlockedBy == nil {
+		t.Fatal("pre-embankment not constructed")
+	}
+	if err := g.command("red", Command{BotID: "red-0", Action: "build", Target: "red"}); err != nil {
+		t.Fatal(err)
+	}
+	advance(g, 35)
+	if g.bridge("red").BlockedBy == nil {
+		t.Fatal("building cleared pre-embankment")
+	}
+	g.earthquake()
+	if g.bridge("red").Level != 0 || g.bridge("red").BlockedBy != nil {
+		t.Fatal("earthquake did not remove one level and clear mound")
+	}
+	g.Teams["blue"].HP = 14
+	g.Time = g.conf.Game.Duration - g.conf.Game.Tick
+	g.tick(g.conf.Game.Tick)
+	if value(g.Winner) != "red" {
+		t.Fatalf("timeout winner = %s", value(g.Winner))
+	}
+}
+
 func TestClearWorksBesideTheMound(t *testing.T) {
 	g := newGame(configForTest(t), 4)
 	b := g.bridge("blue")

@@ -49,12 +49,18 @@ export class CPU {
         b.team === other(team) &&
         b.action === "march" &&
         b.state !== "RETURNING",
-    ).length;
+    );
+    const enemyRoute =
+      s.bridges.find(
+        (b) => b.id === threatening[0]?.target && b.owner === other(team),
+      ) ??
+      s.bridges.find((b) => b.id === "center" && b.owner === other(team)) ??
+      enemy;
     if (
       cfg.sabotage &&
-      threatening > 0 &&
-      !enemy.blockedBy &&
-      tryTask("embank", enemy.id)
+      threatening.length > 0 &&
+      !enemyRoute.blockedBy &&
+      tryTask("embank", enemyRoute.id)
     )
       return;
     if (
@@ -73,12 +79,24 @@ export class CPU {
       tryTask("upgrade", own.id)
     )
       return;
+    const ownedCenter = s.bridges.find(
+      (b) => b.id === "center" && b.owner === team,
+    );
+    if (
+      cfg.maintenance &&
+      ownedCenter?.level &&
+      ownedCenter.level === ownedCenter.capacity &&
+      !ownedCenter.damage &&
+      ownedCenter.capacity < M.bridges.maxLevel &&
+      tryTask("upgrade", ownedCenter.id)
+    )
+      return;
     if (
       cfg.sabotage &&
-      enemy.level &&
+      enemyRoute.level &&
       s.teams[team].resources.iron >=
         M.tasks.destroy.cost.iron + M.tasks.clear.cost.iron &&
-      tryTask("destroy", enemy.id)
+      tryTask("destroy", enemyRoute.id)
     )
       return;
     const marching = bots.filter((b) => b.action === "march").length;

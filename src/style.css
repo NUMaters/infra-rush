@@ -1164,11 +1164,6 @@ h1 {
     transform: scale(1.15);
   }
 }
-.bridge-strength {
-  font-size: 10px;
-  letter-spacing: 3px;
-  line-height: 1;
-}
 .bridge-label.red {
   color: #d1505c;
   border-bottom-color: #e7aeb0;
@@ -1817,7 +1812,22 @@ h1 {
   width: min(250px, 50%);
 }
 .result-actions .secondary {
-  min-height: 44px;
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #16445b;
+  background: #f7fefc;
+  border: 2px solid #f7fefc;
+  box-shadow:
+    0 5px 0 #91bdc3,
+    0 9px 18px #153c5130;
+  font-weight: 900;
+}
+.result-actions .secondary svg {
+  width: 21px;
+  height: 21px;
 }
 @keyframes trivia-model-enter {
   from {

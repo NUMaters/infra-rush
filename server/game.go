@@ -300,14 +300,21 @@ func (g *Game) canCommand(team string, c Command) error {
 			}
 		}
 	} else {
-		if bridge.Level == 0 {
+		if bridge.Level == 0 && c.Action != "embank" {
 			return errors.New("橋がありません")
 		}
-		if (c.Action == "upgrade" || c.Action == "repair" || c.Action == "clear") && !is(bridge.Owner, team) {
+		owner := bridge.Owner
+		if owner == nil {
+			owner = bridge.Exclusive
+		}
+		if (c.Action == "upgrade" || c.Action == "repair" || c.Action == "clear") && !is(owner, team) {
 			return errors.New("自分の橋で作業しよう")
 		}
-		if (c.Action == "destroy" || c.Action == "embank") && !is(bridge.Owner, own(team)) {
+		if (c.Action == "destroy" || c.Action == "embank") && !is(owner, own(team)) {
 			return errors.New("相手の橋で作業しよう")
+		}
+		if c.Action == "embank" && bridge.ID == "center" && bridge.Owner == nil {
+			return errors.New("真ん中の橋は完成後に作業しよう")
 		}
 		if c.Action == "upgrade" && (bridge.Level < bridge.Capacity || bridge.Damage > 0) {
 			return errors.New("先に橋を直そう")
@@ -482,7 +489,11 @@ func (g *Game) finishBot(b *Bot) {
 			g.emit("end", b.Team, "勝利への道、開通！", nil)
 		}
 	} else if bridge != nil {
-		if !is(b.Action, "build") && (bridge.Level == 0 || ((is(b.Action, "upgrade") || is(b.Action, "repair") || is(b.Action, "clear")) && !is(bridge.Owner, b.Team))) {
+		owner := bridge.Owner
+		if owner == nil {
+			owner = bridge.Exclusive
+		}
+		if !is(b.Action, "build") && ((bridge.Level == 0 && !is(b.Action, "embank")) || ((is(b.Action, "upgrade") || is(b.Action, "repair") || is(b.Action, "clear")) && !is(owner, b.Team)) || ((is(b.Action, "embank") || is(b.Action, "destroy")) && !is(owner, own(b.Team))) || (is(b.Action, "clear") && bridge.BlockedBy == nil)) {
 			g.pay(b.Team, b.Paid, 1)
 			g.returning(b, "作業先がなくなったので資源が戻りました")
 			return
@@ -493,7 +504,6 @@ func (g *Game) finishBot(b *Bot) {
 			bridge.Level = 1
 			bridge.Capacity = 1
 			bridge.Damage = 0
-			bridge.BlockedBy = nil
 			stats.Built++
 		case "upgrade":
 			bridge.Level++
@@ -514,7 +524,6 @@ func (g *Game) finishBot(b *Bot) {
 			if bridge.Level == 0 {
 				bridge.Owner = nil
 				bridge.Capacity = 0
-				bridge.BlockedBy = nil
 				p := Point{bridge.X, 0}
 				g.emit("collapse", "", "橋がこわれた！", &p)
 			}
@@ -540,7 +549,11 @@ func value(p *string) string {
 func (g *Game) earthquake() {
 	g.emit("earthquake", "", "地震だ！ 橋は大丈夫？", nil)
 	for _, b := range g.Bridges {
-		if b.Level > 0 && b.Level < len(g.conf.Earthquake.DamageProbability) && g.rand() < g.conf.Earthquake.DamageProbability[b.Level] {
+		b.BlockedBy = nil
+		if b.Level > 0 {
+			if g.rand() >= g.conf.Earthquake.DamageProbability[b.Level] {
+				continue
+			}
 			b.Level--
 			if b.Level < g.conf.Earthquake.MinimumLevel {
 				b.Level = g.conf.Earthquake.MinimumLevel
@@ -548,6 +561,12 @@ func (g *Game) earthquake() {
 			b.Damage++
 			if b.Damage > 2 {
 				b.Damage = 2
+			}
+			if b.Level == 0 {
+				b.Owner = nil
+				b.Capacity = 0
+				p := Point{b.X, 0}
+				g.emit("collapse", "", "橋がこわれた！", &p)
 			}
 		}
 	}
@@ -562,8 +581,19 @@ func (g *Game) tick(dt float64) {
 	if g.Time >= g.conf.Game.Duration {
 		g.Time = g.conf.Game.Duration
 		g.Status = "finished"
-		g.Winner = str("draw")
-		g.emit("end", "", "タイムアップ！ 引き分け", nil)
+		winner := "draw"
+		message := "タイムアップ！ 引き分け"
+		if g.Teams["blue"].HP > g.Teams["red"].HP {
+			winner = "blue"
+		}
+		if g.Teams["red"].HP > g.Teams["blue"].HP {
+			winner = "red"
+		}
+		if winner != "draw" {
+			message = "タイムアップ！ 城を守りきった！"
+		}
+		g.Winner = str(winner)
+		g.emit("end", winner, message, nil)
 		return
 	}
 	if !g.Warned && g.Time >= g.NextQuake-g.conf.Earthquake.WarningSeconds {

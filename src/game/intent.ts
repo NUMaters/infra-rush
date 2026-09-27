@@ -13,18 +13,23 @@ export function resolveTaskTarget(
   if (sabotage) {
     const targets =
       context === "center" ? ["center", other(team)] : [other(team), "center"];
-    return (
+    if (context === other(team) && action === "embank") {
+      const exclusive = state.bridges.find((b) => b.id === context);
+      if (exclusive && !exclusive.lock && !exclusive.blockedBy) return context;
+    }
+    const findTarget = (allowUnbuilt: boolean) =>
       targets.find((id) => {
         const bridge = state.bridges.find((b) => b.id === id);
         return (
           bridge &&
-          bridge.owner === other(team) &&
-          bridge.level > 0 &&
+          (bridge.owner === other(team) ||
+            (action === "embank" && bridge.exclusive === other(team))) &&
+          (bridge.level > 0 || (allowUnbuilt && action === "embank")) &&
           !bridge.lock &&
           (action !== "embank" || !bridge.blockedBy)
         );
-      }) ?? other(team)
-    );
+      });
+    return findTarget(false) ?? findTarget(true) ?? other(team);
   }
   if (action === "clear") {
     return (
@@ -41,8 +46,8 @@ export function resolveTaskTarget(
       ) ?? team
     );
   }
-  if (context === "center") {
-    const center = state.bridges.find((bridge) => bridge.id === "center");
+  if (context && (context === "center" || context === team)) {
+    const center = state.bridges.find((bridge) => bridge.id === context);
     if (
       center &&
       !center.lock &&
@@ -50,7 +55,7 @@ export function resolveTaskTarget(
         ? !center.level
         : center.owner === team && center.level > 0)
     )
-      return "center";
+      return context;
   }
   return team;
 }

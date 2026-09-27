@@ -1,5 +1,8 @@
 const paths: Record<string, string> = {
   helmet: '<path d="M4 15a8 8 0 0 1 16 0M3 15h18v4H3zM10 6v8m4-8v8"/>',
+  users:
+    '<circle cx="8" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><path d="M2.5 20v-2a5.5 5.5 0 0 1 11 0v2zm11 0v-2a5.5 5.5 0 0 0-1.2-3.5A5.5 5.5 0 0 1 21.5 18v2z"/>',
+  home: '<path d="m3 11 9-8 9 8v10H3zM9 21v-7h6v7"/>',
   mine: '<path d="M3 18h9v3H3zM5 18v-7h5v7m0-6 6-7 4 9m-5 1h7l-2 4h-4zM3 9h8"/>',
   build:
     '<path d="M2 16h20M3 20V8m18 12V8M3 12l6-5 6 5 6-5M3 12h18M8 12v4m8-4v4"/>',

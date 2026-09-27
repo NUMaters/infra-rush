@@ -11,11 +11,71 @@ declare global {
       quake: () => void;
       setCpuEnabled: (enabled: boolean) => void;
       setCpu: (difficulty: "easy" | "normal" | "hard") => void;
+      setResources: (
+        team: "blue" | "red",
+        resources: Partial<Record<"soil" | "stone" | "iron", number>>,
+      ) => void;
+      setBridge: (
+        id: string,
+        patch: Partial<GameState["bridges"][number]>,
+      ) => void;
+      suppressQuake: () => void;
       projectBot: (id: string) => { x: number; y: number };
       projectBridge: (id: string) => { x: number; y: number };
     };
   }
 }
+test("map bridge taps expose central reinforcement and pre-construction embankment", async ({
+  page,
+}) => {
+  await page.goto("/?qa");
+  await expect(page.locator("#start")).toBeVisible({ timeout: 60000 });
+  await expect(
+    page.locator("#online-start svg").first().locator("circle"),
+  ).toHaveCount(2);
+  await page.locator("#online-start").click();
+  await page.locator("#room-id-input").click();
+  await expect(page.locator(".room-keypad")).toBeVisible();
+  await page.locator("#online-close").click();
+  await page.locator("#online-start").click();
+  await expect(page.locator(".room-keypad")).toHaveCount(0);
+  await page.locator("#online-close").click();
+  await page.locator("#start").click();
+  await page.locator("#cpu-start").click();
+  await expect(page.locator("#hud")).toBeVisible();
+  await expect(page.locator("#scene-wipe")).not.toHaveClass(/active/);
+  await page.evaluate(() => {
+    window.infraQA.setCpuEnabled(false);
+    window.infraQA.suppressQuake();
+    window.infraQA.setResources("blue", { soil: 100, stone: 100, iron: 100 });
+    window.infraQA.setBridge("blue", { owner: "blue", level: 1, capacity: 1 });
+    window.infraQA.setBridge("center", {
+      owner: "blue",
+      level: 1,
+      capacity: 1,
+    });
+  });
+  const center = await page.evaluate(() =>
+    window.infraQA.projectBridge("center"),
+  );
+  await page.mouse.click(center.x, center.y);
+  await expect(page.locator("#task-panel")).toBeVisible();
+  await expect(page.locator('[data-action="upgrade"]')).toBeEnabled();
+  await page.locator('[data-action="upgrade"]').click();
+  await advance(page, 35);
+  expect(
+    (await page.evaluate(() => window.infraQA.snapshot())).bridges[1].level,
+  ).toBe(2);
+  const enemy = await page.evaluate(() => window.infraQA.projectBridge("red"));
+  await page.mouse.click(enemy.x, enemy.y);
+  await expect(page.locator("#task-panel")).toBeVisible();
+  await expect(page.locator('[data-action="embank"]')).toBeEnabled();
+  await page.locator('[data-action="embank"]').click();
+  await advance(page, 35);
+  expect(
+    (await page.evaluate(() => window.infraQA.snapshot())).bridges[2],
+  ).toMatchObject({ level: 0, blockedBy: "blue" });
+});
 async function selectBot(page: Page, index: number) {
   if (await page.locator("#close-panel").isVisible()) {
     await page.keyboard.press("Escape");
