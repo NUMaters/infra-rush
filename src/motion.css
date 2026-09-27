@@ -669,9 +669,7 @@ button:not(:disabled):active {
   font-size: clamp(38px, 9vw, 72px);
   font-weight: 1000;
   line-height: 1.08;
-  text-shadow:
-    0 6px 0 #142b5a7d,
-    0 10px 16px #081e3b99;
+  text-shadow: none;
 }
 .intro-bots {
   display: flex;

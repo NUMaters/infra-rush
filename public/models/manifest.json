@@ -26,8 +26,8 @@
   {
     "asset": "grader",
     "triangles": 20956,
-    "meshes": 20,
-    "bytes": 1016496
+    "meshes": 22,
+    "bytes": 1015628
   },
   {
     "asset": "launcher",
@@ -38,8 +38,8 @@
   {
     "asset": "drill",
     "triangles": 25856,
-    "meshes": 26,
-    "bytes": 1323868
+    "meshes": 33,
+    "bytes": 1325016
   },
   {
     "asset": "stone-bridge",

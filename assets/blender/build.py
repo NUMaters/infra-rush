@@ -143,8 +143,10 @@ def vehicle(kind):
   for x in [-.70,.70]:
    for y in [-1.45,.35,1.0]:wheel(x,y,.4,.4)
   box('long frame',(0,-.35,.73),(.4,3.0,.25),'team');cabin(.5)
-  box('blade',(0,-.40,.31),(2.0,.24,.52),'steel');box('blade edge',(0,-.55,.08),(2.1,.08,.10),'orange')
-  for x in [-.5,.5]:beam('blade hydraulic',(x,-.40,.75),(x,-.40,.38),.10,'orange')
+  old=parent;parent=empty('grader_work_blade',(0,-.40,.31))
+  box('blade',(0,0,0),(2.0,.24,.52),'steel');box('blade edge',(0,-.15,-.23),(2.1,.08,.10),'orange')
+  for x in [-.5,.5]:beam('blade hydraulic',(x,0,.44),(x,0,.07),.10,'orange')
+  parent=old
  else:tracks();cabin(.2 if kind!='launcher' else .85)
  if kind in ['excavator','dozer','drill','launcher']:
   box('track cross-chassis',(0,0,.50),(1.65,1.45,.32),'track',.11)
@@ -161,9 +163,11 @@ def vehicle(kind):
    box('bucket bowl floor',(0,-.13,-.32),(.78,.56,.12),'team',.05)
    for x in [-.22,0,.22]:box('tooth',(x,-.43,-.26),(.12,.23,.10),'steel',.025)
   else:
+   old=parent;parent=empty('drill_spin')
    for i in range(7):
     o=cyl('drill',(0,-.06-i*.105,-.06),.36*(1-i/8),.13,'steel');o.rotation_euler[0]=math.pi/2
    o=cyl('drill collar',(0,.04,-.06),.40,.16,'orange');o.rotation_euler[0]=math.pi/2
+   parent=old
   parent=old
  if kind=='dozer':
   old=parent;parent=empty('blade',(0,-1.05,.38))
@@ -359,6 +363,8 @@ def refinement(kind):
        sphere('bucket side pin',(x*1.12,.14,.04),(.08,.07,.08),'orange',12,8)
       for x in [-.30,-.10,.10,.30]:box('bucket tooth',(x,-.52,-.24),(.10,.19,.09),'steel',.026)
      else:
+      spin=scene_part('drill_spin',bucket.children)
+      if spin: parent=spin
       for i in range(4):
        z=-.06-i*.025
        box('drill spiral tooth',(0,-.24-i*.12,z),(.18,.09,.16),'gold',.03)
@@ -401,8 +407,12 @@ def refinement(kind):
     for a in range(8):
      ang=a*math.tau/8
      box('tire lug',(x*1.06,y+math.cos(ang)*.30,.40+math.sin(ang)*.30),(.06,.13,.09),'black',.025)
-  for x in [-.65,.65]:beam('grader blade lift',(x,-.19,.68),(x,-.45,.37),.11,'orange')
-  box('grader dark blade',(0,-.54,.32),(2.04,.04,.40),'track',.02)
+  grader_blade=scene_part('grader_work_blade')
+  if grader_blade:
+   old=parent;parent=grader_blade
+   for x in [-.65,.65]:beam('grader blade lift',(x,.21,.37),(x,-.05,.06),.11,'orange')
+   box('grader dark blade',(0,-.14,.01),(2.04,.04,.40),'track',.02)
+   parent=old
  if kind=='launcher':
   # The launcher reference has a tall, double-sided truss, stacked orange
   # outriggers and a long concrete girder. Keep the truss as its own pivot.

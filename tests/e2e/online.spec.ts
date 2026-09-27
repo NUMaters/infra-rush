@@ -140,6 +140,7 @@ test("private room shares a five-digit invite and accepts a friend", async ({
     await expect(guest.locator("#online-name")).toHaveValue("プレイヤー2");
     await host.locator("#online-ready").click();
     await guest.locator("#online-ready").click();
+    await host.bringToFront();
     await expect(host.locator("#hud")).toBeVisible();
     await expect(guest.locator("#hud")).toBeVisible();
   } finally {
@@ -153,7 +154,7 @@ test("a player can reconnect and continue issuing sequenced commands", async ({
 }) => {
   const a = await browser.newContext();
   const b = await browser.newContext();
-  const host = await a.newPage();
+  let host = await a.newPage();
   const guest = await b.newPage();
   try {
     for (const page of [host, guest]) {
@@ -170,6 +171,7 @@ test("a player can reconnect and continue issuing sequenced commands", async ({
     await guest.locator("#online-join").click();
     await host.locator("#online-ready").click();
     await guest.locator("#online-ready").click();
+    await host.bringToFront();
     await expect(host.locator("#hud")).toBeVisible();
     await host.keyboard.press("1");
     await host.locator('[data-action="mine"]').click();
@@ -177,9 +179,12 @@ test("a player can reconnect and continue issuing sequenced commands", async ({
       .poll(() => host.evaluate(() => window.infraQA.snapshot().bots[0].action))
       .toBe("mine");
 
-    await host.reload();
-    await host.locator("#online-start").click();
+    await host.close();
+    await expect(guest.locator("#opponent-connection")).toBeVisible();
+    host = await a.newPage();
+    await host.goto(onlineTestURL);
     await expect(host.locator("#hud")).toBeVisible();
+    await expect(guest.locator("#opponent-connection")).toBeHidden();
     await expect
       .poll(() => host.evaluate(() => window.infraQA.snapshot().bots[0].action))
       .toBe("mine");

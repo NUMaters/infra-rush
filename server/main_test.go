@@ -81,7 +81,8 @@ func TestLockedRoomSequenceAndReconnect(t *testing.T) {
 	}
 
 	a.connected = false
-	a.disconnectedAt = time.Now()
+	// A restarted browser can take longer than a few seconds to reload its GLBs.
+	a.disconnectedAt = time.Now().Add(-45 * time.Second)
 	reconnected := testPeer()
 	h.handle(reconnected, incoming{Type: "hello", Token: a.token})
 	if reconnected.room != b.room || reconnected.team != "blue" || reconnected.lastSeq != 2 {

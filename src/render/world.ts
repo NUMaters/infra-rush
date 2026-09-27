@@ -1002,13 +1002,60 @@ export class World {
           ? a.bot.rotation.y
           : vehicleWorkHeading(b, s.bridges);
         const work = !moving;
+        const cycle =
+          this.clock * (kind === "drill" ? 5.8 : 2.3) + b.index * 0.4;
+        const stroke = Math.sin(cycle);
         const boom = rigPart(a.rig, "boom"),
           arm = rigPart(a.rig, "arm"),
           bucket = rigPart(a.rig, "bucket");
-        if (boom) boom.rotation.x = work ? Math.sin(this.clock * 2.4) * 0.2 : 0;
-        if (arm)
-          arm.rotation.x = work ? Math.sin(this.clock * 2.4 + 1) * 0.3 : 0;
-        if (bucket && kind === "drill") bucket.rotation.y = this.clock * 12;
+        if (kind === "excavator") {
+          // Lower the bucket into the quarry, curl it to hold material, then lift.
+          const dig = work ? (stroke + 1) / 2 : 0;
+          if (boom) boom.rotation.x = work ? -0.28 - dig * 0.08 : -0.18;
+          if (arm) arm.rotation.x = work ? 1.12 + dig * 0.25 : 0.95;
+          if (bucket) bucket.rotation.x = work ? 0.12 + dig * 0.3 : 0.2;
+        } else if (kind === "drill") {
+          if (boom) boom.rotation.x = work ? -0.26 + stroke * 0.025 : -0.18;
+          if (arm) arm.rotation.x = work ? 1.2 + stroke * 0.045 : 0.95;
+          if (bucket) {
+            bucket.rotation.x = work ? 0.68 : 0.36;
+          }
+          const drillSpin = rigPart(a.rig, "drill_spin");
+          if (drillSpin) drillSpin.rotation.z = work ? this.clock * 13 : 0;
+          if (work) {
+            a.rig.position.y += stroke * 0.018;
+            a.rig.position.x += Math.cos(cycle * 1.7) * 0.012;
+          }
+        }
+        const workBlade = rigPart(
+          a.rig,
+          kind === "grader" ? "grader_work_blade" : "blade",
+        );
+        if (workBlade && (kind === "grader" || kind === "dozer")) {
+          workBlade.rotation.z = work ? stroke * 0.035 : 0;
+          workBlade.position.y =
+            kind === "grader"
+              ? 0.31 + (work ? stroke * 0.045 : 0.12)
+              : 0.38 + (work ? stroke * 0.035 : 0.11);
+        }
+        const pilot = rigPart(a.rig, "pilot");
+        if (pilot) {
+          pilot.rotation.z = work
+            ? stroke * 0.045
+            : Math.sin(this.clock * 4) * 0.025;
+          for (const side of ["left", "right"] as const) {
+            const hand = rigPart(pilot, `arm_${side}`);
+            if (!hand) continue;
+            hand.rotation.x =
+              -0.65 -
+              (work
+                ? Math.sin(cycle + (side === "left" ? 0 : 1.1)) * 0.2
+                : 0.06);
+            hand.rotation.y = side === "left" ? -0.22 : 0.22;
+          }
+          const wheel = rigPart(a.rig, "steering wheel");
+          if (wheel) wheel.rotation.z = work ? stroke * 0.11 : 0;
+        }
         const girder = rigPart(a.rig, "girder");
         if (girder)
           girder.position.z =
@@ -1016,10 +1063,11 @@ export class World {
         a.rig.traverse((o) => {
           if (o.name.startsWith("outrigger")) o.scale.y = work ? 1 : 0.5;
         });
-        if (work && kind === "grader")
-          a.rig.position.x += Math.sin(this.clock) * 0.55;
-        if (work && kind === "dozer") {
-          const push = Math.sin(this.clock * 1.2) * 0.35;
+        if (work && (kind === "grader" || kind === "dozer")) {
+          // A short pass follows the vehicle's forward axis into the soil.
+          const push =
+            (Math.sin(this.clock * (kind === "grader" ? 1.7 : 1.2)) + 1) *
+            (kind === "grader" ? 0.19 : 0.22);
           a.rig.position.x += Math.sin(a.rig.rotation.y) * push;
           a.rig.position.z += Math.cos(a.rig.rotation.y) * push;
         }

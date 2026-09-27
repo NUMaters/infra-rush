@@ -35,7 +35,10 @@ export class OnlineClient {
   private reconnectTimer: number | null = null;
   private seq = 0;
   private active = false;
-  private token = sessionStorage.getItem("infra-rush-online-token") ?? "";
+  private token =
+    sessionStorage.getItem("infra-rush-online-token") ??
+    localStorage.getItem("infra-rush-online-token") ??
+    "";
 
   get connected() {
     return this.socket?.readyState === WebSocket.OPEN;
@@ -79,6 +82,7 @@ export class OnlineClient {
         this.token = message.token;
         this.seq = message.seq;
         sessionStorage.setItem("infra-rush-online-token", message.token);
+        localStorage.setItem("infra-rush-online-token", message.token);
       }
       this.onMessage(message);
     };
@@ -99,6 +103,9 @@ export class OnlineClient {
   leave() {
     this.send({ type: "leave" });
     this.seq = 0;
+    sessionStorage.removeItem("infra-rush-online-token");
+    localStorage.removeItem("infra-rush-online-token");
+    this.token = "";
   }
   close() {
     this.active = false;

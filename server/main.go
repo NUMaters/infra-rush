@@ -67,6 +67,8 @@ type hub struct {
 	config *Config
 }
 
+const reconnectGrace = 90 * time.Second
+
 var upgrader = websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 4096, CheckOrigin: checkOrigin}
 
 func checkOrigin(r *http.Request) bool {
@@ -286,7 +288,7 @@ func (h *hub) handle(p *peer, m incoming) {
 	case "hello":
 		resumed := false
 		if m.Token != "" {
-			if old := h.tokens[m.Token]; old != nil && old != p && (old.connected || time.Since(old.disconnectedAt) < 30*time.Second) {
+			if old := h.tokens[m.Token]; old != nil && old != p && (old.connected || time.Since(old.disconnectedAt) < reconnectGrace) {
 				resumed = old.room != nil
 				if old.connected {
 					old.connected = false
@@ -448,7 +450,7 @@ func (h *hub) disconnect(p *peer) {
 	h.removeQueue(p)
 	if p.room != nil {
 		h.roomState(p.room)
-		h.sendRoom(p.room, map[string]any{"type": "opponent_disconnected", "team": p.team, "seconds": 30})
+		h.sendRoom(p.room, map[string]any{"type": "opponent_disconnected", "team": p.team, "seconds": int(reconnectGrace.Seconds())})
 	}
 }
 func (h *hub) tick() {
@@ -457,7 +459,7 @@ func (h *hub) tick() {
 	now := time.Now()
 	for _, r := range h.rooms {
 		for _, p := range r.players {
-			if p != nil && !p.connected && now.Sub(p.disconnectedAt) > 30*time.Second {
+			if p != nil && !p.connected && now.Sub(p.disconnectedAt) > reconnectGrace {
 				h.leave(p)
 			}
 		}
@@ -489,7 +491,7 @@ func (h *hub) tick() {
 		}
 	}
 	for token, p := range h.tokens {
-		if !p.connected && now.Sub(p.disconnectedAt) > 30*time.Second {
+		if !p.connected && now.Sub(p.disconnectedAt) > reconnectGrace {
 			delete(h.tokens, token)
 		}
 	}

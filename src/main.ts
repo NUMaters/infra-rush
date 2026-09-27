@@ -41,7 +41,8 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
 <section id="hud" class="hidden">
  <header class="match-header"><div class="team-score blue" id="blue-score"><div class="score-top"><span>${icon("castle")}<small>あなたの城</small></span><b id="blue-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="blue-hp" style="--castle-hp:${M.castle.hp}" role="progressbar" aria-label="あなたの城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div><div class="timer"><small>のこり時間</small><b id="timer">06:00</b></div><div class="team-score red" id="red-score"><div class="score-top"><span>${icon("castle")}<small>相手の城</small></span><b id="red-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="red-hp" style="--castle-hp:${M.castle.hp}" role="progressbar" aria-label="相手の城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div></header>
  <div class="resource-bar" id="resources"></div>
- <div class="utilities"><span id="latency" class="latency hidden" aria-label="通信遅延"></span><button id="sound" class="circle" aria-label="BGMと効果音を切り替え" aria-pressed="false">${icon("sound")}</button><button id="pause" class="circle" aria-label="一時停止">${icon("pause")}</button><button class="circle help" aria-label="遊び方">?</button></div>
+ <div class="utilities"><button id="sound" class="circle" aria-label="BGMと効果音を切り替え" aria-pressed="false">${icon("sound")}</button><button id="pause" class="circle" aria-label="一時停止">${icon("pause")}</button><button class="circle help" aria-label="遊び方">?</button></div>
+ <span id="latency" class="latency hidden" aria-label="通信遅延"></span><div id="opponent-connection" class="opponent-connection hidden" role="status" aria-label="相手の接続が切れています"><span class="signal-bars"><i></i><i></i><i></i></span><b>相手が接続中…</b></div>
  <div id="bridge-labels"></div><div id="floaters" aria-hidden="true"></div>
  <div id="impact-flash" aria-hidden="true"></div>
  <div id="toast" role="status" aria-live="polite"></div>
@@ -87,6 +88,23 @@ let pendingInvite = /^[0-9]{5}$/.test(
   ? new URLSearchParams(location.search).get("room")!
   : "";
 let pingAt = 0;
+const resumeKey = "infra-rush-active-match";
+let previousResources: Record<Resource, number> | null = null;
+let opponentOffline = false;
+let lastMatchSavedAt = 0;
+function rememberMatch() {
+  if (Date.now() - lastMatchSavedAt < 10_000) return;
+  lastMatchSavedAt = Date.now();
+  localStorage.setItem(resumeKey, String(lastMatchSavedAt));
+}
+function forgetMatch() {
+  lastMatchSavedAt = 0;
+  localStorage.removeItem(resumeKey);
+}
+function showOpponentConnection(visible: boolean) {
+  opponentOffline = visible;
+  $("#opponent-connection").classList.toggle("hidden", !visible);
+}
 const visualPositions = new Map<string, Point>();
 const sound = new Sound();
 let world: World;
@@ -335,6 +353,7 @@ function prepareSolo() {
   bridgeContext = null;
   qaFrozen = false;
   shownHp = { blue: M.castle.hp, red: M.castle.hp };
+  previousResources = null;
   world.reset();
   visualPositions.clear();
   world.setHomeTeam("blue");
@@ -725,6 +744,7 @@ function renderOnlineLobby() {
 }
 function showOnline() {
   mode = "online";
+  showOpponentConnection(false);
   onlinePhase = "menu";
   onlineStatus = "";
   $("#online-lobby").classList.remove("hidden");
@@ -758,6 +778,7 @@ function showOnline() {
 }
 function enterOnlineGame(startAt = 0, serverNow = 0) {
   if (started) return;
+  rememberMatch();
   sound.unlock();
   state = createGame();
   lastEvent = 0;
@@ -766,6 +787,7 @@ function enterOnlineGame(startAt = 0, serverNow = 0) {
   selected = null;
   bridgeContext = null;
   shownHp = { blue: M.castle.hp, red: M.castle.hp };
+  previousResources = null;
   world.reset();
   visualPositions.clear();
   world.setHomeTeam(playerTeam);
@@ -792,9 +814,14 @@ function handleOnlineMessage(message: ServerMessage) {
     playerTeam = message.team;
     onlinePlayers = message.players;
     onlinePhase = message.phase;
+    const enemy = playerTeam === "blue" ? "red" : "blue";
+    showOpponentConnection(
+      message.phase === "playing" && onlinePlayers[enemy]?.connected === false,
+    );
     if (message.phase === "playing")
       enterOnlineGame(message.startAt, message.serverNow);
     else if (message.phase === "waiting" || message.phase === "ready") {
+      forgetMatch();
       if (started && (introActive || state.status === "finished")) {
         cancelIntro();
         started = false;
@@ -812,6 +839,7 @@ function handleOnlineMessage(message: ServerMessage) {
   } else if (message.type === "state") {
     if (mode !== "online") return;
     enterOnlineGame();
+    rememberMatch();
     state = message.state;
     processEvents();
     renderUI();
@@ -828,7 +856,7 @@ function handleOnlineMessage(message: ServerMessage) {
     renderOnlineLobby();
     toast(message.message);
   } else if (message.type === "opponent_disconnected") {
-    toast("相手が切断されました。30秒間、復帰を待ちます");
+    if (message.team !== playerTeam) showOpponentConnection(true);
   } else if (message.type === "rematch") {
     toast("相手の再戦を待っています");
   } else if (message.type === "pong") {
@@ -941,12 +969,37 @@ function renderUI() {
     : `${Math.floor(remain / 60)
         .toString()
         .padStart(2, "0")}:${(remain % 60).toString().padStart(2, "0")}`;
-  $("#resources").innerHTML = (["soil", "stone", "iron"] as const)
-    .map(
-      (r) =>
-        `<div class="resource ${r}">${resourceIcon(r)}<span>${resourceNames[r]}<b>${state.teams[playerTeam].resources[r]}</b></span></div>`,
-    )
-    .join("");
+  const resources = state.teams[playerTeam].resources;
+  const deltas = previousResources
+    ? (Object.fromEntries(
+        (["soil", "stone", "iron"] as const).map((r) => [
+          r,
+          resources[r] - previousResources![r],
+        ]),
+      ) as Record<Resource, number>)
+    : { soil: 0, stone: 0, iron: 0 };
+  html(
+    "#resources",
+    (["soil", "stone", "iron"] as const)
+      .map(
+        (r) =>
+          `<div class="resource ${r}">${resourceIcon(r)}<span>${resourceNames[r]}<b>${resources[r]}</b></span></div>`,
+      )
+      .join(""),
+  );
+  for (const r of ["soil", "stone", "iron"] as const) {
+    if (!deltas[r]) continue;
+    const el = $(`#resources .${r}`);
+    el.classList.remove("resource-gain", "resource-spend");
+    void el.offsetWidth;
+    el.classList.add(deltas[r] > 0 ? "resource-gain" : "resource-spend");
+    const bubble = document.createElement("em");
+    bubble.className = `resource-change ${deltas[r] > 0 ? "gain" : "spend"}`;
+    bubble.textContent = `${deltas[r] > 0 ? "+" : "−"}${Math.abs(deltas[r])}`;
+    el.append(bubble);
+    setTimeout(() => bubble.remove(), 850);
+  }
+  previousResources = { ...resources };
   const bridge = state.bridges.find((b) => b.exclusive === playerTeam)!;
   const bridgeReady =
     !bridge.level &&
@@ -1010,7 +1063,7 @@ function showPause() {
   clearTimeout(modalCloseTimer);
   $("#modal").classList.remove("hidden", "leaving");
   $("#modal").innerHTML =
-    `<article class="dialog compact"><div class="eyebrow">TAKE A BREAK</div><h2>ちょっと、ひと休み。</h2><p>${mode === "online" ? "オンラインの試合は進行中です。" : "CPUとタイマーも停止しています。"}</p><button id="modal-close" class="primary">工事を再開 ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
+    `<article class="dialog compact"><div class="eyebrow">TAKE A BREAK</div><h2>ちょっと、ひと休み。</h2><p>${mode === "online" ? "オンラインの試合は進行中です。" : "CPUとタイマーも停止しています。"}</p><button id="modal-close" class="primary">ゲームに戻る ${icon("march")}</button><button id="back-title" class="secondary">タイトルへ戻る</button></article>`;
 }
 function hideModal() {
   const modal = $("#modal");
@@ -1027,6 +1080,8 @@ function hideModal() {
   );
 }
 function closeOnlineLobby() {
+  forgetMatch();
+  showOpponentConnection(false);
   online?.leave();
   online?.close();
   $("#online-lobby").classList.add("hidden");
@@ -1068,6 +1123,8 @@ function firstResultTrivia() {
 }
 function finish() {
   if (!$("#result").classList.contains("hidden")) return;
+  forgetMatch();
+  showOpponentConnection(false);
   closePanel();
   const win = state.winner === playerTeam,
     draw = state.winner === "draw";
@@ -1086,6 +1143,8 @@ function finish() {
   sound.setMusicScene(win ? "victory" : "retry");
 }
 function backTitle() {
+  forgetMatch();
+  showOpponentConnection(false);
   cancelIntro();
   clearTimeout(tutorialCompleteTimer);
   tutorialStage = null;
@@ -1122,6 +1181,17 @@ function syncSoundButtons() {
     button.classList.toggle("muted", sound.muted);
     button.setAttribute("aria-pressed", String(sound.muted));
   }
+}
+// Browsers that permit autoplay start on load; otherwise any first tap or key
+// resumes the already prepared title track, including taps on the 3D scene.
+for (const event of ["pointerdown", "keydown"]) {
+  document.addEventListener(
+    event,
+    () => {
+      if (!sound.muted) sound.resumeMusic();
+    },
+    { capture: true },
+  );
 }
 app.addEventListener("pointerdown", (e) => {
   const button = (e.target as HTMLElement).closest<HTMLButtonElement>("button");
@@ -1423,6 +1493,13 @@ function frame(now: number) {
     online.send({ type: "ping" });
   }
   if (
+    mode === "online" &&
+    started &&
+    online?.connected &&
+    state.status === "playing"
+  )
+    rememberMatch();
+  if (
     started &&
     mode === "cpu" &&
     !paused &&
@@ -1473,6 +1550,13 @@ function frame(now: number) {
     };
   }
   if (started || !lobbyVisible) world.update(displayState, dt, elapsed);
+  if (opponentOffline && started) {
+    const enemy = playerTeam === "blue" ? "red" : "blue";
+    const p = world.project(M.castle[enemy] as Point, 5.7);
+    const badge = $("#opponent-connection");
+    badge.style.left = `${p.x}px`;
+    badge.style.top = `${p.y}px`;
+  }
   uiClock += dt;
   if (uiClock > 0.15) {
     renderUI();
@@ -1514,8 +1598,9 @@ function frame(now: number) {
       );
       el.style.left = `${p.x}px`;
       el.style.top = `${p.y}px`;
-      const markup = `<b>${b.lock ? "作業中…" : b.blockedBy ? "ふさがれている" : b.damage && b.level ? "直そう" : b.level ? "渡れる" : buildable ? "!" : ""}</b>${b.level ? `<span class="bridge-strength" aria-label="橋の強さ${b.level}段階">${"●".repeat(b.level)}${"○".repeat(3 - b.level)}</span>` : ""}`;
+      const markup = `${buildable ? "<b>!</b>" : ""}${b.level ? `<span class="bridge-strength" aria-label="橋の強さ${b.level}段階">${"●".repeat(b.level)}${"○".repeat(3 - b.level)}</span>` : ""}`;
       if (el.innerHTML !== markup) el.innerHTML = markup;
+      el.classList.toggle("hidden", !buildable && !b.level);
     }
     world.setSiteAvailability(availableSites);
   }
@@ -1523,6 +1608,7 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 try {
+  sound.setMusicScene("title");
   world = new World($("#world"));
   world.onPick = (kind, id) => {
     if (!started || paused || introActive || state.status !== "playing") return;
@@ -1548,7 +1634,11 @@ try {
   $("#title").classList.remove("hidden");
   sound.setMusicScene("title");
   requestAnimationFrame(frame);
-  if (pendingInvite) showOnline();
+  if (
+    pendingInvite ||
+    Date.now() - Number(localStorage.getItem(resumeKey) ?? 0) < 100_000
+  )
+    showOnline();
   $("#bridge-labels").addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-target]");
     if (b) chooseBridge(b.dataset.target!);
