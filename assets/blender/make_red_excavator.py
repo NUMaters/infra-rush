@@ -26,7 +26,10 @@ for image in bpy.data.images:
     red, green, blue = rgba[:, 0].copy(), rgba[:, 1].copy(), rgba[:, 2].copy()
     # Saturated royal-blue paint. Leave the less saturated cyan cab glass and
     # navy rubber untouched, so this remains a plausible machine variant.
-    mask = (blue > red * 1.38) & (blue > green * 1.13) & (blue > 0.25) & (green > 0.14)
+    # The cab windows and seat are blue-gray too, but have much less saturated
+    # blue than the painted bucket/boom. A broad hue-only mask turned the
+    # boom-side window pink and exposed jagged texture edges in the game.
+    mask = (blue > red * 2.2) & (blue > green * 1.35) & (blue > 0.42) & (green > 0.14)
     count = int(np.count_nonzero(mask))
     if not count:
         continue
