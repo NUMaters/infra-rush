@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http/httptest"
 	"regexp"
 	"testing"
@@ -98,6 +99,28 @@ func TestLockedRoomSequenceAndReconnect(t *testing.T) {
 	h.handle(reconnected, incoming{Type: "rematch"})
 	if reconnected.room.game == nil {
 		t.Fatal("rematch restarted before both accepted")
+	}
+	var notified bool
+	for len(b.send) > 0 {
+		var message struct {
+			Type string `json:"type"`
+		}
+		payload := <-b.send
+		if err := json.Unmarshal(payload, &message); err != nil {
+			t.Fatal(err)
+		}
+		if message.Type == "rematch" {
+			var vote struct {
+				Players [2]bool `json:"players"`
+			}
+			if err := json.Unmarshal(payload, &vote); err != nil {
+				t.Fatal(err)
+			}
+			notified = vote.Players == [2]bool{true, false}
+		}
+	}
+	if !notified {
+		t.Fatal("opponent was not notified of rematch request")
 	}
 	h.handle(b, incoming{Type: "rematch"})
 	if reconnected.room.game != nil || reconnected.room.running {

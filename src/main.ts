@@ -40,12 +40,12 @@ function html(selector: string, markup: string) {
 }
 const app = $("#app");
 app.innerHTML = `<main id="world"></main><div id="vignette"></div>
-<section id="loading"><div class="mini-brand">INFRA <b>RUSH</b></div><div class="loading-track"><i></i></div><p>小さなBotたちが準備しています…</p></section>
+<section id="loading" aria-label="ゲームを読み込み中"><div class="match-spinner loading-spinner" role="progressbar" aria-label="読み込み中" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><p>読み込み中…</p></section>
 <section id="title" class="hidden">
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
  <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><div class="title-tagline"><h1>橋をかけて、城へ！</h1><p>掘る。つなぐ。攻める。</p></div></div>
- <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("users")}<span>みんなで遊ぶ</span>${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
+ <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("users")}<span>みんなで遊ぶ</span>${icon("march")}</button><button id="title-trivia-open" class="title-trivia-button" type="button">${icon("book")}<span>土木の豆知識をみる</span>${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span></div>
 </section>
 <section id="hud" class="hidden">
@@ -64,6 +64,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
 <section id="tutorial" class="hidden" aria-live="polite" aria-label="操作チュートリアル"><div id="tutorial-guide" aria-hidden="true"></div><div id="tutorial-card"></div></section>
 <section id="modal" class="overlay hidden"></section>
 <section id="online-lobby" class="overlay hidden" aria-label="オンライン対戦"></section>
+<section id="title-trivia" class="overlay hidden" role="dialog" aria-modal="true" aria-label="土木の豆知識"><article class="dialog title-trivia-dialog"><button id="title-trivia-close" class="circle close-online" type="button" aria-label="豆知識を閉じる">${icon("close")}</button><section id="title-trivia-content" class="result-trivia" aria-label="土木の豆知識"></section></article></section>
 <section id="result" class="overlay hidden"></section><div id="scene-wipe" aria-hidden="true"></div>`;
 let state = createGame();
 let cpu = new CPU();
@@ -88,6 +89,7 @@ let playerTeam: Team = "blue";
 let online: OnlineClient | null = null;
 let onlineRoom = "";
 let onlinePlayers: Partial<Record<Team, OnlinePlayer>> = {};
+let rematchVotes: [boolean, boolean] = [false, false];
 let onlinePhase:
   "menu" | "queueing" | "waiting" | "ready" | "playing" | "finished" = "menu";
 let onlineStatus = "";
@@ -204,6 +206,7 @@ let tutorialMarchBot: string | null = null;
 const triviaViewer = new TriviaViewer();
 const triviaStorageKey = "infra-rush-last-trivia";
 let resultTriviaIndex = -1;
+let titleTriviaIndex = -1;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 function tapBurst(button: HTMLButtonElement) {
   if (reducedMotion.matches) return;
@@ -807,6 +810,7 @@ function showOnline() {
               ? "公開対戦サーバーの設定が必要です"
               : "接続していません";
       renderOnlineLobby();
+      renderRematchStatus();
       if (mode === "online" && started && status === "reconnecting")
         toast("通信が切れました。再接続しています…");
       if (status === "connected") {
@@ -848,6 +852,31 @@ function enterOnlineGame(startAt = 0, serverNow = 0) {
   syncSoundButtons();
   beginIntro(Math.max(0, startAt - serverNow));
 }
+function renderRematchStatus() {
+  if (mode !== "online" || $("#result").classList.contains("hidden")) return;
+  const status = document.getElementById("result-rematch-status");
+  const button = document.querySelector<HTMLButtonElement>("#restart");
+  if (!status || !button) return;
+  const mine = rematchVotes[playerTeam === "blue" ? 0 : 1];
+  const other = rematchVotes[playerTeam === "blue" ? 1 : 0];
+  const opponent = onlinePlayers[playerTeam === "blue" ? "red" : "blue"];
+  status.classList.toggle("requested", !!opponent && other && !mine);
+  if (!opponent) {
+    status.textContent =
+      "相手が退出しました。次の対戦はタイトルから始めてください";
+    button.disabled = true;
+  } else if (mine) {
+    status.textContent = "再戦を申し込みました。相手の返事を待っています…";
+    button.disabled = true;
+  } else if (other) {
+    status.textContent = "相手が再戦を希望しています！";
+    button.disabled = !online?.connected;
+  } else {
+    status.textContent = "";
+    button.disabled = !online?.connected;
+  }
+  button.innerHTML = `${other && !mine ? "再戦する" : mine ? "相手の返事を待っています…" : "同じ相手と再戦"} ${icon("march")}`;
+}
 function handleOnlineMessage(message: ServerMessage) {
   if (message.type === "hello") {
     if (mode === "online" && started && !message.resumed) {
@@ -864,6 +893,7 @@ function handleOnlineMessage(message: ServerMessage) {
     onlineRoom = message.roomId;
     playerTeam = message.team;
     onlinePlayers = message.players;
+    rematchVotes = message.rematch ?? [false, false];
     onlinePhase = message.phase;
     const enemy = playerTeam === "blue" ? "red" : "blue";
     showOpponentConnection(
@@ -888,6 +918,7 @@ function handleOnlineMessage(message: ServerMessage) {
       renderOnlineLobby();
     }
     if (started) renderUI();
+    renderRematchStatus();
   } else if (message.type === "state") {
     if (mode !== "online") return;
     enterOnlineGame();
@@ -916,7 +947,8 @@ function handleOnlineMessage(message: ServerMessage) {
   } else if (message.type === "opponent_disconnected") {
     if (message.team !== playerTeam) showOpponentConnection(true);
   } else if (message.type === "rematch") {
-    toast("相手の再戦を待っています");
+    rematchVotes = message.players;
+    renderRematchStatus();
   } else if (message.type === "pong") {
     const latency = document.getElementById("latency");
     if (latency && pingAt) latency.textContent = `${Date.now() - pingAt}ms`;
@@ -1148,10 +1180,13 @@ function closeOnlineLobby() {
   $("#online-lobby").classList.add("hidden");
   onlinePhase = "menu";
   onlineRoom = "";
+  rematchVotes = [false, false];
   mode = "cpu";
 }
-function showResultTrivia(index: number) {
-  resultTriviaIndex = index;
+function showTrivia(
+  index: number,
+  target: "#result-trivia" | "#title-trivia-content",
+) {
   try {
     localStorage.setItem(triviaStorageKey, String(index));
   } catch {
@@ -1163,12 +1198,19 @@ function showResultTrivia(index: number) {
     const preload = new Image();
     preload.src = `${import.meta.env.BASE_URL}ui/trivia/${nextModel}.png`;
   }
-  $("#result-trivia").innerHTML =
-    `<div class="trivia-top"><span>土木まめちしき</span><small>${index + 1}/${civilTrivia.length}</small></div><div class="trivia-content"><div class="trivia-visual"><img class="trivia-model" src="${import.meta.env.BASE_URL}ui/trivia/${fact.model}.png" alt="${fact.modelName}のゲーム内モデル"><span class="trivia-model-name">${fact.modelName}</span></div><div class="trivia-bubble"><small>${fact.topic}</small><h3>${fact.title}</h3><p>${fact.text}</p></div></div><div class="trivia-bottom"><a href="${fact.source}" target="_blank" rel="noopener noreferrer">出典：${fact.sourceLabel} ↗</a><button id="result-trivia-next" type="button">次の話を聞く ${icon("march")}</button></div>`;
-  triviaViewer.show($("#result-trivia .trivia-visual"), fact.model);
+  const host = $(target);
+  const nextButtonId =
+    target === "#title-trivia-content"
+      ? "title-trivia-next"
+      : "result-trivia-next";
+  host.innerHTML = `<div class="trivia-top"><span>土木まめちしき</span><small>${index + 1}/${civilTrivia.length}</small></div><div class="trivia-content"><div class="trivia-visual"><img class="trivia-model" src="${import.meta.env.BASE_URL}ui/trivia/${fact.model}.png" alt="${fact.modelName}のゲーム内モデル"><span class="trivia-model-name">${fact.modelName}</span></div><div class="trivia-bubble"><small>${fact.topic}</small><h3>${fact.title}</h3><p>${fact.text}</p></div></div><div class="trivia-bottom"><a href="${fact.source}" target="_blank" rel="noopener noreferrer">出典：${fact.sourceLabel} ↗</a><button id="${nextButtonId}" type="button">次の話を聞く ${icon("march")}</button></div>`;
+  triviaViewer.show(
+    host.querySelector<HTMLElement>(".trivia-visual")!,
+    fact.model,
+  );
 }
-function firstResultTrivia() {
-  let previous = resultTriviaIndex;
+function lastTriviaIndex(fallback: number) {
+  let previous = fallback;
   try {
     const saved = localStorage.getItem(triviaStorageKey);
     if (
@@ -1181,7 +1223,30 @@ function firstResultTrivia() {
   } catch {
     // The in-memory index still advances between matches.
   }
-  showResultTrivia((previous + 1) % civilTrivia.length);
+  return previous;
+}
+function showResultTrivia(index: number) {
+  resultTriviaIndex = index;
+  showTrivia(index, "#result-trivia");
+}
+function firstResultTrivia() {
+  showResultTrivia(
+    (lastTriviaIndex(resultTriviaIndex) + 1) % civilTrivia.length,
+  );
+}
+function showTitleTrivia(index: number) {
+  titleTriviaIndex = index;
+  showTrivia(index, "#title-trivia-content");
+}
+function openTitleTrivia() {
+  $("#title-trivia").classList.remove("hidden");
+  showTitleTrivia((lastTriviaIndex(titleTriviaIndex) + 1) % civilTrivia.length);
+  document.querySelector<HTMLButtonElement>("#title-trivia-close")?.focus();
+}
+function closeTitleTrivia() {
+  triviaViewer.stop();
+  $("#title-trivia").classList.add("hidden");
+  document.querySelector<HTMLButtonElement>("#title-trivia-open")?.focus();
 }
 function finish() {
   if (!$("#result").classList.contains("hidden")) return;
@@ -1210,8 +1275,9 @@ function finish() {
       .padStart(
         2,
         "0",
-      )}</b><small>工事時間</small></div></div>${mode === "cpu" && !tutorialStage ? `<section class="result-feedback" aria-label="CPUの強さについてのアンケート"><strong>今回のCPU、どう感じた？</strong><small>回答は強さの調整に役立てます · 任意</small><div class="result-feedback-choices">${(["easy", "normal", "hard"] as const).map((value) => `<button type="button" data-feedback="${value}">${{ easy: "かんたん", normal: "ふつう", hard: "むずかしい" }[value]}</button>`).join("")}</div><p id="feedback-status" role="status" aria-live="polite"></p></section>` : ""}</div><section id="result-trivia" class="result-trivia" aria-label="土木まめちしき"></section><div class="result-actions"><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一度遊ぶ"} ${icon("march")}</button><button id="back-title" class="secondary">${icon("home")}<span>タイトルへ戻る</span></button></div></article>`;
+      )}</b><small>工事時間</small></div></div>${mode === "cpu" && !tutorialStage ? `<section class="result-feedback" aria-label="CPUの強さについてのアンケート"><strong>今回のCPU、どう感じた？</strong><small>回答は強さの調整に役立てます · 任意</small><div class="result-feedback-choices">${(["easy", "normal", "hard"] as const).map((value) => `<button type="button" data-feedback="${value}">${{ easy: "かんたん", normal: "ふつう", hard: "むずかしい" }[value]}</button>`).join("")}</div><p id="feedback-status" role="status" aria-live="polite"></p></section>` : ""}</div><section id="result-trivia" class="result-trivia" aria-label="土木まめちしき"></section>${mode === "online" ? '<p id="result-rematch-status" class="result-rematch-status" role="status" aria-live="polite"></p>' : ""}<div class="result-actions"><button id="restart" class="primary">${mode === "online" ? "同じ相手と再戦" : "もう一度遊ぶ"} ${icon("march")}</button><button id="back-title" class="secondary">${icon("home")}<span>タイトルへ戻る</span></button></div></article>`;
   firstResultTrivia();
+  renderRematchStatus();
   sound.play("end");
   sound.setMusicScene(win ? "victory" : "retry");
 }
@@ -1229,6 +1295,7 @@ function backTitle() {
   mode = "cpu";
   playerTeam = "blue";
   onlineRoom = "";
+  rematchVotes = [false, false];
   onlinePhase = "menu";
   sound.setMusicScene("title");
   started = false;
@@ -1278,6 +1345,14 @@ for (const event of ["pointerup", "pointercancel", "pointerleave"]) {
   });
 }
 app.addEventListener("click", (e) => {
+  if (
+    e.target === $("#title-trivia") &&
+    !$("#title-trivia").classList.contains("hidden")
+  ) {
+    sound.play("ui");
+    closeTitleTrivia();
+    return;
+  }
   if (e.target === $("#modal") && !$("#modal").classList.contains("hidden")) {
     sound.play("ui");
     hideModal();
@@ -1399,14 +1474,31 @@ app.addEventListener("click", (e) => {
       case "restart":
         sound.play("ui");
         if (mode === "online") {
+          if (!online?.connected) {
+            toast("サーバーへ再接続中です");
+            break;
+          }
           online?.send({ type: "rematch" });
-          button.disabled = true;
-          button.textContent = "相手の再戦を待っています…";
+          rematchVotes[playerTeam === "blue" ? 0 : 1] = true;
+          renderRematchStatus();
         } else sceneTransition(button, start, 520);
         break;
       case "result-trivia-next":
         sound.play("ui");
         showResultTrivia((resultTriviaIndex + 1) % civilTrivia.length);
+        break;
+      case "title-trivia-open":
+        sound.unlock();
+        sound.play("ui");
+        openTitleTrivia();
+        break;
+      case "title-trivia-next":
+        sound.play("ui");
+        showTitleTrivia((titleTriviaIndex + 1) % civilTrivia.length);
+        break;
+      case "title-trivia-close":
+        sound.play("ui");
+        closeTitleTrivia();
         break;
       case "online-start":
         sound.unlock();
@@ -1492,6 +1584,10 @@ app.addEventListener("input", (e) => {
   if (input.id === "online-name") nameDraft = input.value;
 });
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("#title-trivia").classList.contains("hidden")) {
+    closeTitleTrivia();
+    return;
+  }
   if (e.key === "Escape" && !$("#modal").classList.contains("hidden")) {
     hideModal();
     return;
@@ -1724,9 +1820,10 @@ try {
   };
   await Promise.race([
     world.load((n) => {
-      $("#loading i").style.width = `${Math.round(n * 100)}%`;
-      $("#loading p").textContent =
-        `小さなBotたちが準備しています… ${Math.round(n * 100)}%`;
+      $("#loading .loading-spinner").setAttribute(
+        "aria-valuenow",
+        String(Math.round(n * 100)),
+      );
     }),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Asset load timed out")), 45000),
