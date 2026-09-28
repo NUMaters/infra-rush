@@ -89,7 +89,7 @@ test("solo practice teaches mining, routes, sabotage and clearing", async ({
     "まずはゲームのルール",
   );
   await expect(page.locator("#tutorial-card")).toContainText(
-    "15回たたけば勝ち",
+    "15回たたいたチームの勝ち",
   );
   await page.locator("#tutorial-next").click();
   await expect(page.locator(".tutorial-bridge-map")).toContainText(
@@ -152,7 +152,9 @@ test("solo practice teaches mining, routes, sabotage and clearing", async ({
       .stone,
   ).toBeGreaterThanOrEqual(50);
   await page.locator('[data-action="build"]').click();
-  await expect(page.locator("#tutorial-card")).toContainText("石50を使ったよ");
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "石50個を使ったよ",
+  );
   await expect(page.locator("#tutorial-card img")).toHaveAttribute(
     "src",
     /stone\.png$/,

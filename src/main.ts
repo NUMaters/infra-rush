@@ -69,6 +69,8 @@ app.insertAdjacentHTML(
 <section id="result" class="overlay hidden"></section><div id="map-review" class="hidden" aria-label="試合終了時のマップ"><div class="map-review-bar"><span>試合終了時のマップ</span><button id="review-back" type="button">結果へ戻る</button></div><p>ドラッグで移動 · ピンチで拡大・回転</p></div><div id="scene-wipe" aria-hidden="true"></div>`,
 );
 const openingVideo = $("#opening-video") as HTMLVideoElement;
+const openingPlay = $("#opening-play") as HTMLButtonElement;
+const openingSkip = $("#opening-skip") as HTMLButtonElement;
 const openingReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
 ).matches;
@@ -101,6 +103,8 @@ let openingFallback = false;
 let openingAttempt = 0;
 let lastOpeningTime = 0;
 let lastOpeningAdvance = performance.now();
+let openingPlaybackAt = 0;
+let openingSkipped = false;
 let openingWatchdog: ReturnType<typeof setInterval> | undefined;
 const hasVideoFrameCallback = !!openingVideo.requestVideoFrameCallback;
 let frameObserver = 0;
@@ -115,6 +119,30 @@ const observeOpeningFrames = () => {
   };
   openingVideo.requestVideoFrameCallback(onFrame);
 };
+const showOpeningPlayback = () => {
+  if (!openingClosed && !openingFallback) {
+    if (!openingPlaybackAt) openingPlaybackAt = performance.now();
+    openingVideo.classList.add("opening-video-moving");
+    openingPlay.hidden = true;
+    lastOpeningAdvance = performance.now();
+  }
+};
+openingSkip.addEventListener("click", () => {
+  openingSkipped = true;
+});
+openingVideo.addEventListener("playing", showOpeningPlayback);
+openingVideo.addEventListener("timeupdate", showOpeningPlayback);
+openingPlay.addEventListener("click", () => {
+  openingVideo.muted = true;
+  openingVideo.setAttribute("playsinline", "");
+  openingVideo.setAttribute("webkit-playsinline", "");
+  void openingVideo
+    .play()
+    .then(showOpeningPlayback)
+    .catch(() => {
+      openingPlay.hidden = false;
+    });
+});
 const releaseOpeningVideo = () => {
   ++frameObserver;
   openingVideo.pause();
@@ -141,7 +169,7 @@ const playOpening = (quality: OpeningQuality) => {
   void openingVideo.play().catch((error: unknown) => {
     if (openingClosed || openingFallback || attempt !== openingAttempt) return;
     if (error instanceof DOMException && error.name === "NotAllowedError")
-      useOpeningFallback();
+      openingPlay.hidden = false;
     else if (quality === "lite") useOpeningFallback();
     else playOpening("lite");
   });
@@ -153,6 +181,8 @@ openingVideo.addEventListener("error", () => {
 });
 const stopOpening = () => {
   openingClosed = true;
+  openingPlay.hidden = true;
+  openingSkip.hidden = true;
   if (openingWatchdog) clearInterval(openingWatchdog);
   releaseOpeningVideo();
 };
@@ -174,6 +204,15 @@ const waitForOpeningStart = () => {
     openingVideo.addEventListener("playing", done, { once: true });
   });
 };
+const waitForOpeningPresentation = async () => {
+  openingSkip.hidden = false;
+  const deadline = performance.now() + 10000;
+  while (!openingSkipped && !openingFallback && performance.now() < deadline) {
+    if (openingPlaybackAt && performance.now() - openingPlaybackAt >= 3500)
+      break;
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+  }
+};
 const firstSource = openingVideo.currentSrc;
 const firstQuality: OpeningQuality = firstSource.includes("-lite.mp4")
   ? "lite"
@@ -190,7 +229,7 @@ if (openingReducedMotion) {
       if (openingClosed || openingFallback || attempt !== openingAttempt)
         return;
       if (error instanceof DOMException && error.name === "NotAllowedError")
-        useOpeningFallback();
+        openingPlay.hidden = false;
       else playOpening("lite");
     });
   } else playOpening(openingQuality);
@@ -199,16 +238,15 @@ if (openingReducedMotion) {
       lastOpeningAdvance = performance.now();
       return;
     }
-    if (
-      !hasVideoFrameCallback &&
-      Math.abs(openingVideo.currentTime - lastOpeningTime) > 0.05
-    ) {
+    if (Math.abs(openingVideo.currentTime - lastOpeningTime) > 0.05) {
       lastOpeningTime = openingVideo.currentTime;
       lastOpeningAdvance = performance.now();
       openingVideo.classList.add("opening-video-moving");
     } else if (performance.now() - lastOpeningAdvance > 3000) {
-      if (openingQuality === "lite") useOpeningFallback();
-      else playOpening("lite");
+      if (openingQuality === "lite") {
+        openingPlay.hidden = false;
+        lastOpeningAdvance = performance.now();
+      } else playOpening("lite");
     }
   }, 1000);
 }
@@ -684,117 +722,135 @@ function renderTutorial() {
   const descriptions: Record<TutorialStage, [string, string]> = {
     rules: [
       "まずはゲームのルール",
-      `5体のBotに仕事を指示し、橋を渡って相手の城を${M.castle.hp}回たたけば勝ち。5分で終わったら城の体力が多い方が勝つよ。`,
+      `5体のBotに仕事を頼み、橋を架けて相手の城を攻めよう。先に${M.castle.hp}回たたいたチームの勝ち。5分で決着しなければ、城の体力が多い方が勝つよ。`,
     ],
     bridgeRules: [
       "3つの橋を覚えよう",
       [
-        "青い城につながる橋は、青チームだけが架けられるよ。",
-        "中央の橋は、両チームが取り合う。青の橋を架けたら狙おう！",
-        "赤い城につながる橋は、赤チームだけが架けられるよ。中央は先に完成させたチームのもの。旗と手すりの色を見てね。",
+        "ここは青い城へ続く橋の場所。青チームだけが橋を架けて、ここを通れるよ。",
+        "ここは中央の橋。青も赤も、自分の城側の橋を完成させると着工できる。先に完成させたチームが使えるよ。",
+        "ここは赤い城へ続く橋の場所。赤チームだけが架けて通れる。完成した橋は、旗と手すりの色で持ち主を確かめよう。",
       ][bridgeRuleFocus],
     ],
     camera: [
       "マップを見渡そう",
-      "1本指でスワイプして移動。2本指を広げると拡大、閉じると縮小。2本指で回すと視点も回るよ。",
+      "マップを1本指でスワイプすると見たい場所へ移動できるよ。2本指を広げると拡大、閉じると縮小。2本指を回せば向きも変わるよ。",
     ],
-    pick: ["Botをタップ！", "手前の青いBotをタップして、仕事を選ぼう。"],
+    pick: [
+      "Botをタップ！",
+      "青い城の前に並ぶBotを1体タップしてみよう。仕事を選ぶ画面が開くよ。",
+    ],
     mine: [
       "石を掘ろう",
-      "作業メニューの「掘る」を押そう。練習用の石はあと2個で橋をつくれるよ。",
+      "「掘る」を押すと、Botが採石場で資源を集め始めるよ。石・土・鉄のうち、今回は橋に使う石をあと2個集めよう。",
     ],
     pickSecond: [
       "同時に仕事を頼めるよ",
-      "1体目が掘っている間に、別のBotも動かせる。待機中のBotをタップしてみよう。",
+      "採掘中でも、ほかのBotに仕事を頼めるよ。城の前で待っている別のBotをタップしてみよう。",
     ],
     secondMine: [
       "2体目にも頼もう",
-      "もう一度「掘る」を押そう。複数のBotが同時に資源を集められるよ。",
+      "2体目にも「掘る」を頼もう。複数で採掘すると、そのぶん早く資源がたまるよ。",
     ],
     gather: [
       "採掘中！",
-      `重機が採石場へ向かうよ。石が50になれば橋をつくれる！ ${Math.min(stone, 50)}/50`,
+      `Botがショベルに乗って採石場へ向かっているよ。石が50個たまると、青い城側の橋を架けられる。いま ${Math.min(stone, 50)}/50 個。`,
     ],
     bridge: [
       "橋の場所をタップ！",
-      "黄色い「!」をタップして、手前の橋にBotを呼ぼう。",
+      "石がそろったら、青い城側の架橋地点に出る黄色い「!」をタップしよう。仕事を頼むBotを選べるよ。",
     ],
     build: [
       "橋をつくろう",
-      `${resourceIcon("stone")} 石${M.tasks.build.cost.stone}を使って、向こう岸への道をつなごう。`,
+      `${resourceIcon("stone")} 石${M.tasks.build.cost.stone}個を使って橋を架けよう。「橋をつくる」を押すと、資源を支払って作業が始まるよ。`,
     ],
     construction: [
       "架橋中！",
-      `${resourceIcon("stone")} 石${M.tasks.build.cost.stone}を使ったよ。残り${stone}。架橋機が桁を送り出す様子を見よう。`,
+      `${resourceIcon("stone")} 橋の材料に石${M.tasks.build.cost.stone}個を使ったよ。いまの残りは${stone}個。架橋機が桁を送り出して完成するまで見てみよう。`,
     ],
     pickUpgrade: [
       "橋を強くしよう",
-      "橋が完成したよ。待機中のBotをタップして、橋の耐久を増やしてみよう。",
+      "青の橋が完成したよ。次は別のBotをタップして「強くする」を選び、橋を壊れにくくしてみよう。",
     ],
     upgrade: [
       "強くする",
-      `${resourceIcon("iron")} 鉄${M.tasks.upgrade2.cost.iron}を使うよ。「強くする」を押そう。`,
+      `${resourceIcon("iron")} 橋の補強には鉄${M.tasks.upgrade2.cost.iron}個が必要だよ。「強くする」を押すと、橋の耐久が1段階上がる。`,
     ],
     upgradeWork: [
       "補強中！",
-      "鉄骨を足して、橋の耐久を2段階にするよ。次は傷んだ橋を直してみよう。",
+      "Botが鉄骨を取り付けているよ。作業が終わると橋の耐久は2段階になる。続いて、傷んだ橋の直し方を練習しよう。",
     ],
     pickRepair: [
       "傷んだ橋を直そう",
-      "練習用に橋の耐久が1つ減ったよ。待機中のBotをタップしよう。",
+      "練習のため、いま青の橋の耐久を1段階下げたよ。城の前で待つBotをタップして、修理を頼もう。",
     ],
     repair: [
       "橋を直す",
-      `${resourceIcon("iron")} 鉄${M.tasks.repair.cost.iron}で「直す」を押そう。耐久が1つ戻るよ。`,
+      `${resourceIcon("iron")} 「直す」を押すと鉄${M.tasks.repair.cost.iron}個を使って修理が始まるよ。完了すれば橋の耐久が1段階戻る。`,
     ],
-    repairWork: ["修繕中！", "傷んだ部分を補修して、橋をまた丈夫にするよ。"],
+    repairWork: [
+      "修繕中！",
+      "Botが傷んだところを補修しているよ。橋が直れば、また安心して渡れるようになる。",
+    ],
     bridgeOptions: [
       "真ん中も狙える！",
-      "自分の城につながる橋ができたので、中央も架けられる。先に完成させたチームの色になり、強化・修繕もできるよ。地震では橋の耐久が1つ減る。",
+      "青の橋ができたので、中央の橋も狙えるよ。中央は先に完成させたチームが使い、旗と手すりがその色になる。取ったあとも補強や修理ができる。地震では橋の耐久が1段階減り、盛土は消えるよ。",
     ],
-    pickMarch: ["攻めるBotを選ぼう", "待機中の青いBotをタップしよう。"],
+    pickMarch: [
+      "攻めるBotを選ぼう",
+      "城の前で待っている青いBotをタップして、攻める仕事を頼もう。",
+    ],
     march: [
       "進軍しよう！",
-      "「攻める」を押すと、Botが橋を渡って相手の城へ向かうよ。",
+      "「攻める」を押そう。Botが自分の橋を渡り、赤い城まで走っていくよ。",
     ],
-    attack: ["城へ一直線！", "Botが城を一度たたき、シュポンと帰ってくるよ。"],
+    attack: [
+      "城へ一直線！",
+      "Botが赤い城へ向かっているよ。到着すると城を1回たたき、自分の城の前へシュポンと帰る。",
+    ],
     returned: [
       "Botが帰ってきた！",
-      "仕事や攻撃を終えたBotは城の前へ戻る。待機中になったら、次の仕事を頼めるよ。",
+      "攻撃したBotが青い城の前に戻ったね。建設や修理などの仕事を終えたBotも同じ場所へ帰る。待機中になれば、また指示できるよ。",
     ],
     pickEmbank: [
       "相手の道をふさごう",
-      "練習用の相手の橋を用意したよ。待機中のBotをタップしよう。",
+      "相手の橋をふさぐ練習をしよう。練習用に赤の橋を用意したよ。まず、待機中のBotをタップしてね。",
     ],
     embank: [
       "土を盛ろう",
-      `${resourceIcon("soil")} 土${M.tasks.embank.cost.soil}を使って「道をふさぐ」を押そう。`,
+      `${resourceIcon("soil")} 「道をふさぐ」を押そう。土${M.tasks.embank.cost.soil}個を使い、相手の橋の出口に土を積んで通れなくするよ。`,
     ],
-    embankWork: ["盛土中！", "ブルドーザーが相手の橋の出口をふさぐよ。"],
+    embankWork: [
+      "盛土中！",
+      "ブルドーザーが赤の橋の出口に土を運んでいるよ。盛土が完成すると、相手はそこを渡れなくなる。",
+    ],
     pickDestroy: [
       "今度は橋を壊そう",
-      "相手の道がふさがれたね。待機中のBotを選ぼう。",
+      "赤の橋の出口をふさげたね。次は橋そのものを傷つける方法を試そう。待機中のBotを選んでね。",
     ],
     destroy: [
       "ドリルで橋を壊そう",
-      `${resourceIcon("iron")} 鉄${M.tasks.destroy.cost.iron}で「橋を壊す」を押そう。`,
+      `${resourceIcon("iron")} 「橋を壊す」を押すと鉄${M.tasks.destroy.cost.iron}個を使うよ。ドリルで相手の橋の耐久を1段階下げよう。`,
     ],
     destroyWork: [
       "破壊中！",
-      "ドリルで橋を壊すと、相手は橋を直す必要があるよ。",
+      "ドリルが橋を削っているよ。1回の作業で耐久が1段階下がり、耐久がなくなると橋は崩れる。",
     ],
     pickClear: [
       "自分の道を直そう",
-      "今度は自分の橋が土でふさがれたよ。待機中のBotを選ぼう。",
+      "今度は青の橋の出口が、相手の土でふさがれたよ。道を開けるため、待機中のBotを選ぼう。",
     ],
     clear: [
       "土をならそう",
-      `${resourceIcon("iron")} 鉄${M.tasks.clear.cost.iron}を使って「土をならす」を押そう。`,
+      `${resourceIcon("iron")} 「土をならす」を押そう。鉄${M.tasks.clear.cost.iron}個を使い、グレーダーで相手の盛土を取り除くよ。`,
     ],
-    clearWork: ["整地中！", "モーターグレーダーが土をならして、道を開けるよ。"],
+    clearWork: [
+      "整地中！",
+      "モーターグレーダーが盛土を平らにならしているよ。土がなくなれば、その橋をまた通れる。",
+    ],
     complete: [
       "練習クリア！",
-      "複数Botの採掘、橋、進軍、道をふさぐ・橋を壊す・土をならすまでできたね！ 次はCPUとの本番だ。",
+      "複数のBotへの指示から、資源集め、橋づくり、進軍、相手への妨害と道の復旧まで練習できたね。準備ができたらCPU戦へ進もう。",
     ],
   };
   const [title, description] = descriptions[stage];
@@ -1019,7 +1075,7 @@ function resetTitleDemo() {
   titleAccumulator = 0;
 }
 function updateTitleDemo(dt: number) {
-  titleAccumulator += dt * 4;
+  titleAccumulator += dt;
   while (titleAccumulator >= M.game.tick) {
     titleBlueCPU.update(titleState);
     titleRedCPU.update(titleState);
@@ -2180,6 +2236,8 @@ try {
   }
   $("#loading .opening-status p").textContent = "準備できたよ！";
   ready = true;
+  $("#loading").classList.add("opening-ready");
+  await waitForOpeningPresentation();
   resetTitleDemo();
   $("#title").classList.remove("hidden");
   $("#title").classList.add("title-arriving");
