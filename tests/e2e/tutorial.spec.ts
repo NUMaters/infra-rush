@@ -1,5 +1,23 @@
 import { expect, test } from "@playwright/test";
 
+test("practice can be paused and returned to the title", async ({ page }) => {
+  await page.goto("/?qa");
+  await page.locator("#start").click();
+  await page.locator("#tutorial-start").click();
+  await expect(page.locator("#tutorial-card")).toBeVisible();
+  await expect(page.locator("#pause")).toBeVisible();
+  await page.locator("#pause").click();
+  await expect(page.locator("#modal")).toContainText(
+    "練習を一時停止しています",
+  );
+  await page.locator("#modal-close").click();
+  await expect(page.locator("#tutorial-card")).toBeVisible();
+  await page.locator("#pause").click();
+  await page.locator("#modal #back-title").click();
+  await expect(page.locator("#title-modes")).toBeVisible();
+  await expect(page.locator("#tutorial")).toBeHidden();
+});
+
 test("solo practice can be skipped at any time and starts a fresh CPU match", async ({
   page,
 }) => {

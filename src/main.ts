@@ -45,7 +45,7 @@ app.insertAdjacentHTML(
 <section id="title" class="hidden">
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
- <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><div class="title-tagline"><span>遊んで知ろう、</span><strong>土木のしくみ。</strong></div></div>
+ <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><div class="title-tagline"><span>遊んで知ろう</span><strong>土木のしくみ</strong></div></div>
  <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("users")}<span>みんなで遊ぶ</span>${icon("march")}</button><button id="title-trivia-open" class="title-trivia-button" type="button">${icon("book")}<span>土木の豆知識をみる</span>${icon("march")}</button><p>1ゲーム 5分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span></div>
 </section>
@@ -105,6 +105,7 @@ let lastOpeningTime = 0;
 let lastOpeningAdvance = performance.now();
 let openingPlaybackAt = 0;
 let openingSkipped = false;
+let openingBlockedAt = 0;
 let openingWatchdog: ReturnType<typeof setInterval> | undefined;
 const hasVideoFrameCallback = !!openingVideo.requestVideoFrameCallback;
 let frameObserver = 0;
@@ -122,6 +123,7 @@ const observeOpeningFrames = () => {
 const showOpeningPlayback = () => {
   if (!openingClosed && !openingFallback) {
     if (!openingPlaybackAt) openingPlaybackAt = performance.now();
+    openingBlockedAt = 0;
     openingVideo.classList.add("opening-video-moving");
     openingPlay.hidden = true;
     lastOpeningAdvance = performance.now();
@@ -169,7 +171,7 @@ const playOpening = (quality: OpeningQuality) => {
   void openingVideo.play().catch((error: unknown) => {
     if (openingClosed || openingFallback || attempt !== openingAttempt) return;
     if (error instanceof DOMException && error.name === "NotAllowedError")
-      openingPlay.hidden = false;
+      openingBlockedAt = performance.now();
     else if (quality === "lite") useOpeningFallback();
     else playOpening("lite");
   });
@@ -218,20 +220,35 @@ const firstQuality: OpeningQuality = firstSource.includes("-lite.mp4")
   ? "lite"
   : firstSource.includes("-md.mp4")
     ? "md"
-    : "hd";
+    : firstSource.includes("-hd.mp4")
+      ? "hd"
+      : mobile
+        ? "lite"
+        : "hd";
 if (openingReducedMotion) {
   useOpeningFallback();
 } else {
-  if (firstSource && firstQuality === openingQuality) {
+  if (openingVideo.querySelector("source") && firstQuality === openingQuality) {
     const attempt = ++openingAttempt;
     observeOpeningFrames();
-    void openingVideo.play().catch((error: unknown) => {
-      if (openingClosed || openingFallback || attempt !== openingAttempt)
+    // The HTML autoplay can already be pending on Safari. Do not reset its
+    // source or interrupt it with an immediate second play request.
+    setTimeout(() => {
+      if (
+        openingClosed ||
+        openingFallback ||
+        attempt !== openingAttempt ||
+        !openingVideo.paused
+      )
         return;
-      if (error instanceof DOMException && error.name === "NotAllowedError")
-        openingPlay.hidden = false;
-      else playOpening("lite");
-    });
+      void openingVideo.play().catch((error: unknown) => {
+        if (openingClosed || openingFallback || attempt !== openingAttempt)
+          return;
+        if (error instanceof DOMException && error.name === "NotAllowedError")
+          openingBlockedAt = performance.now();
+        else playOpening("lite");
+      });
+    }, 700);
   } else playOpening(openingQuality);
   openingWatchdog = setInterval(() => {
     if (openingClosed || openingFallback || document.hidden) {
@@ -243,11 +260,28 @@ if (openingReducedMotion) {
       lastOpeningAdvance = performance.now();
       openingVideo.classList.add("opening-video-moving");
     } else if (performance.now() - lastOpeningAdvance > 3000) {
-      if (openingQuality === "lite") {
-        openingPlay.hidden = false;
+      if (
+        openingVideo.paused &&
+        openingVideo.readyState >= openingVideo.HAVE_CURRENT_DATA
+      ) {
+        void openingVideo.play().catch((error: unknown) => {
+          if (
+            error instanceof DOMException &&
+            error.name === "NotAllowedError" &&
+            !openingBlockedAt
+          )
+            openingBlockedAt = performance.now();
+        });
         lastOpeningAdvance = performance.now();
-      } else playOpening("lite");
+      } else if (openingQuality !== "lite") playOpening("lite");
     }
+    if (
+      openingBlockedAt &&
+      performance.now() - openingBlockedAt > 1800 &&
+      !openingPlaybackAt &&
+      openingVideo.readyState >= openingVideo.HAVE_CURRENT_DATA
+    )
+      openingPlay.hidden = false;
   }, 1000);
 }
 let state = createGame();
@@ -1368,7 +1402,8 @@ function costText(action: Action) {
 }
 function renderUI() {
   if (!started) return;
-  $("#pause").classList.toggle("hidden", !!tutorialStage);
+  $("#hud").classList.toggle("tutorial-active", !!tutorialStage);
+  $("#pause").classList.remove("hidden");
   $("#hud .help").classList.toggle("hidden", !!tutorialStage);
   for (const team of ["blue", "red"] as const) {
     const label = $(`#${team}-score .score-top small`);
@@ -1503,7 +1538,7 @@ function showPause() {
   clearTimeout(modalCloseTimer);
   $("#modal").classList.remove("hidden", "leaving");
   $("#modal").innerHTML =
-    `<article class="dialog compact"><div class="eyebrow">TAKE A BREAK</div><h2>ちょっと、ひと休み。</h2><p>${mode === "online" ? "オンラインの試合は進行中です。" : "CPUとタイマーも停止しています。"}</p><button id="modal-close" class="primary">ゲームに戻る ${icon("march")}</button><button id="back-title" class="secondary">${icon("home")}<span>タイトルへ戻る</span></button></article>`;
+    `<article class="dialog compact"><div class="eyebrow">TAKE A BREAK</div><h2>ちょっと、ひと休み。</h2><p>${mode === "online" ? "オンラインの試合は進行中です。" : tutorialStage ? "練習を一時停止しています。" : "CPUとタイマーも停止しています。"}</p><button id="modal-close" class="primary">ゲームに戻る ${icon("march")}</button><button id="back-title" class="secondary">${icon("home")}<span>タイトルへ戻る</span></button></article>`;
 }
 function hideModal() {
   const modal = $("#modal");
@@ -1616,7 +1651,7 @@ function finish() {
   $("#map-review").classList.add("hidden");
   $("#result").classList.remove("hidden");
   $("#result").innerHTML =
-    `<article class="result-card ${win ? "victory" : ""}"><div class="result-main"><div class="result-crown">${icon("crown")}</div><div class="eyebrow">ゲーム終了</div><h2>${draw ? "引き分け！" : win ? "道をつないだ。<br>勝利をつかんだ！" : "次こそ、<br>勝利への道を。"}</h2><p>${draw ? "最後まで守り切りました。次の工事で決着を。" : win ? "5体の小さなBotたちに、大きな拍手を。" : "掘るBotと攻めるBotの配分、相手の道をふさぐタイミングがカギ。"}</p><div class="result-score"><span class="blue">${state.teams.blue.hp}</span><small>城の残り</small><span class="red">${state.teams.red.hp}</span></div><div class="result-stats"><div><b>${state.teams[playerTeam].stats.mined}</b><small>集めた資源</small></div><div><b>${state.teams[playerTeam].stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
+    `<article class="result-card ${draw ? "draw" : win ? "victory" : "defeat"}"><div class="result-main"><div class="result-crown">${icon(draw ? "build" : win ? "crown" : "castle")}</div><div class="eyebrow">ゲーム終了</div><h2>${draw ? "引き分け！" : win ? "勝利！" : "敗北..."}</h2><p>${draw ? "次の対戦で決着をつけよう！" : win ? "その調子！" : "次は頑張ろう！"}</p><div class="result-score"><span class="${playerTeam}">${state.teams[playerTeam].hp}<small>あなたの城</small></span><small>—</small><span class="${playerTeam === "blue" ? "red" : "blue"}">${state.teams[playerTeam === "blue" ? "red" : "blue"].hp}<small>相手の城</small></span></div><div class="result-stats"><div><b>${state.teams[playerTeam].stats.mined}</b><small>集めた資源</small></div><div><b>${state.teams[playerTeam].stats.built}</b><small>つないだ橋</small></div><div><b>${Math.floor(state.time / 60)}:${Math.floor(
       state.time % 60,
     )
       .toString()

@@ -326,31 +326,28 @@ h1 {
   flex-direction: column;
   align-items: flex-start;
   width: fit-content;
-  margin: -9px 0 0 10px;
-  transform: rotate(-3deg);
+  margin: -9px 0 0 8px;
+  padding: 7px 12px 8px;
+  border: 1px solid #ffffffd9;
+  border-left: 4px solid #ffcc48;
+  border-radius: 9px;
+  background: #fffdf0db;
+  box-shadow: 0 4px 12px #173c5940;
+  backdrop-filter: blur(6px);
   font-family:
     "Arial Rounded MT Bold", "Hiragino Maru Gothic ProN", system-ui, sans-serif;
   font-weight: 1000;
-  line-height: 1.13;
-  letter-spacing: -0.05em;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
   white-space: nowrap;
-  paint-order: stroke fill;
-}
-.title-tagline span,
-.title-tagline strong {
-  -webkit-text-stroke: 3px #0864c8;
-  text-shadow:
-    0 3px 0 #063e86,
-    0 5px 4px #17385355;
 }
 .title-tagline span {
-  padding-left: 8px;
-  color: #fff;
-  font-size: clamp(19px, 2.2vw, 25px);
+  color: #346074;
+  font-size: clamp(12px, 1.5vw, 15px);
 }
 .title-tagline strong {
-  color: #ffcb46;
-  font-size: clamp(25px, 2.9vw, 34px);
+  color: #17475f;
+  font-size: clamp(19px, 2.2vw, 24px);
 }
 .start-card {
   position: absolute;
@@ -835,6 +832,9 @@ h1 {
   top: 24px;
   display: flex;
   gap: 9px;
+}
+#hud.tutorial-active .utilities {
+  top: calc(env(safe-area-inset-top) + 94px);
 }
 .utilities .circle {
   width: 40px;
@@ -1745,20 +1745,38 @@ h1 {
   align-items: center;
   justify-content: center;
 }
+.result-card.defeat .result-crown {
+  color: #6d8fa4;
+  background: #e7f0f4;
+}
+.result-card.draw .result-crown {
+  color: #5b9399;
+  background: #e2f4ec;
+}
 .result-crown svg {
   width: 46px;
   height: 46px;
 }
 .result-card h2 {
-  font-size: 30px;
-  line-height: 1.5;
+  font-size: 46px;
+  line-height: 1.15;
   letter-spacing: -1px;
   margin: 13px 0;
 }
+.result-card.victory h2 {
+  color: #e99f16;
+}
+.result-card.defeat h2 {
+  color: #54728b;
+}
+.result-card.draw h2 {
+  color: #477a82;
+}
 .result-main > p {
-  font-size: 11px;
-  color: #81949b;
-  line-height: 1.8;
+  font-size: 17px;
+  font-weight: 800;
+  color: #537383;
+  line-height: 1.4;
 }
 .result-score {
   display: flex;
@@ -1770,6 +1788,10 @@ h1 {
 .result-score > span {
   font-size: 45px;
   font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
 }
 .result-score .blue {
   color: var(--blue);
@@ -1780,6 +1802,10 @@ h1 {
 .result-score small {
   font-size: 10px;
   color: #8d9c9f;
+}
+.result-score > span small {
+  margin-top: 5px;
+  white-space: nowrap;
 }
 .result-stats {
   display: flex;
@@ -2343,7 +2369,7 @@ h1 {
     font-size: 11px;
   }
   .result-card h2 {
-    font-size: 27px;
+    font-size: 34px;
   }
   .result-crown {
     width: 62px;
@@ -2383,13 +2409,13 @@ h1 {
   .result-card h2 {
     grid-column: 2;
     margin: 0;
-    font-size: 20px;
+    font-size: 28px;
     line-height: 1.15;
   }
   .result-main > p {
     grid-column: 1 / -1;
     margin: 6px 0 4px;
-    font-size: 10px;
+    font-size: 14px;
     line-height: 1.4;
   }
   .result-score {
@@ -2489,10 +2515,10 @@ h1 {
     margin-left: 5px;
   }
   .title-tagline span {
-    font-size: 18px;
+    font-size: 12px;
   }
   .title-tagline strong {
-    font-size: 25px;
+    font-size: 19px;
   }
   .title-copy p {
     max-width: 240px;
