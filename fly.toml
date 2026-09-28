@@ -5,7 +5,7 @@ primary_region = "nrt"
   dockerfile = "Dockerfile.fly"
 
 [env]
-  INFRA_ALLOWED_ORIGINS = "https://numaters.github.io"
+  INFRA_ALLOWED_ORIGINS = "https://infrarush.net,https://numaters.github.io"
   INFRA_FEEDBACK_PATH = "/data/feedback.jsonl"
   INFRA_MATCH_PATH = "/data/matches.jsonl"
 
