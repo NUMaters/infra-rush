@@ -261,7 +261,7 @@ button:not(:disabled):active {
 #title:not(.hidden) .logo {
   animation: logo-land 640ms cubic-bezier(0.17, 1.48, 0.31, 1) both;
 }
-#title:not(.hidden) .title-tagline {
+#title:not(.hidden) .title-tagline-art {
   animation: rise-in 430ms cubic-bezier(0.19, 1.35, 0.35, 1) both;
   animation-delay: 130ms;
 }

@@ -45,7 +45,7 @@ app.insertAdjacentHTML(
 <section id="title" class="hidden">
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
- <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><div class="title-tagline"><span>遊んで知ろう</span><strong>土木のしくみ</strong></div></div>
+ <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><img class="title-tagline-art" src="${import.meta.env.BASE_URL}ui/title/civil-tagline.png" alt="遊んで知ろう、土木のしくみ"></div>
  <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("users")}<span>みんなで遊ぶ</span>${icon("march")}</button><button id="title-trivia-open" class="title-trivia-button" type="button">${icon("book")}<span>土木の豆知識をみる</span>${icon("march")}</button><p>1ゲーム 5分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span></div>
 </section>
@@ -105,7 +105,6 @@ let lastOpeningTime = 0;
 let lastOpeningAdvance = performance.now();
 let openingPlaybackAt = 0;
 let openingSkipped = false;
-let openingBlockedAt = 0;
 let openingWatchdog: ReturnType<typeof setInterval> | undefined;
 const hasVideoFrameCallback = !!openingVideo.requestVideoFrameCallback;
 let frameObserver = 0;
@@ -123,7 +122,6 @@ const observeOpeningFrames = () => {
 const showOpeningPlayback = () => {
   if (!openingClosed && !openingFallback) {
     if (!openingPlaybackAt) openingPlaybackAt = performance.now();
-    openingBlockedAt = 0;
     openingVideo.classList.add("opening-video-moving");
     openingPlay.hidden = true;
     lastOpeningAdvance = performance.now();
@@ -171,7 +169,7 @@ const playOpening = (quality: OpeningQuality) => {
   void openingVideo.play().catch((error: unknown) => {
     if (openingClosed || openingFallback || attempt !== openingAttempt) return;
     if (error instanceof DOMException && error.name === "NotAllowedError")
-      openingBlockedAt = performance.now();
+      openingPlay.hidden = false;
     else if (quality === "lite") useOpeningFallback();
     else playOpening("lite");
   });
@@ -220,35 +218,20 @@ const firstQuality: OpeningQuality = firstSource.includes("-lite.mp4")
   ? "lite"
   : firstSource.includes("-md.mp4")
     ? "md"
-    : firstSource.includes("-hd.mp4")
-      ? "hd"
-      : mobile
-        ? "lite"
-        : "hd";
+    : "hd";
 if (openingReducedMotion) {
   useOpeningFallback();
 } else {
-  if (openingVideo.querySelector("source") && firstQuality === openingQuality) {
+  if (firstSource && firstQuality === openingQuality) {
     const attempt = ++openingAttempt;
     observeOpeningFrames();
-    // The HTML autoplay can already be pending on Safari. Do not reset its
-    // source or interrupt it with an immediate second play request.
-    setTimeout(() => {
-      if (
-        openingClosed ||
-        openingFallback ||
-        attempt !== openingAttempt ||
-        !openingVideo.paused
-      )
+    void openingVideo.play().catch((error: unknown) => {
+      if (openingClosed || openingFallback || attempt !== openingAttempt)
         return;
-      void openingVideo.play().catch((error: unknown) => {
-        if (openingClosed || openingFallback || attempt !== openingAttempt)
-          return;
-        if (error instanceof DOMException && error.name === "NotAllowedError")
-          openingBlockedAt = performance.now();
-        else playOpening("lite");
-      });
-    }, 700);
+      if (error instanceof DOMException && error.name === "NotAllowedError")
+        openingPlay.hidden = false;
+      else playOpening("lite");
+    });
   } else playOpening(openingQuality);
   openingWatchdog = setInterval(() => {
     if (openingClosed || openingFallback || document.hidden) {
@@ -260,28 +243,11 @@ if (openingReducedMotion) {
       lastOpeningAdvance = performance.now();
       openingVideo.classList.add("opening-video-moving");
     } else if (performance.now() - lastOpeningAdvance > 3000) {
-      if (
-        openingVideo.paused &&
-        openingVideo.readyState >= openingVideo.HAVE_CURRENT_DATA
-      ) {
-        void openingVideo.play().catch((error: unknown) => {
-          if (
-            error instanceof DOMException &&
-            error.name === "NotAllowedError" &&
-            !openingBlockedAt
-          )
-            openingBlockedAt = performance.now();
-        });
+      if (openingQuality === "lite") {
+        openingPlay.hidden = false;
         lastOpeningAdvance = performance.now();
-      } else if (openingQuality !== "lite") playOpening("lite");
+      } else playOpening("lite");
     }
-    if (
-      openingBlockedAt &&
-      performance.now() - openingBlockedAt > 1800 &&
-      !openingPlaybackAt &&
-      openingVideo.readyState >= openingVideo.HAVE_CURRENT_DATA
-    )
-      openingPlay.hidden = false;
   }, 1000);
 }
 let state = createGame();

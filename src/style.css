@@ -321,33 +321,13 @@ h1 {
   font-size: 15px;
   line-height: 1.9;
 }
-.title-tagline {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  width: fit-content;
-  margin: -9px 0 0 8px;
-  padding: 7px 12px 8px;
-  border: 1px solid #ffffffd9;
-  border-left: 4px solid #ffcc48;
-  border-radius: 9px;
-  background: #fffdf0db;
-  box-shadow: 0 4px 12px #173c5940;
-  backdrop-filter: blur(6px);
-  font-family:
-    "Arial Rounded MT Bold", "Hiragino Maru Gothic ProN", system-ui, sans-serif;
-  font-weight: 1000;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
-  white-space: nowrap;
-}
-.title-tagline span {
-  color: #346074;
-  font-size: clamp(12px, 1.5vw, 15px);
-}
-.title-tagline strong {
-  color: #17475f;
-  font-size: clamp(19px, 2.2vw, 24px);
+.title-tagline-art {
+  display: block;
+  width: clamp(195px, 24vw, 235px);
+  height: auto;
+  margin: -12px 0 0 7px;
+  filter: drop-shadow(0 3px 3px #17415b55);
+  clip-path: polygon(0 0, 100% 0, 100% 73%, 85% 73%, 85% 100%, 0 100%);
 }
 .start-card {
   position: absolute;
@@ -2510,15 +2490,10 @@ h1 {
     top: 12%;
     left: 7%;
   }
-  .title-tagline {
-    margin-top: -8px;
-    margin-left: 5px;
-  }
-  .title-tagline span {
-    font-size: 12px;
-  }
-  .title-tagline strong {
-    font-size: 19px;
+  .title-tagline-art {
+    width: min(215px, 59vw);
+    margin-top: -9px;
+    margin-left: 4px;
   }
   .title-copy p {
     max-width: 240px;
