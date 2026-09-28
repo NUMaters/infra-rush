@@ -24,6 +24,14 @@ test("solo practice can be skipped at any time and starts a fresh CPU match", as
   );
   await expect(page.locator("#tutorial-card")).toContainText("早い者勝ち");
   await page.locator("#tutorial-next").click();
+  await expect(page.locator(".tutorial-bridge-map .contested")).toHaveClass(
+    /active/,
+  );
+  await page.locator("#tutorial-next").click();
+  await expect(page.locator(".tutorial-bridge-map .enemy")).toHaveClass(
+    /active/,
+  );
+  await page.locator("#tutorial-next").click();
   await expect(page.locator("#tutorial-card")).toContainText(
     "マップを見渡そう",
   );
@@ -85,7 +93,15 @@ test("solo practice teaches mining, routes, sabotage and clearing", async ({
   );
   await page.locator("#tutorial-next").click();
   await expect(page.locator(".tutorial-bridge-map")).toContainText(
-    "手前自分だけ",
+    "青の橋青だけ",
+  );
+  await page.locator("#tutorial-next").click();
+  await expect(page.locator(".tutorial-bridge-map .contested")).toHaveClass(
+    /active/,
+  );
+  await page.locator("#tutorial-next").click();
+  await expect(page.locator(".tutorial-bridge-map .enemy")).toHaveClass(
+    /active/,
   );
   await page.locator("#tutorial-next").click();
   await expect(page.locator("#tutorial-card")).toContainText(

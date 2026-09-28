@@ -57,7 +57,7 @@ test("title, match and result music follow the screen and audio controls", async
 
   await page.evaluate(() => {
     window.infraQA.setCpuEnabled(false);
-    window.infraQA.advance(360);
+    window.infraQA.advance(300);
   });
   await expect(page.locator("#result")).toBeVisible();
   await expect.poll(() => paused("#bgm-retry")).toBe(false);

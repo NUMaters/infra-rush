@@ -48,7 +48,7 @@ function rigPart(root: T.Object3D, name: string): T.Object3D | undefined {
 // The supplied launcher includes its front support in GirderCarrier. Moving
 // that whole group used to pull the support clear of the chassis. Keep the
 // source machine fixed and telescope a matching truss/deck through its guide.
-function launcherExtension(team: Team): T.Group {
+export function launcherExtension(team: Team): T.Group {
   const group = new T.Group();
   group.name = "LauncherExtension";
   group.position.set(0.18, 0, 0);
@@ -1131,6 +1131,13 @@ export class World {
     this.controls.enableDamping = true;
     this.setHomeTeam(this.homeTeam);
   }
+  private tutorialFocus: T.Vector3 | null = null;
+  focusTutorialSite(x: number) {
+    this.followBot = null;
+    // Look slightly beyond the river so the selected landing stays visible
+    // below the instructional card on a portrait screen.
+    this.tutorialFocus = new T.Vector3(x, 0, 5);
+  }
   reset() {
     this.selected = null;
     for (const actor of this.actors.values()) {
@@ -1151,6 +1158,7 @@ export class World {
     this.resetView();
   }
   setHomeTeam(team: Team) {
+    this.tutorialFocus = null;
     this.homeTeam = team;
     this.followBot = null;
     const home = this.width < 700;
@@ -1278,6 +1286,14 @@ export class World {
       1000 /
       (this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length);
     this.shake = Math.max(0, this.shake - dt);
+    if (this.tutorialFocus) {
+      const delta = this.tutorialFocus.clone().sub(this.controls.target);
+      const shift = delta.multiplyScalar(Math.min(1, dt * 2.4));
+      this.controls.target.add(shift);
+      this.camera.position.add(shift);
+      this.camera.zoom += (1.6 - this.camera.zoom) * Math.min(1, dt * 2.4);
+      this.camera.updateProjectionMatrix();
+    }
     const jitter = this.shake > 0 ? Math.sin(this.clock * 70) * 0.12 : 0;
     if (this.followBot) {
       const tracked = s.bots.find((bot) => bot.id === this.followBot);

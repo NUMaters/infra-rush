@@ -12,7 +12,7 @@ test("result trivia presents sourced facts with matching models", async ({
     await expect(page.locator("#match-intro")).toBeHidden({ timeout: 15000 });
     await page.evaluate(() => {
       window.infraQA.setCpuEnabled(false);
-      window.infraQA.advance(360);
+      window.infraQA.advance(300);
     });
     await expect(page.locator("#result")).toBeVisible();
   };

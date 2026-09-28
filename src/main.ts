@@ -46,11 +46,11 @@ app.insertAdjacentHTML(
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
  <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><div class="title-tagline"><h1>橋をかけて、城へ！</h1><p>掘る。つなぐ。攻める。</p></div></div>
- <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("users")}<span>みんなで遊ぶ</span>${icon("march")}</button><button id="title-trivia-open" class="title-trivia-button" type="button">${icon("book")}<span>土木の豆知識をみる</span>${icon("march")}</button><p>1ゲーム 6分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
+ <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("users")}<span>みんなで遊ぶ</span>${icon("march")}</button><button id="title-trivia-open" class="title-trivia-button" type="button">${icon("book")}<span>土木の豆知識をみる</span>${icon("march")}</button><p>1ゲーム 5分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span></div>
 </section>
 <section id="hud" class="hidden">
- <header class="match-header"><div class="team-score blue" id="blue-score"><div class="score-top"><span>${icon("castle")}<small>あなたの城</small></span><b id="blue-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="blue-hp" style="--castle-hp:${M.castle.hp}" role="progressbar" aria-label="あなたの城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div><div class="timer"><small>のこり時間</small><b id="timer">06:00</b></div><div class="team-score red" id="red-score"><div class="score-top"><span>${icon("castle")}<small>相手の城</small></span><b id="red-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="red-hp" style="--castle-hp:${M.castle.hp}" role="progressbar" aria-label="相手の城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div></header>
+ <header class="match-header"><div class="team-score blue" id="blue-score"><div class="score-top"><span>${icon("castle")}<small>あなたの城</small></span><b id="blue-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="blue-hp" style="--castle-hp:${M.castle.hp}" role="progressbar" aria-label="あなたの城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div><div class="timer"><small>のこり時間</small><b id="timer">05:00</b></div><div class="team-score red" id="red-score"><div class="score-top"><span>${icon("castle")}<small>相手の城</small></span><b id="red-hp-count">${M.castle.hp}<em>/${M.castle.hp}</em></b></div><div class="health-meter" id="red-hp" style="--castle-hp:${M.castle.hp}" role="progressbar" aria-label="相手の城の残り" aria-valuemin="0" aria-valuemax="${M.castle.hp}"></div></div></header>
  <div class="resource-bar" id="resources"></div>
  <div class="utilities"><button id="sound" class="circle" aria-label="BGMと効果音を切り替え" aria-pressed="false">${icon("sound")}</button><button id="pause" class="circle" aria-label="一時停止">${icon("pause")}</button><button class="circle help" aria-label="遊び方">?</button></div>
  <span id="latency" class="latency hidden" aria-label="通信遅延"></span><div id="opponent-connection" class="opponent-connection hidden" role="status" aria-label="相手の接続が切れています"><span class="signal-bars"><i></i><i></i><i></i></span><b>相手が接続中…</b></div>
@@ -87,6 +87,7 @@ const saveData = (
 const cores = navigator.hardwareConcurrency ?? 8;
 const mobile = window.matchMedia("(max-width: 700px)").matches;
 let openingQuality: OpeningQuality =
+  mobile ||
   saveData ||
   (deviceMemory !== undefined && deviceMemory <= 2) ||
   cores <= 2 ||
@@ -325,6 +326,7 @@ const teamRevealDuration = (introDuration - 3600) / 2;
 let introUntil = 0;
 let introStage = -1;
 let introActive = false;
+let bridgeRuleFocus = 0;
 type TutorialStage =
   | "rules"
   | "bridgeRules"
@@ -660,27 +662,41 @@ function tutorialAllowedAction(stage: TutorialStage | null): Action | null {
 function setTutorialStage(stage: TutorialStage) {
   if (!tutorialStage || tutorialStage === stage) return;
   tutorialStage = stage;
+  if (stage === "bridgeRules") {
+    bridgeRuleFocus = 0;
+    focusTutorialBridge();
+  } else if (stage === "camera") world.setHomeTeam("blue");
   sound.play(stage === "complete" ? "complete" : "ui");
   renderUI();
+}
+function focusTutorialBridge() {
+  const id = (["blue", "center", "red"] as const)[bridgeRuleFocus];
+  const bridge = state.bridges.find((site) => site.id === id);
+  if (bridge) world.focusTutorialSite(bridge.x);
 }
 function renderTutorial() {
   const stage = tutorialStage;
   const tutorial = $("#tutorial");
   tutorial.classList.toggle("hidden", !stage);
+  tutorial.classList.toggle("bridge-tour", stage === "bridgeRules");
   if (!stage) return;
   const stone = state.teams.blue.resources.stone;
   const descriptions: Record<TutorialStage, [string, string]> = {
     rules: [
       "まずはゲームのルール",
-      `5体のBotに仕事を指示し、橋を渡って相手の城を${M.castle.hp}回たたけば勝ち。6分で終わったら城の体力が多い方が勝つよ。`,
+      `5体のBotに仕事を指示し、橋を渡って相手の城を${M.castle.hp}回たたけば勝ち。5分で終わったら城の体力が多い方が勝つよ。`,
     ],
     bridgeRules: [
       "3つの橋を覚えよう",
-      "手前を架けると真ん中も狙える。真ん中は早い者勝ち！ 取った橋の旗と手すりがチーム色になるよ。",
+      [
+        "青い城につながる橋は、青チームだけが架けられるよ。",
+        "中央の橋は、両チームが取り合う。青の橋を架けたら狙おう！",
+        "赤い城につながる橋は、赤チームだけが架けられるよ。中央は先に完成させたチームのもの。旗と手すりの色を見てね。",
+      ][bridgeRuleFocus],
     ],
     camera: [
       "マップを見渡そう",
-      "画面をドラッグすると視点を移動できるよ。2本指で拡大・縮小や回転も試してみよう。PCではホイールで拡大、右ドラッグで回転できるよ。",
+      "1本指でスワイプして移動。2本指を広げると拡大、閉じると縮小。2本指で回すと視点も回るよ。",
     ],
     pick: ["Botをタップ！", "手前の青いBotをタップして、仕事を選ぼう。"],
     mine: [
@@ -734,7 +750,7 @@ function renderTutorial() {
     repairWork: ["修繕中！", "傷んだ部分を補修して、橋をまた丈夫にするよ。"],
     bridgeOptions: [
       "真ん中も狙える！",
-      "手前の橋ができたので、真ん中も架けられる。先に完成させたチームの色になり、強化・修繕もできるよ。地震では橋の耐久が1つ減る。",
+      "自分の城につながる橋ができたので、中央も架けられる。先に完成させたチームの色になり、強化・修繕もできるよ。地震では橋の耐久が1つ減る。",
     ],
     pickMarch: ["攻めるBotを選ぼう", "待機中の青いBotをタップしよう。"],
     march: [
@@ -785,11 +801,12 @@ function renderTutorial() {
   const step = tutorialStepNumber(stage);
   html(
     "#tutorial-card",
-    `<article class="tutorial-card ${stage === "complete" ? "cleared" : ""} ${["rules", "bridgeRules", "camera", "bridgeOptions", "returned"].includes(stage) ? "rules" : ""}">
+    `<article class="tutorial-card ${stage === "complete" ? "cleared" : ""} ${stage === "bridgeRules" ? "bridge-tour" : ""} ${["rules", "bridgeRules", "camera", "bridgeOptions", "returned"].includes(stage) ? "rules" : ""}">
     <div class="tutorial-top"><span>れんしゅう <b>${step}/8</b></span><button id="tutorial-skip" type="button">${stage === "complete" ? "CPU戦へ進む" : "スキップして対戦"} ${icon("march")}</button></div>
     <div class="tutorial-message"><span class="tutorial-emblem">${icon(["mine", "pickSecond", "secondMine", "gather"].includes(stage) ? "mine" : ["bridgeRules", "bridge", "build", "construction", "pickUpgrade", "upgrade", "upgradeWork", "pickRepair", "repair", "repairWork", "bridgeOptions"].includes(stage) ? "build" : ["pickEmbank", "embank", "embankWork"].includes(stage) ? "embank" : ["pickDestroy", "destroy", "destroyWork"].includes(stage) ? "destroy" : ["pickClear", "clear", "clearWork"].includes(stage) ? "clear" : stage === "rules" || stage === "pick" ? "helmet" : "march")}</span><div><h2>${title}</h2><p>${description}</p></div></div>
-    ${stage === "bridgeRules" ? '<div class="tutorial-bridge-map" aria-label="橋の役割"><span class="own"><b>手前</b><small>自分だけ</small></span><span class="contested"><b>真ん中</b><small>早い者勝ち</small></span><span class="enemy"><b>奥</b><small>相手だけ</small></span></div>' : ""}
-    ${["rules", "bridgeRules", "camera", "bridgeOptions", "returned"].includes(stage) ? `<button id="tutorial-next" type="button">${{ rules: "橋のルールを見る →", bridgeRules: "カメラを動かしてみる →", camera: "Botを選んでみる →", bridgeOptions: "Botを進めよう →", returned: "次の仕事へ →" }[stage as "rules" | "bridgeRules" | "camera" | "bridgeOptions" | "returned"]}</button>` : ""}
+    ${stage === "bridgeRules" ? `<div class="tutorial-bridge-map" aria-label="橋の役割"><span class="own ${bridgeRuleFocus === 0 ? "active" : ""}"><b>青の橋</b><small>青だけ</small></span><span class="contested ${bridgeRuleFocus === 1 ? "active" : ""}"><b>中央の橋</b><small>早い者勝ち</small></span><span class="enemy ${bridgeRuleFocus === 2 ? "active" : ""}"><b>赤の橋</b><small>赤だけ</small></span></div>` : ""}
+    ${stage === "camera" ? '<div class="tutorial-gesture" aria-hidden="true"><span class="gesture-swipe">☝<small>スワイプ</small></span><span class="gesture-pinch"><i>☝</i><i>☝</i><small>広げる・閉じる</small></span></div>' : ""}
+    ${["rules", "bridgeRules", "camera", "bridgeOptions", "returned"].includes(stage) ? `<button id="tutorial-next" type="button">${stage === "bridgeRules" ? (bridgeRuleFocus < 2 ? "次の橋を見る →" : "カメラを動かしてみる →") : { rules: "橋のルールを見る →", camera: "Botを選んでみる →", bridgeOptions: "Botを進めよう →", returned: "次の仕事へ →" }[stage as "rules" | "camera" | "bridgeOptions" | "returned"]}</button>` : ""}
     ${stage === "complete" ? '<button id="tutorial-home" type="button">タイトルへ戻る</button>' : ""}
     <div class="tutorial-progress" aria-label="練習の進み具合 ${step}/8">${Array.from({ length: 8 }, (_, i) => `<i class="${i < step ? "done" : ""}"></i>`).join("")}</div>
   </article>`,
@@ -827,6 +844,10 @@ function renderTutorial() {
         (stage !== "pickSecond" || b.id !== tutorialMiningBot),
     );
     if (bot) point = world.project(bot.position, 1);
+  } else if (stage === "bridgeRules") {
+    const id = (["blue", "center", "red"] as const)[bridgeRuleFocus];
+    const bridge = state.bridges.find((b) => b.id === id);
+    if (bridge) point = world.project([bridge.x, 0], 0.5);
   } else if (
     stage === "bridge" ||
     stage === "construction" ||
@@ -1418,7 +1439,7 @@ function showHelp() {
   clearTimeout(modalCloseTimer);
   $("#modal").classList.remove("hidden", "leaving");
   $("#modal").innerHTML =
-    `<article class="dialog"><div class="eyebrow">あそびかた</div><h2>橋をつくって、相手の城へ！</h2><p>5体のBotに仕事をお願いしよう。<br>相手の城に${M.castle.hp}回たどり着けば勝ち。</p><div class="guide-steps"><div>${icon("mine")}<b>01 掘る</b><p>Botをタップして「掘る」。<br>複数のBotに同時に頼めるよ。</p></div><div>${icon("build")}<b>02 橋をつくる</b><p>石が50あれば橋をつくれる。<br>真ん中の橋は早い者勝ち！</p></div><div>${icon("march")}<b>03 攻める</b><p>橋ができたら「攻める」。<br>仕事を終えたBotは城へ戻るよ。</p></div></div><p class="guide-extra">手前の橋は自分だけ、奥の橋は相手だけが架けられる。手前を架けると中央も狙える。橋の旗と手すりの色で持ち主を見分けよう。</p><p class="guide-extra">相手の道は「道をふさぐ」「橋を壊す」で妨害できる。自分の橋は「土をならす」「直す」で復旧し、「強くする」で耐久を増やせる。地震でも橋の耐久が1つ減るよ。</p><p class="guide-extra">途中でやめられるのは「掘る」だけ。6分で時間切れなら、城の体力が多い方が勝つ。</p><button id="modal-close" class="primary">わかった！ ${icon("march")}</button><small class="keyboard-note">ドラッグで移動、ピンチ・ホイールで拡大縮小、2本指・右ドラッグで回転。PCは1〜5でBot選択、Escで閉じる。</small></article>`;
+    `<article class="dialog"><div class="eyebrow">あそびかた</div><h2>橋をつくって、相手の城へ！</h2><p>5体のBotに仕事をお願いしよう。<br>相手の城に${M.castle.hp}回たどり着けば勝ち。</p><div class="guide-steps"><div>${icon("mine")}<b>01 掘る</b><p>Botをタップして「掘る」。<br>複数のBotに同時に頼めるよ。</p></div><div>${icon("build")}<b>02 橋をつくる</b><p>石が50あれば橋をつくれる。<br>真ん中の橋は早い者勝ち！</p></div><div>${icon("march")}<b>03 攻める</b><p>橋ができたら「攻める」。<br>仕事を終えたBotは城へ戻るよ。</p></div></div><p class="guide-extra">自分の城につながる橋は自分だけ、相手の城につながる橋は相手だけが架けられる。自分の橋を架けると中央も狙える。橋の旗と手すりの色で持ち主を見分けよう。</p><p class="guide-extra">相手の道は「道をふさぐ」「橋を壊す」で妨害できる。自分の橋は「土をならす」「直す」で復旧し、「強くする」で耐久を増やせる。地震でも橋の耐久が1つ減るよ。</p><p class="guide-extra">途中でやめられるのは「掘る」だけ。5分で時間切れなら、城の体力が多い方が勝つ。</p><button id="modal-close" class="primary">わかった！ ${icon("march")}</button><small class="keyboard-note">ドラッグで移動、ピンチ・ホイールで拡大縮小、2本指・右ドラッグで回転。PCは1〜5でBot選択、Escで閉じる。</small></article>`;
 }
 function showPause() {
   paused = true;
@@ -1756,7 +1777,11 @@ app.addEventListener("click", (e) => {
       case "tutorial-next":
         sound.play("ui");
         if (tutorialStage === "returned") prepareTutorialSabotage();
-        else {
+        else if (tutorialStage === "bridgeRules" && bridgeRuleFocus < 2) {
+          bridgeRuleFocus++;
+          focusTutorialBridge();
+          renderTutorial();
+        } else {
           const next: Partial<Record<TutorialStage, TutorialStage>> = {
             rules: "bridgeRules",
             bridgeRules: "camera",

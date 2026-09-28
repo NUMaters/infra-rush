@@ -82,3 +82,18 @@ func TestSoloMatchTelemetryRejectsInvalidVersionAndOrigin(t *testing.T) {
 		}
 	}
 }
+
+func TestSoloMatchDrawUsesFiveMinuteLimit(t *testing.T) {
+	draw := soloMatchReport{
+		ID: "83c0e4aa-fb65-4945-9769-505e1584e040", SelectedDifficulty: "normal",
+		ConfigVersion: "a1b2c3d4", Outcome: "draw", DurationSeconds: 300,
+		PlayerCastleHP: 15, CPUCastleHP: 15,
+	}
+	if !validMatchReport(draw) {
+		t.Fatal("equal castle HP after five minutes should be a draw")
+	}
+	draw.DurationSeconds = 299
+	if validMatchReport(draw) {
+		t.Fatal("a draw before timeout should be rejected")
+	}
+}

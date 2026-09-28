@@ -12,6 +12,7 @@ import {
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import type { CivilTrivia } from "../content/trivia";
+import { launcherExtension } from "./world";
 
 type ModelName = CivilTrivia["model"];
 
@@ -66,6 +67,10 @@ export class TriviaViewer {
           material.roughnessMap = null;
           material.metalnessMap = null;
           material.aoMap = null;
+          material.metalness = 0.04;
+          material.roughness = 0.72;
+          material.emissive.copy(material.color).multiplyScalar(0.28);
+          material.emissiveIntensity = 0.65;
           material.needsUpdate = true;
         }
       });
@@ -95,12 +100,20 @@ export class TriviaViewer {
           : name === "dozer"
             ? model.getObjectByName("blade")
             : name === "launcher"
-              ? model.getObjectByName("girder")
+              ? model.getObjectByName("GirderCarrier")
               : name === "grader"
                 ? model.getObjectByName("grader_work_blade")
                 : null;
       const initialRotation = movingPart?.rotation.x ?? 0;
       const initialPosition = movingPart?.position.clone();
+      // The GLB's GirderCarrier includes fixed supports. Extend a separate
+      // matching deck from the carrier instead of moving the supports away.
+      let extendingDeck: Group | null = null;
+      if (name === "launcher" && movingPart) {
+        extendingDeck = launcherExtension("blue");
+        extendingDeck.visible = true;
+        movingPart.add(extendingDeck);
+      }
       const pilotArm =
         model.getObjectByName("arm_left.001") ??
         model.getObjectByName("arm_left.002") ??
@@ -122,10 +135,11 @@ export class TriviaViewer {
           turntable.rotation.y = Math.sin(t * 0.45) * 0.22;
           turntable.position.y = Math.sin(t * 2) * radius * 0.012;
           if (movingPart && initialPosition) {
-            movingPart.rotation.x = initialRotation + Math.sin(t * 2.5) * 0.13;
-            if (name === "launcher")
-              movingPart.position.z =
-                initialPosition.z + (Math.sin(t * 1.5) + 1) * radius * 0.09;
+            if (name !== "launcher")
+              movingPart.rotation.x =
+                initialRotation + Math.sin(t * 2.5) * 0.13;
+            if (name === "launcher" && extendingDeck)
+              extendingDeck.scale.x = 0.1 + (Math.sin(t * 1.5) + 1) * 0.25;
             else if (name === "dozer")
               movingPart.position.y =
                 initialPosition.y + Math.sin(t * 2.5) * radius * 0.025;

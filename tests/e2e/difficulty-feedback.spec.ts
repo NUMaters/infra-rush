@@ -28,7 +28,7 @@ test("solo result collects one optional difficulty rating with match context", a
   await expect(page.locator("#match-intro")).toBeHidden({ timeout: 15000 });
   await page.evaluate(() => {
     window.infraQA.setCpuEnabled(false);
-    window.infraQA.advance(360);
+    window.infraQA.advance(300);
   });
   await expect(page.locator("#result")).toBeVisible();
   await expect(page.locator(".result-feedback-choices button")).toHaveCount(3);
@@ -56,14 +56,14 @@ test("solo result collects one optional difficulty rating with match context", a
     selectedDifficulty: "easy",
     feltDifficulty: "hard",
     outcome: "draw",
-    durationSeconds: 360,
+    durationSeconds: 300,
   });
   await expect(page.locator('[data-feedback="normal"]')).toBeDisabled();
   expect(matches[0]).toMatchObject({
     id: (submitted[0] as { id: string }).id,
     selectedDifficulty: "easy",
     outcome: "draw",
-    durationSeconds: 360,
+    durationSeconds: 300,
   });
   expect((matches[0] as { configVersion: string }).configVersion).toMatch(
     /^[0-9a-f]{8}$/,

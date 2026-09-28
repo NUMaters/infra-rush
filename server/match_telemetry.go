@@ -48,7 +48,7 @@ func validMatchReport(v soloMatchReport) bool {
 	if v.Outcome == "loss" {
 		return v.PlayerCastleHP < v.CPUCastleHP
 	}
-	return v.PlayerCastleHP == v.CPUCastleHP && v.DurationSeconds == 360
+	return v.PlayerCastleHP == v.CPUCastleHP && v.DurationSeconds == 300
 }
 
 func newMatchStore(path string) (*matchStore, error) {

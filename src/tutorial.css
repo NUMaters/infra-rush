@@ -29,6 +29,10 @@
     0 6px 0 #4f9d62,
     0 12px 36px #173d5b8c;
 }
+#tutorial.bridge-tour #tutorial-card {
+  top: max(148px, env(safe-area-inset-top));
+  bottom: auto;
+}
 .tutorial-top {
   display: flex;
   justify-content: space-between;
@@ -153,6 +157,61 @@
 .tutorial-bridge-map .enemy {
   color: #df4c5c;
 }
+.tutorial-bridge-map .active {
+  background: #fff0ad;
+  box-shadow:
+    0 0 0 2px #ffcd37,
+    0 4px 12px #eab3308a;
+  transform: translateY(-3px);
+}
+.tutorial-gesture {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  min-height: 58px;
+  overflow: hidden;
+  color: #1c77ae;
+  font-size: 27px;
+}
+.tutorial-gesture span {
+  position: relative;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+.tutorial-gesture small {
+  font-size: 10px;
+  font-weight: 900;
+  color: #416b82;
+}
+.gesture-swipe {
+  animation: gesture-swipe 2s ease-in-out infinite;
+}
+.gesture-pinch i {
+  display: inline-block;
+  font-style: normal;
+}
+.gesture-pinch i:first-child {
+  animation: gesture-left 2s ease-in-out infinite;
+}
+.gesture-pinch i:nth-child(2) {
+  animation: gesture-right 2s ease-in-out infinite;
+}
+@keyframes gesture-swipe {
+  50% {
+    transform: translateX(24px);
+  }
+}
+@keyframes gesture-left {
+  50% {
+    transform: translateX(-9px);
+  }
+}
+@keyframes gesture-right {
+  50% {
+    transform: translateX(9px);
+  }
+}
 #tutorial-next {
   display: block;
   width: 100%;
@@ -255,7 +314,9 @@
 @media (prefers-reduced-motion: reduce) {
   .tutorial-card,
   #tutorial-guide,
-  .tutorial-target {
+  .tutorial-target,
+  .gesture-swipe,
+  .gesture-pinch i {
     animation: none;
   }
 }

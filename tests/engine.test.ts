@@ -401,11 +401,11 @@ describe("earthquake, game timer and determinism", () => {
   it("awards timeout to the team with more castle HP, drawing only on equal HP", () => {
     const s = createGame();
     s.teams.blue.hp = 2;
-    advance(s, 360.1);
+    advance(s, M.game.duration + 0.1);
     expect(s.winner).toBe("red");
-    expect(s.time).toBe(360);
+    expect(s.time).toBe(M.game.duration);
     const equal = createGame();
-    advance(equal, 360.1);
+    advance(equal, M.game.duration + 0.1);
     expect(equal.winner).toBe("draw");
   });
   it("is reproducible from seed and commands", () => {
