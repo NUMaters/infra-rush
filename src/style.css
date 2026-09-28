@@ -1751,7 +1751,10 @@ h1 {
 .result-card.draw h2 {
   color: #477a82;
 }
-.result-main > p {
+.result-outcome {
+  text-align: center;
+}
+.result-outcome > p {
   font-size: 17px;
   font-weight: 800;
   color: #537383;
@@ -2385,14 +2388,16 @@ h1 {
     text-align: left;
     font-size: 10px;
   }
-  .result-card h2 {
+  .result-outcome {
     grid-column: 2;
+    width: 100%;
+  }
+  .result-card h2 {
     margin: 0;
     font-size: 28px;
     line-height: 1.15;
   }
-  .result-main > p {
-    grid-column: 2;
+  .result-outcome > p {
     margin: 6px 0 4px;
     font-size: 14px;
     line-height: 1.4;
@@ -2455,7 +2460,7 @@ h1 {
   }
 }
 @media (max-width: 360px) {
-  .result-main > p {
+  .result-outcome > p {
     display: none;
   }
   .result-trivia {
