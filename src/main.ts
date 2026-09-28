@@ -41,7 +41,7 @@ function html(selector: string, markup: string) {
 const app = $("#app");
 app.innerHTML = `<main id="world"></main><div id="vignette"></div>
 <section id="loading" aria-label="ゲームを読み込み中" style="background-image:url('${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-hd-poster.webp')">
- <video id="opening-video" class="opening-video" src="${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-hd.mp4" poster="${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-hd-poster.webp" muted autoplay playsinline loop preload="auto" aria-hidden="true"></video>
+ <video id="opening-video" class="opening-video" poster="${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-hd-poster.webp" muted autoplay playsinline loop preload="none" aria-hidden="true"></video>
  <div class="opening-tint" aria-hidden="true"></div>
  <div class="opening-status"><div class="match-spinner loading-spinner" role="progressbar" aria-label="読み込み中" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><p>読み込み中…</p><div class="opening-progress" aria-hidden="true"><span></span></div></div>
 </section>
@@ -74,16 +74,85 @@ const openingVideo = $("#opening-video") as HTMLVideoElement;
 const openingReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
 ).matches;
+const openingMediaRoot = `${import.meta.env.BASE_URL}media/opening-gemini-77f0d820`;
+type OpeningQuality = "hd" | "md" | "lite";
+const openingSources: Record<OpeningQuality, string> = {
+  hd: `${openingMediaRoot}-hd.mp4`,
+  md: `${openingMediaRoot}-md.mp4`,
+  lite: `${openingMediaRoot}-lite.mp4`,
+};
+const deviceMemory = (navigator as Navigator & { deviceMemory?: number })
+  .deviceMemory;
+const saveData = (
+  navigator as Navigator & { connection?: { saveData?: boolean } }
+).connection?.saveData;
+const cores = navigator.hardwareConcurrency ?? 8;
+const mobile = window.matchMedia("(max-width: 700px)").matches;
+let openingQuality: OpeningQuality =
+  saveData || (deviceMemory !== undefined && deviceMemory <= 2) || cores <= 2 ||
+  (mobile && cores <= 4)
+    ? "lite"
+    : mobile || (deviceMemory !== undefined && deviceMemory <= 4) || cores <= 4
+      ? "md"
+      : "hd";
+let openingClosed = false;
+let openingFallback = false;
+let openingAttempt = 0;
+let lastOpeningTime = 0;
+let lastOpeningAdvance = performance.now();
+let openingWatchdog: ReturnType<typeof setInterval> | undefined;
 const useOpeningPoster = () => {
+  if (openingFallback || openingClosed) return;
+  openingFallback = true;
+  if (openingWatchdog) clearInterval(openingWatchdog);
   openingVideo.classList.add("opening-video-fallback");
+  openingVideo.pause();
+  openingVideo.removeAttribute("src");
+  openingVideo.load();
+};
+const playOpening = (quality: OpeningQuality) => {
+  const attempt = ++openingAttempt;
+  openingQuality = quality;
+  lastOpeningTime = 0;
+  lastOpeningAdvance = performance.now();
+  openingVideo.src = openingSources[quality];
+  openingVideo.load();
+  void openingVideo.play().catch(() => {
+    if (openingClosed || openingFallback || attempt !== openingAttempt) return;
+    if (quality === "lite") useOpeningPoster();
+    else playOpening("lite");
+  });
 };
 openingVideo.addEventListener("error", () => {
-  useOpeningPoster();
+  if (openingClosed || openingFallback) return;
+  if (openingQuality === "lite") useOpeningPoster();
+  else playOpening("lite");
 });
-if (openingReducedMotion) {
-  openingVideo.removeAttribute("autoplay");
+const stopOpening = () => {
+  openingClosed = true;
+  if (openingWatchdog) clearInterval(openingWatchdog);
   openingVideo.pause();
-} else void openingVideo.play().catch(useOpeningPoster);
+  openingVideo.removeAttribute("src");
+  openingVideo.load();
+};
+if (openingReducedMotion) {
+  useOpeningPoster();
+} else {
+  playOpening(openingQuality);
+  openingWatchdog = setInterval(() => {
+    if (openingClosed || openingFallback || document.hidden) {
+      lastOpeningAdvance = performance.now();
+      return;
+    }
+    if (Math.abs(openingVideo.currentTime - lastOpeningTime) > 0.05) {
+      lastOpeningTime = openingVideo.currentTime;
+      lastOpeningAdvance = performance.now();
+    } else if (performance.now() - lastOpeningAdvance > 3000) {
+      if (openingQuality === "lite") useOpeningPoster();
+      else playOpening("lite");
+    }
+  }, 1000);
+}
 let state = createGame();
 let cpu = new CPU();
 let titleState = createGame();
@@ -1874,19 +1943,30 @@ try {
     } else if (kind === "bridge") chooseBridge(id);
     else if (selected) closePanel();
   };
-  await Promise.race([
-    world.load((n) => {
-      $("#loading .loading-spinner").setAttribute(
-        "aria-valuenow",
-        String(Math.round(n * 100)),
-      );
-      $("#loading .opening-progress span").style.width =
-        `${Math.round(n * 100)}%`;
-    }),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Asset load timed out")), 45000),
-    ),
-  ]);
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  let rejectStall: (reason: Error) => void = () => {};
+  const stalled = new Promise<never>((_, reject) => { rejectStall = reject; });
+  const resetStallTimer = () => {
+    if (stallTimer) clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => rejectStall(new Error("Asset load stalled")), 60000);
+  };
+  resetStallTimer();
+  try {
+    await Promise.race([
+      world.load((n) => {
+        resetStallTimer();
+        $("#loading .loading-spinner").setAttribute(
+          "aria-valuenow",
+          String(Math.round(n * 100)),
+        );
+        $("#loading .opening-progress span").style.width =
+          `${Math.round(n * 100)}%`;
+      }),
+      stalled,
+    ]);
+  } finally {
+    if (stallTimer) clearTimeout(stallTimer);
+  }
   $("#loading .opening-status p").textContent = "準備できたよ！";
   ready = true;
   resetTitleDemo();
@@ -1899,7 +1979,7 @@ try {
     setTimeout(resolve, openingReducedMotion ? 0 : 700),
   );
   $("#loading").classList.add("hidden");
-  openingVideo.pause();
+  stopOpening();
   $("#title").classList.remove("title-arriving");
   if (
     pendingInvite ||
@@ -1995,7 +2075,7 @@ try {
   }
 } catch (error) {
   console.error(error);
-  openingVideo.pause();
+  stopOpening();
   $("#loading").classList.add("opening-failed");
   const loadingFailed =
     error instanceof Error && /fetch|load|network|timeout/i.test(error.message);

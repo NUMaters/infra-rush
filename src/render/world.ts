@@ -360,52 +360,65 @@ export class World {
     ];
     let loaded = 0;
     const modelBase = new URL(import.meta.env.BASE_URL, window.location.href);
-    await Promise.all(
-      names.map(async (n) => {
-        const gltf = await new GLTFLoader().loadAsync(
-          new URL(`models/${n}.glb`, modelBase).href,
-        );
-        if (/^(excavator|dozer|grader|launcher|drill)(-red)?$/.test(n)) {
-          // Supplied fleet GLBs contain a normal texture for almost every
-          // material. All ten variants can exceed mobile GPU texture budgets
-          // after a full match, making their painted surfaces render black.
-          // Keep the color maps and authored geometry; use the toy-like
-          // material constants already baked into the source models.
-          gltf.scene.traverse((part) => {
-            if (!(part instanceof T.Mesh)) return;
-            const materials = Array.isArray(part.material)
-              ? part.material
-              : [part.material];
-            for (const material of materials) {
-              if (!(material instanceof T.MeshStandardMaterial)) continue;
-              material.normalMap = null;
-              material.roughnessMap = null;
-              material.metalnessMap = null;
-              material.aoMap = null;
-              // Keep painted colors readable under the high overhead camera.
-              // Reuse the existing color texture so this adds no GPU texture.
-              if (material.map) {
-                material.emissive.set(0xffffff);
-                material.emissiveMap = material.map;
-                material.emissiveIntensity = 0.22;
-              }
-              material.needsUpdate = true;
+    const loadOne = async (n: string) => {
+      const gltf = await new GLTFLoader().loadAsync(
+        new URL(`models/${n}.glb`, modelBase).href,
+      );
+      if (/^(excavator|dozer|grader|launcher|drill)(-red)?$/.test(n)) {
+        // Supplied fleet GLBs contain a normal texture for almost every
+        // material. All ten variants can exceed mobile GPU texture budgets
+        // after a full match, making their painted surfaces render black.
+        // Keep the color maps and authored geometry; use the toy-like
+        // material constants already baked into the source models.
+        gltf.scene.traverse((part) => {
+          if (!(part instanceof T.Mesh)) return;
+          const materials = Array.isArray(part.material)
+            ? part.material
+            : [part.material];
+          for (const material of materials) {
+            if (!(material instanceof T.MeshStandardMaterial)) continue;
+            material.normalMap = null;
+            material.roughnessMap = null;
+            material.metalnessMap = null;
+            material.aoMap = null;
+            // Keep painted colors readable under the high overhead camera.
+            // Reuse the existing color texture so this adds no GPU texture.
+            if (material.map) {
+              material.emissive.set(0xffffff);
+              material.emissiveMap = material.map;
+              material.emissiveIntensity = 0.22;
             }
-          });
+            material.needsUpdate = true;
+          }
+        });
+      }
+      if (n === "bot") {
+        // The supplied WorkBot is authored at roughly three game units tall.
+        // Keep its rig and animation tracks intact under a scale parent.
+        const root = new T.Group();
+        gltf.scene.scale.setScalar(1 / 3);
+        root.add(gltf.scene);
+        this.templates.set(n, root);
+        strengthenWalk(gltf.animations);
+        this.botAnimations = gltf.animations;
+      } else {
+        this.templates.set(n, gltf.scene);
+      }
+      onProgress(++loaded / names.length);
+    };
+    // Decoding every GLB at once blocks video frames and can exhaust memory on
+    // phones. Keep a few transfers in flight and yield between parsed assets.
+    const smallDevice =
+      window.matchMedia("(max-width: 700px)").matches ||
+      (navigator.hardwareConcurrency ?? 8) <= 4;
+    let next = 0;
+    await Promise.all(
+      Array.from({ length: smallDevice ? 2 : 5 }, async () => {
+        while (next < names.length) {
+          await loadOne(names[next++]);
+          if (smallDevice)
+            await new Promise<void>((resolve) => setTimeout(resolve, 0));
         }
-        if (n === "bot") {
-          // The supplied WorkBot is authored at roughly three game units tall.
-          // Keep its rig and animation tracks intact under a scale parent.
-          const root = new T.Group();
-          gltf.scene.scale.setScalar(1 / 3);
-          root.add(gltf.scene);
-          this.templates.set(n, root);
-          strengthenWalk(gltf.animations);
-          this.botAnimations = gltf.animations;
-        } else {
-          this.templates.set(n, gltf.scene);
-        }
-        onProgress(++loaded / names.length);
       }),
     );
     this.buildMap();

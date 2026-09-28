@@ -1,6 +1,6 @@
 # オープニングムービー
 
-ゲーム起動時に、ユーザーが採用した `gemini_generated_video_77f0d820.mp4` を読み込み中の演出として再生する。配信用に**1280×720・24fps・10秒・H.264** の映像を再圧縮せず、音声だけ除去したものが `public/media/opening-gemini-77f0d820-hd.mp4`。2秒付近の映像を静止画にした `public/media/opening-gemini-77f0d820-hd-poster.webp` を代替表示に使う。映像は読み込み中だけループし、ゲームの読み込みが終わった時点でタイトル画面に切り替える。映像の再生開始や終了は待たない。再生できない場合や動きを減らす設定では静止画を表示する。
+ゲーム起動時に、ユーザーが採用した `gemini_generated_video_77f0d820.mp4` を読み込み中の演出として再生する。高画質版は元映像の **1280×720・24fps・10秒・H.264** を再圧縮せず音声だけ除去した `public/media/opening-gemini-77f0d820-hd.mp4`。端末の画面幅・CPU数・メモリ・通信節約設定に応じて540p・360p版を選ぶ。再生が3秒進まない場合は360pへ切り替え、それでも再生できない場合や動きを減らす設定ではポスター画像を表示する。映像は読み込み中だけループし、ゲームの読み込みが終われば途中でもタイトル画面に切り替える。
 
 動画内ではBotが現場を走り、ショベルとブルドーザーの作業から架橋、Botの進軍へ移る。動画上に掛け声やロゴのカットインは重ねず、読み込み表示だけを下部に置く。
 
@@ -10,6 +10,8 @@
 ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -map 0:v:0 -c:v copy -movflags +faststart -an public/media/opening-gemini-77f0d820-hd.mp4
 ffmpeg -ss 2 -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -frames:v 1 /tmp/infra-rush-opening-poster.png
 cwebp -q 90 /tmp/infra-rush-opening-poster.png -o public/media/opening-gemini-77f0d820-hd-poster.webp
+ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -vf "scale=960:540:flags=lanczos,fps=24" -c:v libx264 -preset slow -crf 22 -profile:v baseline -level 3.1 -pix_fmt yuv420p -g 48 -bf 0 -movflags +faststart -an public/media/opening-gemini-77f0d820-md.mp4
+ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -vf "scale=640:360:flags=lanczos,fps=20" -c:v libx264 -preset slow -crf 24 -profile:v baseline -level 3.0 -pix_fmt yuv420p -g 40 -bf 0 -movflags +faststart -an public/media/opening-gemini-77f0d820-lite.mp4
 ```
 
 ## 旧Blender版の制作手順
@@ -28,7 +30,7 @@ cwebp -q 78 .qa-preview/opening-frames/frame-0063.png -o /tmp/infra-rush-old-ope
 
 特定のカットだけ撮り直す場合は、Blender コマンドの最後に `-- --frames=121-160` のようにフレーム範囲を指定してから、編集とエンコードを再実行する。
 
-旧版のPNGは `.qa-preview/opening-frames` と `.qa-preview/opening-cut` に生成され、Git には含めない。配信する映像と静止画は `public/media` に配置する。動画は音声なしで自動再生し、既存のタイトル BGM が切り替え時に再生される。Service Worker は動画を事前キャッシュし、オフライン時の Range リクエストにも部分応答する。
+旧版のPNGは `.qa-preview/opening-frames` と `.qa-preview/opening-cut` に生成され、Git には含めない。配信する映像と静止画は `public/media` に配置する。動画は音声なしで自動再生し、既存のタイトル BGM が切り替え時に再生される。Service Worker はポスターだけをキャッシュする。動画はブラウザの標準 Range 通信で直接配信し、動画全体を Worker のメモリに展開しない。
 
 ## 映像制作用のキャラ・重機一覧画像
 

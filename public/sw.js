@@ -1,30 +1,7 @@
-const CACHE = "infra-rush-v10";
+const CACHE = "infra-rush-v11";
 const PREVIOUS_SHELL = `${CACHE}-previous-shell`;
 const ROOT = new URL(self.registration.scope);
-const OPENING_MOVIE = new URL("media/opening-gemini-77f0d820-hd.mp4", ROOT).href;
 const OPENING_POSTER = new URL("media/opening-gemini-77f0d820-hd-poster.webp", ROOT).href;
-
-async function openingRange(request) {
-  const cached = await (await caches.open(CACHE)).match(OPENING_MOVIE);
-  if (!cached) return fetch(request);
-  const match = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") ?? "");
-  if (!match) return fetch(request);
-  const bytes = await cached.arrayBuffer();
-  const total = bytes.byteLength;
-  const start = match[1] ? Number(match[1]) : Math.max(0, total - Number(match[2]));
-  const end = match[2] && match[1] ? Math.min(Number(match[2]), total - 1) : total - 1;
-  if (start > end || start >= total)
-    return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${total}` } });
-  return new Response(bytes.slice(start, end + 1), {
-    status: 206,
-    headers: {
-      "Accept-Ranges": "bytes",
-      "Content-Length": String(end - start + 1),
-      "Content-Range": `bytes ${start}-${end}/${total}`,
-      "Content-Type": "video/mp4",
-    },
-  });
-}
 
 async function cacheOne(cache, url) {
   if (await cache.match(url)) return;
@@ -46,7 +23,6 @@ async function cacheGameAssets() {
     ...["soil", "stone", "iron"].map((name) => new URL(`ui/resources/${name}.png`, ROOT).href),
     ...["stone-bridge", "steel-bridge", "excavator", "dozer", "launcher", "grader", "soil", "stone-resource"].map((name) => new URL(`ui/trivia/${name}.png`, ROOT).href),
     ...["infra-rush-title", "infra-rush-loop", "infra-rush-victory", "infra-rush-retry"].map((name) => new URL(`audio/${name}.mp3`, ROOT).href),
-    OPENING_MOVIE,
     OPENING_POSTER,
   ];
   for (let i = 0; i < assets.length; i += 4)
@@ -62,10 +38,7 @@ self.addEventListener("install", (event) => {
         new URL("icons/icon-192.png", ROOT).href,
         new URL("icons/icon-512.png", ROOT).href,
       ]);
-      await Promise.all([
-        cacheOne(cache, OPENING_MOVIE),
-        cacheOne(cache, OPENING_POSTER),
-      ]);
+      await cacheOne(cache, OPENING_POSTER);
       const html = await (await cache.match(ROOT.href)).text();
       const entrypoints = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g)].map(
         ([, path]) => new URL(path, ROOT).href,
@@ -114,12 +87,13 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET" || new URL(request.url).origin !== ROOT.origin) return;
-  if (request.headers.has("range")) {
-    if (new URL(request.url).pathname === new URL(OPENING_MOVIE).pathname)
-      event.respondWith(openingRange(request));
-    return;
-  }
+  const url = new URL(request.url);
+  if (request.method !== "GET" || url.origin !== ROOT.origin) return;
+  // Let the browser stream and seek video directly. Buffering whole MP4 files
+  // inside the worker can stall low-memory devices while models are loading.
+  if (url.pathname.startsWith(new URL("media/opening-", ROOT).pathname) &&
+      url.pathname.endsWith(".mp4")) return;
+  if (request.headers.has("range")) return;
   event.respondWith(
     fetch(request)
       .then((response) => {
