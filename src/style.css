@@ -2392,7 +2392,7 @@ h1 {
     line-height: 1.15;
   }
   .result-main > p {
-    grid-column: 1 / -1;
+    grid-column: 2;
     margin: 6px 0 4px;
     font-size: 14px;
     line-height: 1.4;
