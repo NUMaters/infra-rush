@@ -1,6 +1,6 @@
 # オープニングムービー
 
-ゲーム起動時に、ユーザーが採用した `gemini_generated_video_77f0d820.mp4` を読み込み中の演出として再生する。高画質版は元映像の **1280×720・24fps・10秒・H.264** を再圧縮せず音声だけ除去した `public/media/opening-gemini-77f0d820-hd.mp4`。動画要素を初期HTMLに置き、ゲームのJavaScriptと3Dモデルの読み込みより先に再生を開始する。端末の画面幅・CPU数・メモリ・通信節約設定に応じて540p・360p版を選ぶ。実際の映像フレームが3秒進まない場合は360pへ切り替え、自動再生が拒否されるなど動画を再生できない場合は、同じ映像から作った約1MBのアニメーションWebPをループ表示する。動画の初回フレームが出るまでもWebPを表示する。動きを減らす設定ではポスター画像を表示する。映像は読み込み中だけループし、ゲームの読み込みが終われば途中でもタイトル画面に切り替える。
+ゲーム起動時に、ユーザーが採用した `gemini_generated_video_77f0d820.mp4` を読み込み中の演出として再生する。高画質版は元映像の **1280×720・24fps・10秒・H.264** を再圧縮せず音声だけ除去した `public/media/opening-gemini-77f0d820-hd.mp4`。動画要素を初期HTMLに置き、ゲームのJavaScriptと3Dモデルの読み込みより先に再生を開始する。iPhoneを含む通常のスマホでは720p版を使い、CPU・メモリ・通信節約設定に応じて540p・360p版を選ぶ。実際の映像フレームが3秒進まない場合は360pへ切り替え、自動再生が拒否されるなど動画を再生できない場合は、同じ映像から作った960×540・約2.3MBのアニメーションWebPをループ表示する。動画の初回フレームが出るまでもWebPを表示する。縦長画面では映像全体が見える `contain` 表示にし、画面の余白は背景色で埋める。動きを減らす設定ではポスター画像を表示する。映像は読み込み中だけループし、ゲームの読み込みが終われば途中でもタイトル画面に切り替える。
 
 動画内ではBotが現場を走り、ショベルとブルドーザーの作業から架橋、Botの進軍へ移る。動画上に掛け声やロゴのカットインは重ねず、読み込み表示だけを下部に置く。
 
@@ -13,10 +13,8 @@ cwebp -q 90 /tmp/infra-rush-opening-poster.png -o public/media/opening-gemini-77
 ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -vf "scale=960:540:flags=lanczos,fps=24" -c:v libx264 -preset slow -crf 22 -profile:v baseline -level 3.1 -pix_fmt yuv420p -g 48 -bf 0 -movflags +faststart -an public/media/opening-gemini-77f0d820-md.mp4
 ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -vf "scale=640:360:flags=lanczos,fps=20" -c:v libx264 -preset slow -crf 24 -profile:v baseline -level 3.0 -pix_fmt yuv420p -g 40 -bf 0 -movflags +faststart -an public/media/opening-gemini-77f0d820-lite.mp4
 mkdir -p /tmp/infra-rush-opening-webp
-ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -vf "fps=10,scale=480:270:flags=lanczos" /tmp/infra-rush-opening-webp/frame-%03d.png
-cwebp -q 45 /tmp/infra-rush-opening-webp/frame-001.png -o /tmp/infra-rush-opening-webp/frame-001.webp
-for n in $(seq -w 2 100); do cwebp -q 45 "/tmp/infra-rush-opening-webp/frame-$n.png" -o "/tmp/infra-rush-opening-webp/frame-$n.webp"; done
-img2webp -loop 0 -d 100 /tmp/infra-rush-opening-webp/frame-*.webp -o public/media/opening-gemini-77f0d820-fallback.webp
+ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -vf "fps=10,scale=960:540:flags=lanczos" /tmp/infra-rush-opening-webp/frame-%03d.png
+img2webp -lossy -q 65 -m 4 -loop 0 -d 100 /tmp/infra-rush-opening-webp/frame-*.png -o public/media/opening-gemini-77f0d820-fallback.webp
 ```
 
 ## 旧Blender版の制作手順

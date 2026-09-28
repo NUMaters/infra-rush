@@ -92,7 +92,7 @@ button svg {
   height: 100%;
 }
 .opening-video {
-  object-fit: cover;
+  object-fit: contain;
 }
 .opening-video-fallback {
   opacity: 0;

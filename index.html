@@ -27,8 +27,8 @@
     <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
     <link rel="preload" as="image" href="%BASE_URL%media/opening-gemini-77f0d820-hd-poster.webp" />
     <style>
-      #loading { position: fixed; inset: 0; z-index: 100; overflow: hidden; background: #d7f3f7 url('%BASE_URL%media/opening-gemini-77f0d820-hd-poster.webp') center / cover; }
-      #opening-motion-fallback, #opening-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      #loading { position: fixed; inset: 0; z-index: 100; overflow: hidden; background: linear-gradient(180deg, #d4f2f5, #6baed1 62%, #2676ac); }
+      #opening-motion-fallback, #opening-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
       #opening-video { z-index: 1; opacity: 0; }
       #opening-video.opening-video-moving { opacity: 1; }
       #opening-video.opening-video-fallback { opacity: 0; }
@@ -39,7 +39,7 @@
       #loading .opening-progress span { display: block; width: 0; height: 100%; background: #ffd451; }
       #loading .loading-spinner { display: block; width: 28px; height: 28px; margin: auto; border: 5px solid #fff8; border-top-color: #ffd451; border-radius: 50%; animation: opening-spin .8s linear infinite; }
       @keyframes opening-spin { to { transform: rotate(360deg); } }
-      @media (prefers-reduced-motion: reduce) { #opening-motion-fallback, #opening-video { display: none; } }
+      @media (prefers-reduced-motion: reduce) { #loading { background: #d7f3f7 url('%BASE_URL%media/opening-gemini-77f0d820-hd-poster.webp') center / contain no-repeat; } #opening-motion-fallback, #opening-video { display: none; } }
     </style>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -54,7 +54,6 @@
       <section id="loading" aria-label="ゲームを読み込み中">
         <img id="opening-motion-fallback" src="%BASE_URL%media/opening-gemini-77f0d820-fallback.webp" alt="" aria-hidden="true" />
         <video id="opening-video" class="opening-video" poster="%BASE_URL%media/opening-gemini-77f0d820-hd-poster.webp" muted autoplay playsinline loop preload="auto" aria-hidden="true">
-          <source src="%BASE_URL%media/opening-gemini-77f0d820-md.mp4" type="video/mp4" media="(max-width: 700px)" />
           <source src="%BASE_URL%media/opening-gemini-77f0d820-hd.mp4" type="video/mp4" />
         </video>
         <div class="opening-tint" aria-hidden="true"></div>

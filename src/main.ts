@@ -85,9 +85,9 @@ const cores = navigator.hardwareConcurrency ?? 8;
 const mobile = window.matchMedia("(max-width: 700px)").matches;
 let openingQuality: OpeningQuality =
   saveData || (deviceMemory !== undefined && deviceMemory <= 2) || cores <= 2 ||
-  (mobile && cores <= 4)
+  (mobile && cores <= 3)
     ? "lite"
-    : mobile || (deviceMemory !== undefined && deviceMemory <= 4) || cores <= 4
+    : (deviceMemory !== undefined && deviceMemory <= 4) || cores <= 4
       ? "md"
       : "hd";
 let openingClosed = false;
