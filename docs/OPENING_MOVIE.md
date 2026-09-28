@@ -14,7 +14,7 @@ ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -vf "scale=960:540:fla
 ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -vf "scale=640:360:flags=lanczos,fps=20" -c:v libx264 -preset slow -crf 24 -profile:v baseline -level 3.0 -pix_fmt yuv420p -g 40 -bf 0 -movflags +faststart -an public/media/opening-gemini-77f0d820-lite.mp4
 mkdir -p /tmp/infra-rush-opening-webp
 ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -vf "fps=10,scale=960:540:flags=lanczos" /tmp/infra-rush-opening-webp/frame-%03d.png
-img2webp -lossy -q 65 -m 4 -loop 0 -d 100 /tmp/infra-rush-opening-webp/frame-*.png -o public/media/opening-gemini-77f0d820-fallback.webp
+img2webp -lossy -q 65 -m 4 -loop 0 -d 100 /tmp/infra-rush-opening-webp/frame-*.png -o public/media/opening-gemini-77f0d820-fallback-v2.webp
 ```
 
 ## 旧Blender版の制作手順

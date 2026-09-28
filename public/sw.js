@@ -1,8 +1,8 @@
-const CACHE = "infra-rush-v12";
+const CACHE = "infra-rush-v13";
 const PREVIOUS_SHELL = `${CACHE}-previous-shell`;
 const ROOT = new URL(self.registration.scope);
 const OPENING_POSTER = new URL("media/opening-gemini-77f0d820-hd-poster.webp", ROOT).href;
-const OPENING_ANIMATION = new URL("media/opening-gemini-77f0d820-fallback.webp", ROOT).href;
+const OPENING_ANIMATION = new URL("media/opening-gemini-77f0d820-fallback-v2.webp", ROOT).href;
 
 async function cacheOne(cache, url) {
   if (await cache.match(url)) return;
