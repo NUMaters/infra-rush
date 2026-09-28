@@ -321,26 +321,11 @@ h1 {
   font-size: 15px;
   line-height: 1.9;
 }
-.title-tagline {
-  display: inline-block;
-  padding: 5px 8px 6px;
-  border-radius: 9px;
-  background: #f3ffeea8;
-  backdrop-filter: blur(4px);
-}
-.title-copy .title-tagline h1 {
-  margin: 0;
-  color: #184961;
-  font-size: 14px;
-  letter-spacing: 0;
-  line-height: 1.3;
-}
-.title-copy .title-tagline p {
-  margin: 1px 0 0;
-  color: #256b78;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1.25;
+.title-tagline-art {
+  display: block;
+  width: min(330px, 80vw);
+  height: auto;
+  filter: drop-shadow(0 3px 4px #15446945);
 }
 .start-card {
   position: absolute;
