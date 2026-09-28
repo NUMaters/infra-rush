@@ -382,6 +382,13 @@ export class World {
               material.roughnessMap = null;
               material.metalnessMap = null;
               material.aoMap = null;
+              // Keep painted colors readable under the high overhead camera.
+              // Reuse the existing color texture so this adds no GPU texture.
+              if (material.map) {
+                material.emissive.set(0xffffff);
+                material.emissiveMap = material.map;
+                material.emissiveIntensity = 0.22;
+              }
               material.needsUpdate = true;
             }
           });
