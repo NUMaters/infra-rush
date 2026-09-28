@@ -261,6 +261,7 @@ export class World {
     });
     sun.shadow.normalBias = 0.06;
     sun.shadow.bias = -0.0003;
+    sun.shadow.intensity = 0.5;
     this.scene.add(sun);
     this.scene.add(this.dynamic);
     const water = seaMaterial(this.waterTime);
@@ -416,7 +417,10 @@ export class World {
     group.traverse((o) => {
       if (o instanceof T.Mesh) {
         o.castShadow = true;
-        o.receiveShadow = true;
+        // Supplied vehicles have many tightly layered parts. Receiving their
+        // own shadows turns the cab and body almost black at the game camera.
+        // Keep their ground shadows, but light the painted surfaces directly.
+        o.receiveShadow = !/^(excavator|dozer|grader|launcher|drill)(-red)?$/.test(name);
         const mat = o.material as T.MeshStandardMaterial;
         if (
           mat.name === "team" ||

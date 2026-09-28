@@ -1,6 +1,7 @@
-const CACHE = "infra-rush-v7";
+const CACHE = "infra-rush-v8";
 const ROOT = new URL(self.registration.scope);
-const OPENING_MOVIE = new URL("media/opening.mp4", ROOT).href;
+const OPENING_MOVIE = new URL("media/opening-gemini-77f0d820.mp4", ROOT).href;
+const OPENING_POSTER = new URL("media/opening-gemini-77f0d820-poster.webp", ROOT).href;
 
 async function openingRange(request) {
   const cached = await (await caches.open(CACHE)).match(OPENING_MOVIE);
@@ -44,8 +45,8 @@ async function cacheGameAssets() {
     ...["soil", "stone", "iron"].map((name) => new URL(`ui/resources/${name}.png`, ROOT).href),
     ...["stone-bridge", "steel-bridge", "excavator", "dozer", "launcher", "grader", "soil", "stone-resource"].map((name) => new URL(`ui/trivia/${name}.png`, ROOT).href),
     ...["infra-rush-title", "infra-rush-loop", "infra-rush-victory", "infra-rush-retry"].map((name) => new URL(`audio/${name}.mp3`, ROOT).href),
-    new URL("media/opening.mp4", ROOT).href,
-    new URL("media/opening-poster.webp", ROOT).href,
+    OPENING_MOVIE,
+    OPENING_POSTER,
   ];
   for (let i = 0; i < assets.length; i += 4)
     await Promise.all(assets.slice(i, i + 4).map((url) => cacheOne(cache, url)));
@@ -62,7 +63,7 @@ self.addEventListener("install", (event) => {
       ]);
       await Promise.all([
         cacheOne(cache, OPENING_MOVIE),
-        cacheOne(cache, new URL("media/opening-poster.webp", ROOT).href),
+        cacheOne(cache, OPENING_POSTER),
       ]);
       const html = await (await cache.match(ROOT.href)).text();
       const entrypoints = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g)].map(

@@ -40,8 +40,8 @@ function html(selector: string, markup: string) {
 }
 const app = $("#app");
 app.innerHTML = `<main id="world"></main><div id="vignette"></div>
-<section id="loading" data-shot="0" aria-label="ゲームを読み込み中" style="background-image:url('${import.meta.env.BASE_URL}media/opening-poster.webp')">
- <video id="opening-video" class="opening-video" src="${import.meta.env.BASE_URL}media/opening.mp4" poster="${import.meta.env.BASE_URL}media/opening-poster.webp" muted autoplay playsinline loop preload="auto" aria-hidden="true"></video>
+<section id="loading" data-shot="0" aria-label="ゲームを読み込み中" style="background-image:url('${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-poster.webp')">
+ <video id="opening-video" class="opening-video" src="${import.meta.env.BASE_URL}media/opening-gemini-77f0d820.mp4" poster="${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-poster.webp" muted autoplay playsinline loop preload="auto" aria-hidden="true"></video>
  <div class="opening-tint" aria-hidden="true"></div>
  <div class="opening-impact" aria-hidden="true"></div>
  <div class="opening-brand" aria-hidden="true">INFRA <b>RUSH!</b><span>オープニング</span></div>
