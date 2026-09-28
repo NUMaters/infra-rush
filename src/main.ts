@@ -39,12 +39,7 @@ function html(selector: string, markup: string) {
   }
 }
 const app = $("#app");
-app.innerHTML = `<main id="world"></main><div id="vignette"></div>
-<section id="loading" aria-label="ゲームを読み込み中" style="background-image:url('${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-hd-poster.webp')">
- <video id="opening-video" class="opening-video" poster="${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-hd-poster.webp" muted autoplay playsinline loop preload="none" aria-hidden="true"></video>
- <div class="opening-tint" aria-hidden="true"></div>
- <div class="opening-status"><div class="match-spinner loading-spinner" role="progressbar" aria-label="読み込み中" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><p>読み込み中…</p><div class="opening-progress" aria-hidden="true"><span></span></div></div>
-</section>
+app.insertAdjacentHTML("beforeend", `<main id="world"></main><div id="vignette"></div>
 <section id="title" class="hidden">
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
@@ -69,7 +64,7 @@ app.innerHTML = `<main id="world"></main><div id="vignette"></div>
 <section id="modal" class="overlay hidden"></section>
 <section id="online-lobby" class="overlay hidden" aria-label="オンライン対戦"></section>
 <section id="title-trivia" class="overlay hidden" role="dialog" aria-modal="true" aria-label="土木の豆知識"><article class="dialog title-trivia-dialog"><button id="title-trivia-close" class="circle close-online" type="button" aria-label="豆知識を閉じる">${icon("close")}</button><section id="title-trivia-content" class="result-trivia" aria-label="土木の豆知識"></section></article></section>
-<section id="result" class="overlay hidden"></section><div id="map-review" class="hidden" aria-label="試合終了時のマップ"><div class="map-review-bar"><span>試合終了時のマップ</span><button id="review-back" type="button">結果へ戻る</button></div><p>ドラッグで移動 · ピンチで拡大・回転</p></div><div id="scene-wipe" aria-hidden="true"></div>`;
+<section id="result" class="overlay hidden"></section><div id="map-review" class="hidden" aria-label="試合終了時のマップ"><div class="map-review-bar"><span>試合終了時のマップ</span><button id="review-back" type="button">結果へ戻る</button></div><p>ドラッグで移動 · ピンチで拡大・回転</p></div><div id="scene-wipe" aria-hidden="true"></div>`);
 const openingVideo = $("#opening-video") as HTMLVideoElement;
 const openingReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
@@ -101,54 +96,105 @@ let openingAttempt = 0;
 let lastOpeningTime = 0;
 let lastOpeningAdvance = performance.now();
 let openingWatchdog: ReturnType<typeof setInterval> | undefined;
-const useOpeningPoster = () => {
+const hasVideoFrameCallback = !!openingVideo.requestVideoFrameCallback;
+let frameObserver = 0;
+const observeOpeningFrames = () => {
+  if (!hasVideoFrameCallback) return;
+  const observer = ++frameObserver;
+  const onFrame = () => {
+    if (observer !== frameObserver || openingClosed || openingFallback) return;
+    lastOpeningAdvance = performance.now();
+    openingVideo.classList.add("opening-video-moving");
+    openingVideo.requestVideoFrameCallback(onFrame);
+  };
+  openingVideo.requestVideoFrameCallback(onFrame);
+};
+const releaseOpeningVideo = () => {
+  ++frameObserver;
+  openingVideo.pause();
+  openingVideo.removeAttribute("src");
+  openingVideo.querySelectorAll("source").forEach((source) => source.remove());
+  openingVideo.load();
+};
+const useOpeningFallback = () => {
   if (openingFallback || openingClosed) return;
   openingFallback = true;
   if (openingWatchdog) clearInterval(openingWatchdog);
   openingVideo.classList.add("opening-video-fallback");
-  openingVideo.pause();
-  openingVideo.removeAttribute("src");
-  openingVideo.load();
+  releaseOpeningVideo();
 };
 const playOpening = (quality: OpeningQuality) => {
   const attempt = ++openingAttempt;
   openingQuality = quality;
   lastOpeningTime = 0;
   lastOpeningAdvance = performance.now();
+  openingVideo.classList.remove("opening-video-moving");
   openingVideo.src = openingSources[quality];
   openingVideo.load();
-  void openingVideo.play().catch(() => {
+  observeOpeningFrames();
+  void openingVideo.play().catch((error: unknown) => {
     if (openingClosed || openingFallback || attempt !== openingAttempt) return;
-    if (quality === "lite") useOpeningPoster();
+    if (error instanceof DOMException && error.name === "NotAllowedError")
+      useOpeningFallback();
+    else if (quality === "lite") useOpeningFallback();
     else playOpening("lite");
   });
 };
 openingVideo.addEventListener("error", () => {
   if (openingClosed || openingFallback) return;
-  if (openingQuality === "lite") useOpeningPoster();
+  if (openingQuality === "lite") useOpeningFallback();
   else playOpening("lite");
 });
 const stopOpening = () => {
   openingClosed = true;
   if (openingWatchdog) clearInterval(openingWatchdog);
-  openingVideo.pause();
-  openingVideo.removeAttribute("src");
-  openingVideo.load();
+  releaseOpeningVideo();
 };
+const waitForOpeningStart = () => {
+  if (openingFallback || document.hidden ||
+      (openingVideo.readyState >= openingVideo.HAVE_CURRENT_DATA && !openingVideo.paused))
+    return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      openingVideo.removeEventListener("playing", done);
+      resolve();
+    };
+    const timer = setTimeout(done, 600);
+    openingVideo.addEventListener("playing", done, { once: true });
+  });
+};
+const firstSource = openingVideo.currentSrc;
+const firstQuality: OpeningQuality = firstSource.includes("-lite.mp4")
+  ? "lite"
+  : firstSource.includes("-md.mp4")
+    ? "md"
+    : "hd";
 if (openingReducedMotion) {
-  useOpeningPoster();
+  useOpeningFallback();
 } else {
-  playOpening(openingQuality);
+  if (firstSource && firstQuality === openingQuality) {
+    const attempt = ++openingAttempt;
+    observeOpeningFrames();
+    void openingVideo.play().catch((error: unknown) => {
+      if (openingClosed || openingFallback || attempt !== openingAttempt) return;
+      if (error instanceof DOMException && error.name === "NotAllowedError")
+        useOpeningFallback();
+      else playOpening("lite");
+    });
+  } else playOpening(openingQuality);
   openingWatchdog = setInterval(() => {
     if (openingClosed || openingFallback || document.hidden) {
       lastOpeningAdvance = performance.now();
       return;
     }
-    if (Math.abs(openingVideo.currentTime - lastOpeningTime) > 0.05) {
+    if (!hasVideoFrameCallback &&
+        Math.abs(openingVideo.currentTime - lastOpeningTime) > 0.05) {
       lastOpeningTime = openingVideo.currentTime;
       lastOpeningAdvance = performance.now();
+      openingVideo.classList.add("opening-video-moving");
     } else if (performance.now() - lastOpeningAdvance > 3000) {
-      if (openingQuality === "lite") useOpeningPoster();
+      if (openingQuality === "lite") useOpeningFallback();
       else playOpening("lite");
     }
   }, 1000);
@@ -1934,6 +1980,7 @@ function frame(now: number) {
 }
 try {
   sound.setMusicScene("title");
+  await waitForOpeningStart();
   world = new World($("#world"));
   world.onPick = (kind, id) => {
     if (!started || paused || introActive || state.status !== "playing") return;
