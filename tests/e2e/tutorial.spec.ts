@@ -20,6 +20,11 @@ test("solo practice can be skipped at any time and starts a fresh CPU match", as
   );
   await page.locator("#tutorial-next").click();
   await expect(page.locator("#tutorial-card")).toContainText(
+    "3つの橋を覚えよう",
+  );
+  await expect(page.locator("#tutorial-card")).toContainText("早い者勝ち");
+  await page.locator("#tutorial-next").click();
+  await expect(page.locator("#tutorial-card")).toContainText(
     "マップを見渡そう",
   );
   await expect(page.locator("#tutorial-card")).toContainText("2本指");
@@ -68,14 +73,20 @@ test("single player can begin a CPU match without practice", async ({
 test("solo practice teaches mining, routes, sabotage and clearing", async ({
   page,
 }, info) => {
-  test.setTimeout(300000);
+  test.setTimeout(600000);
   await page.goto("/?qa");
   await page.locator("#start").click();
   await page.locator("#tutorial-start").click();
   await expect(page.locator("#tutorial-card")).toContainText(
     "まずはゲームのルール",
   );
-  await expect(page.locator("#tutorial-card")).toContainText("道をふさぎ");
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "15回たたけば勝ち",
+  );
+  await page.locator("#tutorial-next").click();
+  await expect(page.locator(".tutorial-bridge-map")).toContainText(
+    "手前自分だけ",
+  );
   await page.locator("#tutorial-next").click();
   await expect(page.locator("#tutorial-card")).toContainText(
     "マップを見渡そう",
@@ -95,11 +106,18 @@ test("solo practice teaches mining, routes, sabotage and clearing", async ({
   await expect(page.locator("#tutorial-card")).toContainText("石を掘ろう");
   await expect(page.locator('[data-action="march"]')).toBeDisabled();
   await page.locator('[data-action="mine"]').click();
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "同時に仕事を頼めるよ",
+  );
+  await tapBot("blue-1");
+  await expect(page.locator("#tutorial-card")).toContainText("2体目にも頼もう");
+  await page.locator('[data-action="mine"]').click();
   await expect(page.locator("#tutorial-card")).toContainText("採掘中！");
   await page.evaluate(() => window.infraQA.advance(13));
-  await expect(
-    page.locator("#floaters .resource-floater img").first(),
-  ).toHaveAttribute("src", /resources\/(stone|soil|iron)\.png$/);
+  await expect(page.locator("#resources .stone img")).toHaveAttribute(
+    "src",
+    /resources\/stone\.png$/,
+  );
   await expect(page.locator("#tutorial-card")).toContainText(
     "橋の場所をタップ！",
   );
@@ -124,16 +142,36 @@ test("solo practice teaches mining, routes, sabotage and clearing", async ({
     /stone\.png$/,
   );
   await page.evaluate(() => window.infraQA.advance(23));
+  await expect(page.locator("#tutorial-card")).toContainText("橋を強くしよう");
+  await tapBot("blue-2");
+  await expect(page.locator("#tutorial-card")).toContainText("強くする");
+  await page.locator('[data-action="upgrade"]').click();
+  await page.evaluate(() => window.infraQA.advance(20));
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "傷んだ橋を直そう",
+  );
+  await tapBot("blue-3");
+  await expect(page.locator("#tutorial-card")).toContainText("橋を直す");
+  await page.locator('[data-action="repair"]').click();
+  await page.evaluate(() => window.infraQA.advance(18));
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "真ん中も狙える！",
+  );
+  await page.locator("#tutorial-next").click();
   await expect(page.locator("#tutorial-card")).toContainText(
     "攻めるBotを選ぼう",
   );
   expect(
     (await page.evaluate(() => window.infraQA.snapshot())).bridges[0].level,
-  ).toBe(1);
-  await tapBot("blue-1");
+  ).toBe(2);
+  await tapBot("blue-4");
   await expect(page.locator("#tutorial-card")).toContainText("進軍しよう！");
   await page.locator('[data-action="march"]').click();
   await page.evaluate(() => window.infraQA.advance(16));
+  await expect(page.locator("#tutorial-card")).toContainText(
+    "Botが帰ってきた！",
+  );
+  await page.locator("#tutorial-next").click();
   await expect(page.locator("#tutorial-card")).toContainText(
     "相手の道をふさごう",
   );

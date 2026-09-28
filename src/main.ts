@@ -39,7 +39,9 @@ function html(selector: string, markup: string) {
   }
 }
 const app = $("#app");
-app.insertAdjacentHTML("beforeend", `<main id="world"></main><div id="vignette"></div>
+app.insertAdjacentHTML(
+  "beforeend",
+  `<main id="world"></main><div id="vignette"></div>
 <section id="title" class="hidden">
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
@@ -64,7 +66,8 @@ app.insertAdjacentHTML("beforeend", `<main id="world"></main><div id="vignette">
 <section id="modal" class="overlay hidden"></section>
 <section id="online-lobby" class="overlay hidden" aria-label="オンライン対戦"></section>
 <section id="title-trivia" class="overlay hidden" role="dialog" aria-modal="true" aria-label="土木の豆知識"><article class="dialog title-trivia-dialog"><button id="title-trivia-close" class="circle close-online" type="button" aria-label="豆知識を閉じる">${icon("close")}</button><section id="title-trivia-content" class="result-trivia" aria-label="土木の豆知識"></section></article></section>
-<section id="result" class="overlay hidden"></section><div id="map-review" class="hidden" aria-label="試合終了時のマップ"><div class="map-review-bar"><span>試合終了時のマップ</span><button id="review-back" type="button">結果へ戻る</button></div><p>ドラッグで移動 · ピンチで拡大・回転</p></div><div id="scene-wipe" aria-hidden="true"></div>`);
+<section id="result" class="overlay hidden"></section><div id="map-review" class="hidden" aria-label="試合終了時のマップ"><div class="map-review-bar"><span>試合終了時のマップ</span><button id="review-back" type="button">結果へ戻る</button></div><p>ドラッグで移動 · ピンチで拡大・回転</p></div><div id="scene-wipe" aria-hidden="true"></div>`,
+);
 const openingVideo = $("#opening-video") as HTMLVideoElement;
 const openingReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
@@ -84,7 +87,9 @@ const saveData = (
 const cores = navigator.hardwareConcurrency ?? 8;
 const mobile = window.matchMedia("(max-width: 700px)").matches;
 let openingQuality: OpeningQuality =
-  saveData || (deviceMemory !== undefined && deviceMemory <= 2) || cores <= 2 ||
+  saveData ||
+  (deviceMemory !== undefined && deviceMemory <= 2) ||
+  cores <= 2 ||
   (mobile && cores <= 3)
     ? "lite"
     : (deviceMemory !== undefined && deviceMemory <= 4) || cores <= 4
@@ -151,8 +156,12 @@ const stopOpening = () => {
   releaseOpeningVideo();
 };
 const waitForOpeningStart = () => {
-  if (openingFallback || document.hidden ||
-      (openingVideo.readyState >= openingVideo.HAVE_CURRENT_DATA && !openingVideo.paused))
+  if (
+    openingFallback ||
+    document.hidden ||
+    (openingVideo.readyState >= openingVideo.HAVE_CURRENT_DATA &&
+      !openingVideo.paused)
+  )
     return Promise.resolve();
   return new Promise<void>((resolve) => {
     const done = () => {
@@ -177,7 +186,8 @@ if (openingReducedMotion) {
     const attempt = ++openingAttempt;
     observeOpeningFrames();
     void openingVideo.play().catch((error: unknown) => {
-      if (openingClosed || openingFallback || attempt !== openingAttempt) return;
+      if (openingClosed || openingFallback || attempt !== openingAttempt)
+        return;
       if (error instanceof DOMException && error.name === "NotAllowedError")
         useOpeningFallback();
       else playOpening("lite");
@@ -188,8 +198,10 @@ if (openingReducedMotion) {
       lastOpeningAdvance = performance.now();
       return;
     }
-    if (!hasVideoFrameCallback &&
-        Math.abs(openingVideo.currentTime - lastOpeningTime) > 0.05) {
+    if (
+      !hasVideoFrameCallback &&
+      Math.abs(openingVideo.currentTime - lastOpeningTime) > 0.05
+    ) {
       lastOpeningTime = openingVideo.currentTime;
       lastOpeningAdvance = performance.now();
       openingVideo.classList.add("opening-video-moving");
@@ -315,16 +327,27 @@ let introStage = -1;
 let introActive = false;
 type TutorialStage =
   | "rules"
+  | "bridgeRules"
   | "camera"
   | "pick"
   | "mine"
+  | "pickSecond"
+  | "secondMine"
   | "gather"
   | "bridge"
   | "build"
   | "construction"
+  | "pickUpgrade"
+  | "upgrade"
+  | "upgradeWork"
+  | "pickRepair"
+  | "repair"
+  | "repairWork"
+  | "bridgeOptions"
   | "pickMarch"
   | "march"
   | "attack"
+  | "returned"
   | "pickEmbank"
   | "embank"
   | "embankWork"
@@ -337,6 +360,7 @@ type TutorialStage =
   | "complete";
 let tutorialStage: TutorialStage | null = null;
 let tutorialMarchBot: string | null = null;
+let tutorialMiningBot: string | null = null;
 const triviaViewer = new TriviaViewer();
 const triviaStorageKey = "infra-rush-last-trivia";
 let resultTriviaIndex = -1;
@@ -411,9 +435,19 @@ function resourceSpendPop(position: Point, resource: Resource, amount: number) {
   setTimeout(() => el.remove(), 1400);
 }
 function chooseBot(id: string, context: string | null = null) {
-  if (tutorialStage === "rules" || tutorialStage === "camera") return;
+  if (
+    tutorialStage === "rules" ||
+    tutorialStage === "bridgeRules" ||
+    tutorialStage === "camera" ||
+    tutorialStage === "bridgeOptions" ||
+    tutorialStage === "returned"
+  )
+    return;
   const nextStage: Partial<Record<TutorialStage, TutorialStage>> = {
     pick: "mine",
+    pickSecond: "secondMine",
+    pickUpgrade: "upgrade",
+    pickRepair: "repair",
     pickMarch: "march",
     pickEmbank: "embank",
     pickDestroy: "destroy",
@@ -421,6 +455,10 @@ function chooseBot(id: string, context: string | null = null) {
   };
   if (tutorialStage && nextStage[tutorialStage]) {
     const bot = state.bots.find((b) => b.id === id);
+    if (tutorialStage === "pickSecond" && id === tutorialMiningBot) {
+      toast("別のBotを選ぼう");
+      return;
+    }
     if (bot?.state !== "IDLE") {
       toast("待機中のBotを選ぼう");
       return;
@@ -503,6 +541,7 @@ function prepareSolo() {
   triviaViewer.stop();
   tutorialStage = null;
   tutorialMarchBot = null;
+  tutorialMiningBot = null;
   mode = "cpu";
   soloMatchId = crypto.randomUUID();
   feedbackAnswer = null;
@@ -550,6 +589,7 @@ function startTutorial() {
   state.teams.blue.resources.stone = M.tasks.build.cost.stone! - 2;
   state.nextQuake = Number.POSITIVE_INFINITY;
   tutorialStage = "rules";
+  tutorialMiningBot = null;
   $("#hud").classList.remove("hidden");
   $("#tutorial").classList.remove("hidden");
   renderUI();
@@ -563,16 +603,27 @@ function showSoloMenu(open: boolean) {
 }
 const tutorialSteps: TutorialStage[] = [
   "rules",
+  "bridgeRules",
   "camera",
   "pick",
   "mine",
+  "pickSecond",
+  "secondMine",
   "gather",
   "bridge",
   "build",
   "construction",
+  "pickUpgrade",
+  "upgrade",
+  "upgradeWork",
+  "pickRepair",
+  "repair",
+  "repairWork",
+  "bridgeOptions",
   "pickMarch",
   "march",
   "attack",
+  "returned",
   "pickEmbank",
   "embank",
   "embankWork",
@@ -586,25 +637,20 @@ const tutorialSteps: TutorialStage[] = [
 ];
 function tutorialStepNumber(stage: TutorialStage) {
   const index = tutorialSteps.indexOf(stage);
-  return index < 1
-    ? 1
-    : index < 2
-      ? 2
-      : index < 5
-        ? 3
-        : index < 8
-          ? 4
-          : index < 11
-            ? 5
-            : index < 14
-              ? 6
-              : index < 17
-                ? 7
-                : 8;
+  if (index < tutorialSteps.indexOf("camera")) return 1;
+  if (index < tutorialSteps.indexOf("pick")) return 2;
+  if (index < tutorialSteps.indexOf("bridge")) return 3;
+  if (index < tutorialSteps.indexOf("pickMarch")) return 4;
+  if (index < tutorialSteps.indexOf("pickEmbank")) return 5;
+  if (index < tutorialSteps.indexOf("pickDestroy")) return 6;
+  if (index < tutorialSteps.indexOf("pickClear")) return 7;
+  return 8;
 }
 function tutorialAllowedAction(stage: TutorialStage | null): Action | null {
-  if (stage === "mine") return "mine";
+  if (stage === "mine" || stage === "secondMine") return "mine";
   if (stage === "build") return "build";
+  if (stage === "upgrade") return "upgrade";
+  if (stage === "repair") return "repair";
   if (stage === "march") return "march";
   if (stage === "embank") return "embank";
   if (stage === "destroy") return "destroy";
@@ -626,7 +672,11 @@ function renderTutorial() {
   const descriptions: Record<TutorialStage, [string, string]> = {
     rules: [
       "まずはゲームのルール",
-      `5体のBotで資源を集めて橋をかけ、相手の城を${M.castle.hp}回たたこう。土で道をふさぎ、橋を壊して相手を止められる。自分の道がふさがれたら、土をならして通れるようにしよう。`,
+      `5体のBotに仕事を指示し、橋を渡って相手の城を${M.castle.hp}回たたけば勝ち。6分で終わったら城の体力が多い方が勝つよ。`,
+    ],
+    bridgeRules: [
+      "3つの橋を覚えよう",
+      "手前を架けると真ん中も狙える。真ん中は早い者勝ち！ 取った橋の旗と手すりがチーム色になるよ。",
     ],
     camera: [
       "マップを見渡そう",
@@ -636,6 +686,14 @@ function renderTutorial() {
     mine: [
       "石を掘ろう",
       "作業メニューの「掘る」を押そう。練習用の石はあと2個で橋をつくれるよ。",
+    ],
+    pickSecond: [
+      "同時に仕事を頼めるよ",
+      "1体目が掘っている間に、別のBotも動かせる。待機中のBotをタップしてみよう。",
+    ],
+    secondMine: [
+      "2体目にも頼もう",
+      "もう一度「掘る」を押そう。複数のBotが同時に資源を集められるよ。",
     ],
     gather: [
       "採掘中！",
@@ -653,12 +711,41 @@ function renderTutorial() {
       "架橋中！",
       `${resourceIcon("stone")} 石${M.tasks.build.cost.stone}を使ったよ。残り${stone}。架橋機が桁を送り出す様子を見よう。`,
     ],
-    pickMarch: ["攻めるBotを選ぼう", "手前の青いBotをもう一度タップしよう。"],
+    pickUpgrade: [
+      "橋を強くしよう",
+      "橋が完成したよ。待機中のBotをタップして、橋の耐久を増やしてみよう。",
+    ],
+    upgrade: [
+      "強くする",
+      `${resourceIcon("iron")} 鉄${M.tasks.upgrade2.cost.iron}を使うよ。「強くする」を押そう。`,
+    ],
+    upgradeWork: [
+      "補強中！",
+      "鉄骨を足して、橋の耐久を2段階にするよ。次は傷んだ橋を直してみよう。",
+    ],
+    pickRepair: [
+      "傷んだ橋を直そう",
+      "練習用に橋の耐久が1つ減ったよ。待機中のBotをタップしよう。",
+    ],
+    repair: [
+      "橋を直す",
+      `${resourceIcon("iron")} 鉄${M.tasks.repair.cost.iron}で「直す」を押そう。耐久が1つ戻るよ。`,
+    ],
+    repairWork: ["修繕中！", "傷んだ部分を補修して、橋をまた丈夫にするよ。"],
+    bridgeOptions: [
+      "真ん中も狙える！",
+      "手前の橋ができたので、真ん中も架けられる。先に完成させたチームの色になり、強化・修繕もできるよ。地震では橋の耐久が1つ減る。",
+    ],
+    pickMarch: ["攻めるBotを選ぼう", "待機中の青いBotをタップしよう。"],
     march: [
       "進軍しよう！",
       "「攻める」を押すと、Botが橋を渡って相手の城へ向かうよ。",
     ],
     attack: ["城へ一直線！", "Botが城を一度たたき、シュポンと帰ってくるよ。"],
+    returned: [
+      "Botが帰ってきた！",
+      "仕事や攻撃を終えたBotは城の前へ戻る。待機中になったら、次の仕事を頼めるよ。",
+    ],
     pickEmbank: [
       "相手の道をふさごう",
       "練習用の相手の橋を用意したよ。待機中のBotをタップしよう。",
@@ -691,17 +778,18 @@ function renderTutorial() {
     clearWork: ["整地中！", "モーターグレーダーが土をならして、道を開けるよ。"],
     complete: [
       "練習クリア！",
-      "採掘、架橋、進軍、妨害と復旧までできたね！ 次はCPUとの本番だ。",
+      "複数Botの採掘、橋、進軍、道をふさぐ・橋を壊す・土をならすまでできたね！ 次はCPUとの本番だ。",
     ],
   };
   const [title, description] = descriptions[stage];
   const step = tutorialStepNumber(stage);
   html(
     "#tutorial-card",
-    `<article class="tutorial-card ${stage === "complete" ? "cleared" : ""} ${stage === "rules" || stage === "camera" ? "rules" : ""}">
+    `<article class="tutorial-card ${stage === "complete" ? "cleared" : ""} ${["rules", "bridgeRules", "camera", "bridgeOptions", "returned"].includes(stage) ? "rules" : ""}">
     <div class="tutorial-top"><span>れんしゅう <b>${step}/8</b></span><button id="tutorial-skip" type="button">${stage === "complete" ? "CPU戦へ進む" : "スキップして対戦"} ${icon("march")}</button></div>
-    <div class="tutorial-message"><span class="tutorial-emblem">${icon(stage === "mine" || stage === "gather" ? "mine" : stage === "bridge" || stage === "build" || stage === "construction" ? "build" : stage === "pickEmbank" || stage === "embank" || stage === "embankWork" ? "embank" : stage === "pickDestroy" || stage === "destroy" || stage === "destroyWork" ? "destroy" : stage === "pickClear" || stage === "clear" || stage === "clearWork" ? "clear" : stage === "rules" || stage === "pick" ? "helmet" : "march")}</span><div><h2>${title}</h2><p>${description}</p></div></div>
-    ${stage === "rules" || stage === "camera" ? `<button id="tutorial-next" type="button">${stage === "camera" ? "Botを選んでみる →" : "カメラを動かしてみる →"}</button>` : ""}
+    <div class="tutorial-message"><span class="tutorial-emblem">${icon(["mine", "pickSecond", "secondMine", "gather"].includes(stage) ? "mine" : ["bridgeRules", "bridge", "build", "construction", "pickUpgrade", "upgrade", "upgradeWork", "pickRepair", "repair", "repairWork", "bridgeOptions"].includes(stage) ? "build" : ["pickEmbank", "embank", "embankWork"].includes(stage) ? "embank" : ["pickDestroy", "destroy", "destroyWork"].includes(stage) ? "destroy" : ["pickClear", "clear", "clearWork"].includes(stage) ? "clear" : stage === "rules" || stage === "pick" ? "helmet" : "march")}</span><div><h2>${title}</h2><p>${description}</p></div></div>
+    ${stage === "bridgeRules" ? '<div class="tutorial-bridge-map" aria-label="橋の役割"><span class="own"><b>手前</b><small>自分だけ</small></span><span class="contested"><b>真ん中</b><small>早い者勝ち</small></span><span class="enemy"><b>奥</b><small>相手だけ</small></span></div>' : ""}
+    ${["rules", "bridgeRules", "camera", "bridgeOptions", "returned"].includes(stage) ? `<button id="tutorial-next" type="button">${{ rules: "橋のルールを見る →", bridgeRules: "カメラを動かしてみる →", camera: "Botを選んでみる →", bridgeOptions: "Botを進めよう →", returned: "次の仕事へ →" }[stage as "rules" | "bridgeRules" | "camera" | "bridgeOptions" | "returned"]}</button>` : ""}
     ${stage === "complete" ? '<button id="tutorial-home" type="button">タイトルへ戻る</button>' : ""}
     <div class="tutorial-progress" aria-label="練習の進み具合 ${step}/8">${Array.from({ length: 8 }, (_, i) => `<i class="${i < step ? "done" : ""}"></i>`).join("")}</div>
   </article>`,
@@ -721,15 +809,29 @@ function renderTutorial() {
   const guide = $("#tutorial-guide");
   let point: { x: number; y: number } | null = null;
   if (
-    ["pick", "pickMarch", "pickEmbank", "pickDestroy", "pickClear"].includes(
-      stage,
-    )
+    [
+      "pick",
+      "pickSecond",
+      "pickUpgrade",
+      "pickRepair",
+      "pickMarch",
+      "pickEmbank",
+      "pickDestroy",
+      "pickClear",
+    ].includes(stage)
   ) {
-    const bot = state.bots.find((b) => b.team === "blue" && b.state === "IDLE");
+    const bot = state.bots.find(
+      (b) =>
+        b.team === "blue" &&
+        b.state === "IDLE" &&
+        (stage !== "pickSecond" || b.id !== tutorialMiningBot),
+    );
     if (bot) point = world.project(bot.position, 1);
   } else if (
     stage === "bridge" ||
     stage === "construction" ||
+    stage === "upgradeWork" ||
+    stage === "repairWork" ||
     stage === "clearWork"
   ) {
     const bridge = state.bridges.find((b) => b.id === "blue")!;
@@ -754,14 +856,31 @@ function checkTutorialProgress() {
   else if (
     tutorialStage === "construction" &&
     state.bridges.find((b) => b.id === "blue")?.level
+  ) {
+    state.teams.blue.resources.iron = Math.max(
+      state.teams.blue.resources.iron,
+      M.tasks.upgrade2.cost.iron + M.tasks.repair.cost.iron,
+    );
+    setTutorialStage("pickUpgrade");
+  } else if (
+    tutorialStage === "upgradeWork" &&
+    state.bridges.find((b) => b.id === "blue")?.capacity === 2
+  ) {
+    const bridge = state.bridges.find((b) => b.id === "blue")!;
+    bridge.level = 1;
+    bridge.damage = 1;
+    setTutorialStage("pickRepair");
+  } else if (
+    tutorialStage === "repairWork" &&
+    state.bridges.find((b) => b.id === "blue")?.level === 2
   )
-    setTutorialStage("pickMarch");
+    setTutorialStage("bridgeOptions");
   else if (
     tutorialStage === "attack" &&
     state.teams.blue.stats.attacks > 0 &&
     state.bots.find((b) => b.id === tutorialMarchBot)?.state === "IDLE"
   )
-    prepareTutorialSabotage();
+    setTutorialStage("returned");
   else if (
     tutorialStage === "embankWork" &&
     state.bridges.find((b) => b.id === "red")?.blockedBy === "blue"
@@ -1127,13 +1246,18 @@ function doAction(action: Action | "cancel") {
     }
   }
   sound.play("command");
-  if (tutorialStage === "mine") setTutorialStage("gather");
+  if (tutorialStage === "mine") {
+    tutorialMiningBot = selected;
+    setTutorialStage("pickSecond");
+  } else if (tutorialStage === "secondMine") setTutorialStage("gather");
   else if (tutorialStage === "build") {
     const bridge = state.bridges.find((b) => b.id === target);
     if (bridge)
       resourceSpendPop([bridge.x, 0], "stone", M.tasks.build.cost.stone);
     setTutorialStage("construction");
-  } else if (tutorialStage === "march") {
+  } else if (tutorialStage === "upgrade") setTutorialStage("upgradeWork");
+  else if (tutorialStage === "repair") setTutorialStage("repairWork");
+  else if (tutorialStage === "march") {
     tutorialMarchBot = selected;
     setTutorialStage("attack");
   } else if (tutorialStage === "embank") setTutorialStage("embankWork");
@@ -1294,7 +1418,7 @@ function showHelp() {
   clearTimeout(modalCloseTimer);
   $("#modal").classList.remove("hidden", "leaving");
   $("#modal").innerHTML =
-    `<article class="dialog"><div class="eyebrow">あそびかた</div><h2>橋をつくって、相手の城へ！</h2><p>5体のBotに仕事をお願いしよう。<br>相手の城に${M.castle.hp}回たどり着けば勝ち。</p><div class="guide-steps"><div>${icon("mine")}<b>01 掘る</b><p>Botをタップして「掘る」。<br>石・土・鉄を集めよう。</p></div><div>${icon("build")}<b>02 橋をつくる</b><p>石が50あれば橋をつくれる。<br>真ん中の橋は現地をタップ。</p></div><div>${icon("march")}<b>03 攻める</b><p>橋ができたら「攻める」。<br>城を一度たたいて戻るよ。</p></div></div><p class="guide-extra">土を盛って相手の道をふさいだり、重機で土をどけて自分の道を開いたりできるよ。橋を強くする・直す・壊す作業もできる。資源が足りない行動は灰色になるよ。</p><p class="guide-extra">途中でやめられるのは「掘る」だけ。地震に備えて橋を直しながら、6分以内に攻めよう。</p><button id="modal-close" class="primary">わかった！ ${icon("march")}</button><small class="keyboard-note">ドラッグで移動、ピンチ・ホイールで拡大縮小、2本指・右ドラッグで回転。PCは1〜5でBot選択、Escで閉じる。</small></article>`;
+    `<article class="dialog"><div class="eyebrow">あそびかた</div><h2>橋をつくって、相手の城へ！</h2><p>5体のBotに仕事をお願いしよう。<br>相手の城に${M.castle.hp}回たどり着けば勝ち。</p><div class="guide-steps"><div>${icon("mine")}<b>01 掘る</b><p>Botをタップして「掘る」。<br>複数のBotに同時に頼めるよ。</p></div><div>${icon("build")}<b>02 橋をつくる</b><p>石が50あれば橋をつくれる。<br>真ん中の橋は早い者勝ち！</p></div><div>${icon("march")}<b>03 攻める</b><p>橋ができたら「攻める」。<br>仕事を終えたBotは城へ戻るよ。</p></div></div><p class="guide-extra">手前の橋は自分だけ、奥の橋は相手だけが架けられる。手前を架けると中央も狙える。橋の旗と手すりの色で持ち主を見分けよう。</p><p class="guide-extra">相手の道は「道をふさぐ」「橋を壊す」で妨害できる。自分の橋は「土をならす」「直す」で復旧し、「強くする」で耐久を増やせる。地震でも橋の耐久が1つ減るよ。</p><p class="guide-extra">途中でやめられるのは「掘る」だけ。6分で時間切れなら、城の体力が多い方が勝つ。</p><button id="modal-close" class="primary">わかった！ ${icon("march")}</button><small class="keyboard-note">ドラッグで移動、ピンチ・ホイールで拡大縮小、2本指・右ドラッグで回転。PCは1〜5でBot選択、Escで閉じる。</small></article>`;
 }
 function showPause() {
   paused = true;
@@ -1631,7 +1755,17 @@ app.addEventListener("click", (e) => {
         break;
       case "tutorial-next":
         sound.play("ui");
-        setTutorialStage(tutorialStage === "rules" ? "camera" : "pick");
+        if (tutorialStage === "returned") prepareTutorialSabotage();
+        else {
+          const next: Partial<Record<TutorialStage, TutorialStage>> = {
+            rules: "bridgeRules",
+            bridgeRules: "camera",
+            camera: "pick",
+            bridgeOptions: "pickMarch",
+          };
+          if (tutorialStage && next[tutorialStage])
+            setTutorialStage(next[tutorialStage]!);
+        }
         break;
       case "review-map":
         sound.play("ui");
@@ -1992,10 +2126,15 @@ try {
   };
   let stallTimer: ReturnType<typeof setTimeout> | undefined;
   let rejectStall: (reason: Error) => void = () => {};
-  const stalled = new Promise<never>((_, reject) => { rejectStall = reject; });
+  const stalled = new Promise<never>((_, reject) => {
+    rejectStall = reject;
+  });
   const resetStallTimer = () => {
     if (stallTimer) clearTimeout(stallTimer);
-    stallTimer = setTimeout(() => rejectStall(new Error("Asset load stalled")), 60000);
+    stallTimer = setTimeout(
+      () => rejectStall(new Error("Asset load stalled")),
+      60000,
+    );
   };
   resetStallTimer();
   try {

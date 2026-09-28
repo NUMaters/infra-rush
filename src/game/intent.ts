@@ -45,16 +45,20 @@ export function resolveTaskTarget(
       ) ?? team
     );
   }
-  if (context && (context === "center" || context === team)) {
-    const center = state.bridges.find((bridge) => bridge.id === context);
-    if (
-      center &&
-      !center.lock &&
-      (action === "build"
-        ? !center.level
-        : center.owner === team && center.level > 0)
-    )
-      return context;
-  }
+  // A bridge tap is an explicit target. Never silently redirect its command
+  // to the home bridge when that site changes while the panel is open.
+  if (context === "center" || context === team) return context;
+  const home = state.bridges.find((bridge) => bridge.id === team);
+  const center = state.bridges.find((bridge) => bridge.id === "center");
+  if (action === "build" && home?.level && center && !center.level)
+    return "center";
+  if (
+    (action === "upgrade" || action === "repair") &&
+    home?.lock &&
+    center?.owner === team &&
+    center.level > 0 &&
+    !center.lock
+  )
+    return "center";
   return team;
 }

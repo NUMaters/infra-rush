@@ -93,6 +93,33 @@ test("map bridge taps expose central reinforcement and pre-construction embankme
     (await page.evaluate(() => window.infraQA.snapshot())).bridges[2],
   ).toMatchObject({ level: 0, blockedBy: "blue" });
 });
+
+test("Bot menu builds the contested bridge when home bridge is busy", async ({
+  page,
+}) => {
+  await page.goto("/?qa");
+  await expect(page.locator("#start")).toBeVisible({ timeout: 60000 });
+  await page.locator("#start").click();
+  await page.locator("#cpu-start").click();
+  await expect(page.locator("#match-intro")).toBeHidden({ timeout: 15000 });
+  await page.evaluate(() => {
+    window.infraQA.setCpuEnabled(false);
+    window.infraQA.setResources("blue", { stone: 100 });
+    window.infraQA.setBridge("blue", {
+      owner: "blue",
+      level: 1,
+      capacity: 1,
+      lock: "blue-1",
+    });
+  });
+  await page.keyboard.press("1");
+  await expect(page.locator('[data-action="build"]')).toBeEnabled();
+  await page.locator('[data-action="build"]').click();
+  const selected = await page.evaluate(() =>
+    window.infraQA.snapshot().bots.find((worker) => worker.id === "blue-0"),
+  );
+  expect(selected?.target).toBe("center");
+});
 async function selectBot(page: Page, index: number) {
   if (await page.locator("#close-panel").isVisible()) {
     await page.keyboard.press("Escape");

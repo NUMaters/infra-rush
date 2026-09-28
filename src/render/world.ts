@@ -199,6 +199,8 @@ export class World {
     {
       stone: T.Group;
       steel: T.Group;
+      ownerRails: T.Group;
+      ownerPaint: T.MeshBasicMaterial;
       mound: T.Group;
       cracks: T.Group;
       exposed: T.Group;
@@ -386,7 +388,13 @@ export class World {
             if (material.map) {
               material.emissive.set(0xffffff);
               material.emissiveMap = material.map;
-              material.emissiveIntensity = 0.22;
+              material.emissiveIntensity = n.startsWith("excavator")
+                ? 0.48
+                : 0.22;
+            }
+            if (n.startsWith("excavator") && !material.transparent) {
+              material.metalness = Math.min(material.metalness, 0.12);
+              material.roughness = Math.max(material.roughness, 0.62);
             }
             material.needsUpdate = true;
           }
@@ -440,7 +448,8 @@ export class World {
         // Supplied vehicles have many tightly layered parts. Receiving their
         // own shadows turns the cab and body almost black at the game camera.
         // Keep their ground shadows, but light the painted surfaces directly.
-        o.receiveShadow = !/^(excavator|dozer|grader|launcher|drill)(-red)?$/.test(name);
+        o.receiveShadow =
+          !/^(excavator|dozer|grader|launcher|drill)(-red)?$/.test(name);
         const mat = o.material as T.MeshStandardMaterial;
         if (
           mat.name === "team" ||
@@ -848,6 +857,39 @@ export class World {
       stone.position.set(site.x, 0.42, 0);
       steel.position.copy(stone.position);
       stone.visible = steel.visible = false;
+      const ownerRails = new T.Group();
+      ownerRails.position.x = site.x;
+      ownerRails.visible = false;
+      const ownerPaint = new T.MeshBasicMaterial({
+        color: TEAM.blue,
+        side: T.DoubleSide,
+        toneMapped: false,
+      });
+      for (const x of [-1.32, 1.32]) {
+        const rail = new T.Mesh(new T.BoxGeometry(0.13, 0.13, 7.5), ownerPaint);
+        rail.position.set(x, 1.12, 0);
+        ownerRails.add(rail);
+        for (const z of [-3.35, 0, 3.35]) {
+          const post = new T.Mesh(
+            new T.BoxGeometry(0.16, 0.58, 0.16),
+            ownerPaint,
+          );
+          post.position.set(x, 0.84, z);
+          ownerRails.add(post);
+        }
+        const pennant = new T.Mesh(
+          new T.BufferGeometry().setAttribute(
+            "position",
+            new T.Float32BufferAttribute(
+              [x, 1.85, 0, x, 1.5, 0, x + (x < 0 ? -0.65 : 0.65), 1.7, 0],
+              3,
+            ),
+          ),
+          ownerPaint,
+        );
+        ownerRails.add(pennant);
+      }
+      this.scene.add(ownerRails);
       for (const obj of [stone, steel])
         obj.traverse((o) => {
           if (o instanceof T.Mesh && (o.material as T.Material).name === "team")
@@ -937,6 +979,8 @@ export class World {
       this.bridges.set(site.id, {
         stone,
         steel,
+        ownerRails,
+        ownerPaint,
         mound,
         cracks,
         exposed,
@@ -1413,8 +1457,12 @@ export class World {
         }
       if (a.rig) {
         a.rig.position.copy(a.bot.position);
-        if (attractMode && b.action === "mine" && b.state === "MINING")
+        // The quarry rock wall otherwise hides the cab and painted chassis.
+        // Park the tracks on the open path while the bucket reaches the rock.
+        if (b.action === "mine" && b.state === "MINING") {
           a.rig.position.x += b.team === "blue" ? -1.5 : 1.5;
+          a.rig.position.z += b.team === "red" ? -1.8 : 0.5;
+        }
         // Heavy machines pivot on their tracks, so they turn more slowly.
         const rigHeading = moving
           ? a.heading
@@ -1549,6 +1597,8 @@ export class World {
       }
       view.stone.visible = b.level > 0 && b.capacity === 1;
       view.steel.visible = b.level > 0 && b.capacity >= 2;
+      view.ownerRails.visible = b.level > 0 && !!b.owner;
+      if (b.owner) view.ownerPaint.color.setHex(TEAM[b.owner]);
       view.debris.visible = b.level === 0 && b.damage > 0;
       view.cracks.visible = b.damage > 0 && b.level > 0;
       view.cracks.scale.x = b.damage === 2 ? 1.6 : 1;

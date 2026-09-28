@@ -24,6 +24,25 @@ describe("automatic construction targets", () => {
     expect(resolveTaskTarget(s, "blue", "embank", "center")).toBe("red");
     expect(resolveTaskTarget(s, "blue", "build")).toBe("blue");
   });
+  it("offers the contested bridge from a Bot after the home bridge is built", () => {
+    const s = createGame();
+    const home = s.bridges.find((bridge) => bridge.id === "blue")!;
+    const center = s.bridges.find((bridge) => bridge.id === "center")!;
+    home.owner = "blue";
+    home.level = home.capacity = 1;
+    home.lock = "blue-1";
+    s.teams.blue.resources.stone = 100;
+    expect(resolveTaskTarget(s, "blue", "build")).toBe("center");
+    expect(
+      canCommand(s, "blue", {
+        botId: "blue-0",
+        action: "build",
+        target: resolveTaskTarget(s, "blue", "build"),
+      }),
+    ).toBeNull();
+    center.lock = "blue-2";
+    expect(resolveTaskTarget(s, "blue", "build", "center")).toBe("center");
+  });
   it("allows sabotage beside work on the central bridge and falls back only when already blocked", () => {
     const s = createGame();
     const center = s.bridges.find((bridge) => bridge.id === "center")!;
