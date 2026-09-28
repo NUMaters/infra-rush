@@ -34,7 +34,7 @@ PNG は `.qa-preview/opening-frames` と `.qa-preview/opening-cut` に生成さ�
 
 ## 映像制作用のキャラ・重機一覧画像
 
-[`assets/opening-reference/infra-rush-character-vehicle-sheet.png`](../assets/opening-reference/infra-rush-character-vehicle-sheet.png) は現在の `public/models` にある作業Bot、油圧ショベル、ブルドーザー、モーターグレーダー、掘削機、架橋機を一枚に並べた参照画像。各モデルの3/4・正面・側面を収録する。映像のカット設計やキャラデザインの確認に使う。これはメッシュのUV展開図ではない。
+[`assets/opening-reference/全素材.png`](../assets/opening-reference/全素材.png) は現在の `public/models` にある作業Bot、油圧ショベル、ブルドーザー、モーターグレーダー、掘削機、架橋機を一枚に並べた参照画像。各モデルの3/4・正面・側面を収録する。映像のカット設計やキャラデザインの確認に使う。これはメッシュのUV展開図ではない。
 
 モデル更新後は次のコマンドで再生成する。
 

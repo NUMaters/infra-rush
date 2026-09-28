@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent
-OUT = ROOT / "infra-rush-character-vehicle-sheet.png"
+OUT = ROOT / "全素材.png"
 FONT = "/Library/Fonts/Arial Unicode.ttf"
 W, H = 4096, 2780
 BG = (236, 248, 251, 255)
