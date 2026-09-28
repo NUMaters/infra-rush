@@ -1,4 +1,5 @@
-const CACHE = "infra-rush-v9";
+const CACHE = "infra-rush-v10";
+const PREVIOUS_SHELL = `${CACHE}-previous-shell`;
 const ROOT = new URL(self.registration.scope);
 const OPENING_MOVIE = new URL("media/opening-gemini-77f0d820-hd.mp4", ROOT).href;
 const OPENING_POSTER = new URL("media/opening-gemini-77f0d820-hd-poster.webp", ROOT).href;
@@ -81,12 +82,29 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    Promise.all([
-      caches.keys().then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))),
-      ),
-      self.clients.claim(),
-    ]),
+    (async () => {
+      const keys = await caches.keys();
+      const previous = keys
+        .filter((key) => /^infra-rush-v\d+$/.test(key) && key !== CACHE)
+        .sort((a, b) => Number(b.match(/\d+$/)[0]) - Number(a.match(/\d+$/)[0]))[0];
+      if (previous) {
+        // A page opened just before activation may still reference its old
+        // hashed JS/CSS. Keep only that shell until the next SW update.
+        const oldCache = await caches.open(previous);
+        const shellCache = await caches.open(PREVIOUS_SHELL);
+        const requests = await oldCache.keys();
+        await Promise.all(requests.filter((request) => {
+          const path = new URL(request.url).pathname;
+          return path.startsWith(new URL("assets/", ROOT).pathname) && /\.(?:js|css)$/.test(path);
+        }).map(async (request) => {
+          const response = await oldCache.match(request);
+          if (response) await shellCache.put(request, response);
+        }));
+      }
+      await Promise.all(keys.filter((key) => key !== CACHE && key !== PREVIOUS_SHELL)
+        .map((key) => caches.delete(key)));
+      await self.clients.claim();
+    })(),
   );
 });
 
