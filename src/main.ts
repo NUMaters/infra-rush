@@ -865,7 +865,7 @@ function renderTutorial() {
     ${stage === "bridgeRules" ? `<div class="tutorial-bridge-map" aria-label="橋の役割"><span class="own ${bridgeRuleFocus === 0 ? "active" : ""}"><b>青の橋</b><small>青だけ</small></span><span class="contested ${bridgeRuleFocus === 1 ? "active" : ""}"><b>中央の橋</b><small>早い者勝ち</small></span><span class="enemy ${bridgeRuleFocus === 2 ? "active" : ""}"><b>赤の橋</b><small>赤だけ</small></span></div>` : ""}
     ${stage === "camera" ? '<div class="tutorial-gesture" aria-hidden="true"><span class="gesture-swipe">☝<small>スワイプ</small></span><span class="gesture-pinch"><i>☝</i><i>☝</i><small>広げる・閉じる</small></span></div>' : ""}
     ${["rules", "bridgeRules", "camera", "bridgeOptions", "returned"].includes(stage) ? `<button id="tutorial-next" type="button">${stage === "bridgeRules" ? (bridgeRuleFocus < 2 ? "次の橋を見る →" : "カメラを動かしてみる →") : { rules: "橋のルールを見る →", camera: "Botを選んでみる →", bridgeOptions: "Botを進めよう →", returned: "次の仕事へ →" }[stage as "rules" | "camera" | "bridgeOptions" | "returned"]}</button>` : ""}
-    ${stage === "complete" ? '<button id="tutorial-home" type="button">タイトルへ戻る</button>' : ""}
+    ${stage === "complete" ? `<button id="tutorial-home" type="button">${icon("home")}<span>タイトルへ戻る</span></button>` : ""}
     <div class="tutorial-progress" aria-label="練習の進み具合 ${step}/8">${Array.from({ length: 8 }, (_, i) => `<i class="${i < step ? "done" : ""}"></i>`).join("")}</div>
   </article>`,
   );

@@ -224,6 +224,43 @@
   font-weight: 900;
   box-shadow: 0 3px 0 #d99821;
 }
+#tutorial-home {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 46px;
+  margin-top: 8px;
+  padding: 8px 15px;
+  border: 2px solid #fff;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f7fcff, #e3f3f8);
+  color: #315e76;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 4px 0 #9fc3cd, 0 6px 14px #24536724;
+  transition:
+    transform 140ms ease,
+    filter 140ms ease,
+    box-shadow 140ms ease;
+}
+#tutorial-home svg {
+  width: 18px;
+  height: 18px;
+}
+#tutorial-home:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+#tutorial-home:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #9fc3cd;
+}
+#tutorial-home:focus-visible {
+  outline: 3px solid #ffcf42;
+  outline-offset: 2px;
+}
 .tutorial-progress {
   display: flex;
   gap: 5px;
