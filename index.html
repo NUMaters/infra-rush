@@ -55,7 +55,7 @@
         opacity: 1;
       }
       #opening-video.opening-video-fallback {
-        opacity: 0;
+        display: none;
       }
       #loading .opening-tint {
         position: absolute;
@@ -63,26 +63,6 @@
         z-index: 2;
         background: linear-gradient(180deg, transparent 68%, #0a2b5566);
         pointer-events: none;
-      }
-      #opening-play {
-        position: absolute;
-        z-index: 4;
-        left: 50%;
-        top: 65%;
-        transform: translate(-50%, -50%);
-        min-height: 48px;
-        padding: 9px 19px;
-        border: 3px solid white;
-        border-radius: 18px;
-        background: #ffcf48;
-        color: #244e68;
-        font:
-          900 16px system-ui,
-          sans-serif;
-        box-shadow: 0 4px 0 #b87825;
-      }
-      #opening-play[hidden] {
-        display: none;
       }
       #opening-skip {
         position: absolute;
@@ -203,7 +183,6 @@
           />
         </video>
         <div class="opening-tint" aria-hidden="true"></div>
-        <button id="opening-play" type="button" hidden>▶ ムービーを再生</button>
         <button id="opening-skip" type="button" hidden>スキップ →</button>
         <div class="opening-status">
           <div

@@ -323,11 +323,10 @@ h1 {
 }
 .title-tagline-art {
   display: block;
-  width: clamp(195px, 24vw, 235px);
+  width: clamp(168px, 20vw, 205px);
   height: auto;
-  margin: -12px 0 0 7px;
+  margin: -10px 0 0 8px;
   filter: drop-shadow(0 3px 3px #17415b55);
-  clip-path: polygon(0 0, 100% 0, 100% 73%, 85% 73%, 85% 100%, 0 100%);
 }
 .start-card {
   position: absolute;
@@ -2491,7 +2490,7 @@ h1 {
     left: 7%;
   }
   .title-tagline-art {
-    width: min(215px, 59vw);
+    width: min(185px, 50vw);
     margin-top: -9px;
     margin-left: 4px;
   }

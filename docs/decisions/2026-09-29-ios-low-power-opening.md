@@ -1,0 +1,3 @@
+On iOS, Low Power Mode can block autoplay of muted inline video. WebKit tracks this as an intentional power-saving behavior (bug 168985). The app cannot override that browser policy.
+
+Keep native muted/inline MP4 autoplay for devices that allow it. If playback is denied or stalls, hide the native video element so its play overlay cannot obscure the loading screen, and automatically show a small animated WebP made from the same opening footage. Keep the opening visible for at least 3.5 seconds after either medium starts. This preserves an automatic animated introduction without requiring a tap. Reduced-motion users receive the still poster.

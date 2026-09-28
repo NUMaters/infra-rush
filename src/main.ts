@@ -45,7 +45,7 @@ app.insertAdjacentHTML(
 <section id="title" class="hidden">
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
- <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><img class="title-tagline-art" src="${import.meta.env.BASE_URL}ui/title/civil-tagline.png" alt="遊んで知ろう、土木のしくみ"></div>
+ <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><img class="title-tagline-art" src="${import.meta.env.BASE_URL}ui/title/civil-tagline-v2.webp" alt="遊んで知ろう、土木のしくみ"></div>
  <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("users")}<span>みんなで遊ぶ</span>${icon("march")}</button><button id="title-trivia-open" class="title-trivia-button" type="button">${icon("book")}<span>土木の豆知識をみる</span>${icon("march")}</button><p>1ゲーム 5分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span></div>
 </section>
@@ -69,7 +69,7 @@ app.insertAdjacentHTML(
 <section id="result" class="overlay hidden"></section><div id="map-review" class="hidden" aria-label="試合終了時のマップ"><div class="map-review-bar"><span>試合終了時のマップ</span><button id="review-back" type="button">結果へ戻る</button></div><p>ドラッグで移動 · ピンチで拡大・回転</p></div><div id="scene-wipe" aria-hidden="true"></div>`,
 );
 const openingVideo = $("#opening-video") as HTMLVideoElement;
-const openingPlay = $("#opening-play") as HTMLButtonElement;
+const openingFallbackImage = $("#opening-motion-fallback") as HTMLImageElement;
 const openingSkip = $("#opening-skip") as HTMLButtonElement;
 const openingReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
@@ -123,7 +123,6 @@ const showOpeningPlayback = () => {
   if (!openingClosed && !openingFallback) {
     if (!openingPlaybackAt) openingPlaybackAt = performance.now();
     openingVideo.classList.add("opening-video-moving");
-    openingPlay.hidden = true;
     lastOpeningAdvance = performance.now();
   }
 };
@@ -132,17 +131,6 @@ openingSkip.addEventListener("click", () => {
 });
 openingVideo.addEventListener("playing", showOpeningPlayback);
 openingVideo.addEventListener("timeupdate", showOpeningPlayback);
-openingPlay.addEventListener("click", () => {
-  openingVideo.muted = true;
-  openingVideo.setAttribute("playsinline", "");
-  openingVideo.setAttribute("webkit-playsinline", "");
-  void openingVideo
-    .play()
-    .then(showOpeningPlayback)
-    .catch(() => {
-      openingPlay.hidden = false;
-    });
-});
 const releaseOpeningVideo = () => {
   ++frameObserver;
   openingVideo.pause();
@@ -153,7 +141,10 @@ const releaseOpeningVideo = () => {
 const useOpeningFallback = () => {
   if (openingFallback || openingClosed) return;
   openingFallback = true;
+  openingPlaybackAt = performance.now();
   if (openingWatchdog) clearInterval(openingWatchdog);
+  if (!openingReducedMotion)
+    openingFallbackImage.src = `${openingMediaRoot}-low-power.webp`;
   openingVideo.classList.add("opening-video-fallback");
   releaseOpeningVideo();
 };
@@ -169,7 +160,7 @@ const playOpening = (quality: OpeningQuality) => {
   void openingVideo.play().catch((error: unknown) => {
     if (openingClosed || openingFallback || attempt !== openingAttempt) return;
     if (error instanceof DOMException && error.name === "NotAllowedError")
-      openingPlay.hidden = false;
+      useOpeningFallback();
     else if (quality === "lite") useOpeningFallback();
     else playOpening("lite");
   });
@@ -181,7 +172,6 @@ openingVideo.addEventListener("error", () => {
 });
 const stopOpening = () => {
   openingClosed = true;
-  openingPlay.hidden = true;
   openingSkip.hidden = true;
   if (openingWatchdog) clearInterval(openingWatchdog);
   releaseOpeningVideo();
@@ -207,7 +197,7 @@ const waitForOpeningStart = () => {
 const waitForOpeningPresentation = async () => {
   openingSkip.hidden = false;
   const deadline = performance.now() + 10000;
-  while (!openingSkipped && !openingFallback && performance.now() < deadline) {
+  while (!openingSkipped && performance.now() < deadline) {
     if (openingPlaybackAt && performance.now() - openingPlaybackAt >= 3500)
       break;
     await new Promise<void>((resolve) => setTimeout(resolve, 100));
@@ -218,20 +208,34 @@ const firstQuality: OpeningQuality = firstSource.includes("-lite.mp4")
   ? "lite"
   : firstSource.includes("-md.mp4")
     ? "md"
-    : "hd";
+    : firstSource.includes("-hd.mp4")
+      ? "hd"
+      : mobile
+        ? "lite"
+        : "hd";
 if (openingReducedMotion) {
   useOpeningFallback();
 } else {
-  if (firstSource && firstQuality === openingQuality) {
+  if (openingVideo.querySelector("source") && firstQuality === openingQuality) {
     const attempt = ++openingAttempt;
     observeOpeningFrames();
-    void openingVideo.play().catch((error: unknown) => {
-      if (openingClosed || openingFallback || attempt !== openingAttempt)
+    // Let Safari's HTML autoplay settle before trying play() from script.
+    setTimeout(() => {
+      if (
+        openingClosed ||
+        openingFallback ||
+        attempt !== openingAttempt ||
+        !openingVideo.paused
+      )
         return;
-      if (error instanceof DOMException && error.name === "NotAllowedError")
-        openingPlay.hidden = false;
-      else playOpening("lite");
-    });
+      void openingVideo.play().catch((error: unknown) => {
+        if (openingClosed || openingFallback || attempt !== openingAttempt)
+          return;
+        if (error instanceof DOMException && error.name === "NotAllowedError")
+          useOpeningFallback();
+        else playOpening("lite");
+      });
+    }, 700);
   } else playOpening(openingQuality);
   openingWatchdog = setInterval(() => {
     if (openingClosed || openingFallback || document.hidden) {
@@ -243,10 +247,8 @@ if (openingReducedMotion) {
       lastOpeningAdvance = performance.now();
       openingVideo.classList.add("opening-video-moving");
     } else if (performance.now() - lastOpeningAdvance > 3000) {
-      if (openingQuality === "lite") {
-        openingPlay.hidden = false;
-        lastOpeningAdvance = performance.now();
-      } else playOpening("lite");
+      if (openingQuality === "lite") useOpeningFallback();
+      else playOpening("lite");
     }
   }, 1000);
 }
