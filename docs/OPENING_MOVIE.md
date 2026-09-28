@@ -1,15 +1,15 @@
 # オープニングムービー
 
-ゲーム起動時に、ユーザーが採用した `gemini_generated_video_77f0d820.mp4` を読み込み中の演出として再生する。配信用に音声を除き、**960×540・20fps・10秒・H.264** へ圧縮したものが `public/media/opening-gemini-77f0d820.mp4`。2秒付近の映像を静止画にした `public/media/opening-gemini-77f0d820-poster.webp` を代替表示に使う。映像は読み込み中だけループし、ゲームの読み込みが終わった時点でタイトル画面に切り替える。映像の再生開始や終了は待たない。再生できない場合や動きを減らす設定では静止画を表示する。
+ゲーム起動時に、ユーザーが採用した `gemini_generated_video_77f0d820.mp4` を読み込み中の演出として再生する。配信用に**1280×720・24fps・10秒・H.264** の映像を再圧縮せず、音声だけ除去したものが `public/media/opening-gemini-77f0d820-hd.mp4`。2秒付近の映像を静止画にした `public/media/opening-gemini-77f0d820-hd-poster.webp` を代替表示に使う。映像は読み込み中だけループし、ゲームの読み込みが終わった時点でタイトル画面に切り替える。映像の再生開始や終了は待たない。再生できない場合や動きを減らす設定では静止画を表示する。
 
-動画内ではBotが現場を走り、ショベルとブルドーザーの作業から架橋、Botの進軍へ移る。画面上の短いカットインはこの映像の流れに合わせて `src/main.ts` で切り替える。エフェクトと文字の表示は `src/style.css` にあり、動きを減らす設定では停止する。
+動画内ではBotが現場を走り、ショベルとブルドーザーの作業から架橋、Botの進軍へ移る。動画上に掛け声やロゴのカットインは重ねず、読み込み表示だけを下部に置く。
 
 元動画は `Downloads/gemini_generated_video_77f0d820.mp4`。配信用動画の生成コマンド:
 
 ```sh
-ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -vf 'scale=960:540:flags=lanczos,fps=20' -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -movflags +faststart -an public/media/opening-gemini-77f0d820.mp4
+ffmpeg -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -map 0:v:0 -c:v copy -movflags +faststart -an public/media/opening-gemini-77f0d820-hd.mp4
 ffmpeg -ss 2 -i ~/Downloads/gemini_generated_video_77f0d820.mp4 -frames:v 1 /tmp/infra-rush-opening-poster.png
-cwebp -q 82 /tmp/infra-rush-opening-poster.png -o public/media/opening-gemini-77f0d820-poster.webp
+cwebp -q 90 /tmp/infra-rush-opening-poster.png -o public/media/opening-gemini-77f0d820-hd-poster.webp
 ```
 
 ## 旧Blender版の制作手順

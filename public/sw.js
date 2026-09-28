@@ -1,7 +1,7 @@
-const CACHE = "infra-rush-v8";
+const CACHE = "infra-rush-v9";
 const ROOT = new URL(self.registration.scope);
-const OPENING_MOVIE = new URL("media/opening-gemini-77f0d820.mp4", ROOT).href;
-const OPENING_POSTER = new URL("media/opening-gemini-77f0d820-poster.webp", ROOT).href;
+const OPENING_MOVIE = new URL("media/opening-gemini-77f0d820-hd.mp4", ROOT).href;
+const OPENING_POSTER = new URL("media/opening-gemini-77f0d820-hd-poster.webp", ROOT).href;
 
 async function openingRange(request) {
   const cached = await (await caches.open(CACHE)).match(OPENING_MOVIE);

@@ -40,12 +40,9 @@ function html(selector: string, markup: string) {
 }
 const app = $("#app");
 app.innerHTML = `<main id="world"></main><div id="vignette"></div>
-<section id="loading" data-shot="0" aria-label="ゲームを読み込み中" style="background-image:url('${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-poster.webp')">
- <video id="opening-video" class="opening-video" src="${import.meta.env.BASE_URL}media/opening-gemini-77f0d820.mp4" poster="${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-poster.webp" muted autoplay playsinline loop preload="auto" aria-hidden="true"></video>
+<section id="loading" aria-label="ゲームを読み込み中" style="background-image:url('${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-hd-poster.webp')">
+ <video id="opening-video" class="opening-video" src="${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-hd.mp4" poster="${import.meta.env.BASE_URL}media/opening-gemini-77f0d820-hd-poster.webp" muted autoplay playsinline loop preload="auto" aria-hidden="true"></video>
  <div class="opening-tint" aria-hidden="true"></div>
- <div class="opening-impact" aria-hidden="true"></div>
- <div class="opening-brand" aria-hidden="true">INFRA <b>RUSH!</b><span>オープニング</span></div>
- <div class="opening-caption" aria-hidden="true"><span class="cut-in">出動！</span></div>
  <div class="opening-status"><div class="match-spinner loading-spinner" role="progressbar" aria-label="読み込み中" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div><p>読み込み中…</p><div class="opening-progress" aria-hidden="true"><span></span></div></div>
 </section>
 <section id="title" class="hidden">
@@ -77,55 +74,8 @@ const openingVideo = $("#opening-video") as HTMLVideoElement;
 const openingReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
 ).matches;
-let openingClosed = false;
-const openingBeats = [
-  { until: 2.5, caption: "出動！" },
-  { until: 5, caption: "掘れ！" },
-  { until: 7.5, caption: "橋をつなげ！" },
-  { until: 10, caption: "GO！" },
-];
-const syncOpeningBeat = () => {
-  const beat = openingBeats.findIndex(
-    ({ until }) => openingVideo.currentTime < until,
-  );
-  const shot = Math.max(0, beat);
-  const loading = $("#loading");
-  const caption = $("#loading .opening-caption span");
-  const next = openingBeats[shot].caption;
-  if (caption.textContent !== next) {
-    caption.textContent = next;
-    caption.classList.remove("cut-in");
-    caption.classList.toggle("quick", shot >= 4);
-    void caption.offsetWidth;
-    caption.classList.add("cut-in");
-    loading.dataset.shot = String(shot % 4);
-    if (shot <= 4) {
-      const impact = $("#loading .opening-impact");
-      impact.classList.remove("hit");
-      void impact.offsetWidth;
-      impact.classList.add("hit");
-      loading.classList.remove("opening-kick");
-      void loading.offsetWidth;
-      loading.classList.add("opening-kick");
-    }
-  }
-};
-const showOpeningPoster = () => {
-  $("#loading").dataset.shot = "0";
-  const caption = $("#loading .opening-caption span");
-  caption.textContent = "出動！";
-  caption.classList.remove("cut-in");
-};
-if (openingVideo.requestVideoFrameCallback) {
-  const onVideoFrame = () => {
-    syncOpeningBeat();
-    if (!openingClosed) openingVideo.requestVideoFrameCallback(onVideoFrame);
-  };
-  openingVideo.requestVideoFrameCallback(onVideoFrame);
-} else openingVideo.addEventListener("timeupdate", syncOpeningBeat);
 const useOpeningPoster = () => {
   openingVideo.classList.add("opening-video-fallback");
-  showOpeningPoster();
 };
 openingVideo.addEventListener("error", () => {
   useOpeningPoster();
@@ -133,7 +83,6 @@ openingVideo.addEventListener("error", () => {
 if (openingReducedMotion) {
   openingVideo.removeAttribute("autoplay");
   openingVideo.pause();
-  showOpeningPoster();
 } else void openingVideo.play().catch(useOpeningPoster);
 let state = createGame();
 let cpu = new CPU();
@@ -1950,7 +1899,6 @@ try {
     setTimeout(resolve, openingReducedMotion ? 0 : 700),
   );
   $("#loading").classList.add("hidden");
-  openingClosed = true;
   openingVideo.pause();
   $("#title").classList.remove("title-arriving");
   if (
@@ -2047,7 +1995,6 @@ try {
   }
 } catch (error) {
   console.error(error);
-  openingClosed = true;
   openingVideo.pause();
   $("#loading").classList.add("opening-failed");
   const loadingFailed =
