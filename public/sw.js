@@ -1,4 +1,4 @@
-const CACHE = "infra-rush-v6";
+const CACHE = "infra-rush-v7";
 const ROOT = new URL(self.registration.scope);
 const OPENING_MOVIE = new URL("media/opening.mp4", ROOT).href;
 

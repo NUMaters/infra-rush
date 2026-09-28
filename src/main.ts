@@ -79,14 +79,10 @@ const openingReducedMotion = window.matchMedia(
 ).matches;
 let openingClosed = false;
 const openingBeats = [
-  { until: 1.5, caption: "出動！" },
-  { until: 3, caption: "ズドン！" },
-  { until: 4.5, caption: "ドドド！" },
-  { until: 6, caption: "橋がドーン！" },
-  { until: 6.5, caption: "GO！" },
-  { until: 7, caption: "掘れ！" },
-  { until: 7.5, caption: "押せ！" },
-  { until: 8, caption: "つながった！" },
+  { until: 2.5, caption: "出動！" },
+  { until: 5, caption: "掘れ！" },
+  { until: 7.5, caption: "橋をつなげ！" },
+  { until: 10, caption: "GO！" },
 ];
 const syncOpeningBeat = () => {
   const beat = openingBeats.findIndex(
@@ -115,9 +111,9 @@ const syncOpeningBeat = () => {
   }
 };
 const showOpeningPoster = () => {
-  $("#loading").dataset.shot = "1";
+  $("#loading").dataset.shot = "0";
   const caption = $("#loading .opening-caption span");
-  caption.textContent = "ズドン！";
+  caption.textContent = "出動！";
   caption.classList.remove("cut-in");
 };
 if (openingVideo.requestVideoFrameCallback) {
