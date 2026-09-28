@@ -1,6 +1,6 @@
 # オープニングムービー
 
-ゲーム起動時に、実際に配信している GLB を Blender に読み込んで撮影した 8 秒の映像を再生する。最初の映像フレームに表示の機会を与えてから重い3D読み込みを始める。映像は読み込みが終わるまでループし、初回の再生フレームと終盤の再生位置を確認してから従来のタイトル画面に切り替える。起動からの経過時間だけでは切り替えない。再生が禁止・停止・失敗した場合は、ポスターと「ムービーを再生」「タイトルへ進む」を表示する。動きを減らす設定では静止画を表示し、追加待機をしない。
+ゲーム起動時に、実際に配信している GLB を Blender に読み込んで撮影した 8 秒の映像を読み込み中の演出として再生する。映像は読み込み中だけループし、ゲームの読み込みが終わった時点でタイトル画面に切り替える。映像の再生開始や終了は待たない。再生できない場合や動きを減らす設定では静止画を表示する。
 
 カメラを低く近づけて各モデルの大きさを見せる。掘削・押し出し・橋の接続では、可動部に合わせて破片、衝撃の輪、短いカメラの寄りをキーフレームで撮影する。`scripts/edit-opening.mjs` で4場面をテンポよくつなぎ、最後の2秒は0.5秒ごとに見せ場を連続させる。カットの境目には大きな効果音風の文字と短い画面演出を重ねる。これらの画面演出は `src/main.ts` と `src/style.css` にあり、動きを減らす設定では停止する。
 
@@ -31,3 +31,14 @@ cwebp -q 78 .qa-preview/opening-frames/frame-0063.png -o public/media/opening-po
 特定のカットだけ撮り直す場合は、Blender コマンドの最後に `-- --frames=121-160` のようにフレーム範囲を指定してから、編集とエンコードを再実行する。
 
 PNG は `.qa-preview/opening-frames` と `.qa-preview/opening-cut` に生成され、Git には含めない。配信する映像と静止画は `public/media` に配置する。動画は音声なしで自動再生し、既存のタイトル BGM が切り替え時に再生される。Service Worker は動画を事前キャッシュし、オフライン時の Range リクエストにも部分応答する。
+
+## 映像制作用のキャラ・重機一覧画像
+
+[`assets/opening-reference/infra-rush-character-vehicle-sheet.png`](../assets/opening-reference/infra-rush-character-vehicle-sheet.png) は現在の `public/models` にある作業Bot、油圧ショベル、ブルドーザー、モーターグレーダー、掘削機、架橋機を一枚に並べた参照画像。各モデルの3/4・正面・側面を収録する。映像のカット設計やキャラデザインの確認に使う。これはメッシュのUV展開図ではない。
+
+モデル更新後は次のコマンドで再生成する。
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender -b -t 4 --python assets/blender/render_opening_reference.py
+python3 assets/opening-reference/compose_sheet.py
+```

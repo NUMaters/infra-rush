@@ -15,3 +15,4 @@ playwright-report/
 test-results/
 *.tsbuildinfo
 *.blend1
+assets/opening-reference/renders/
