@@ -261,13 +261,9 @@ button:not(:disabled):active {
 #title:not(.hidden) .logo {
   animation: logo-land 640ms cubic-bezier(0.17, 1.48, 0.31, 1) both;
 }
-#title:not(.hidden) .title-copy h1,
-#title:not(.hidden) .title-copy p {
+#title:not(.hidden) .title-tagline {
   animation: rise-in 430ms cubic-bezier(0.19, 1.35, 0.35, 1) both;
   animation-delay: 130ms;
-}
-#title:not(.hidden) .title-copy p {
-  animation-delay: 205ms;
 }
 #title:not(.hidden) .start-card {
   animation: rise-in 510ms cubic-bezier(0.18, 1.38, 0.3, 1) both;
