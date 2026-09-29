@@ -1,0 +1,21 @@
+{
+ "speaker": "Gemini TTS Orus (gemini-3.8-flash-tts)",
+ "note": "16:32Z merged-text takes of n7d/n7c and the x_rule take, superseded by the 16:33Z final text",
+ "lines": {
+  "n7d": {
+   "text": "インストールも会員登録も不要。PWA対応で、スマホでもパソコンでも、ブラウザからすぐ遊べます！",
+   "dur": 5.931,
+   "speed": 1.208
+  },
+  "n7c": {
+   "text": "ゲーム基盤はTerraformで設計、管理し、AWSから配信。オートスケーリングで、高負荷の対戦にも耐えます。",
+   "dur": 6.324,
+   "speed": 1.226
+  },
+  "x_rule": {
+   "text": "ルールはシンプル。相手の城にダメージを与えて、先に落とした方の勝ち！",
+   "dur": 5.051,
+   "speed": 1.0
+  }
+ }
+}

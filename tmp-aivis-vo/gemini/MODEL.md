@@ -34,3 +34,10 @@ The previous takes of those three lines are kept in vo_orus_v1/ (with their text
 - vo_orus/n7d, n7c: merged old+new text from lines_voicevox.tsv. The merged lines are long, so they are time-stretched: n7d 1.21x, n7c 1.23x (best of three takes each). Both fit their slots.
 - vo_orus/x_rule: fresh Orus take of the win-condition line (the script now includes it); vo_orus_extra/x_rule.wav is the earlier take of the same text.
 - vo_orus_v2/: the 16:26Z takes of n2/n7d/n7c (new points only), kept for reference.
+
+## 16:33Z final
+
+- vo_orus/n2: the 9eafc89 take with the win condition (「…3D対戦ゲーム！城にダメージを与えて、先に相手の城を落とした方が勝ちです！」), per README 16:33Z. Note that lines_voicevox.tsv still lists the original n2 text.
+- vo_orus/n7d: 「インストールも会員登録も不要。PWA対応で、スマホでもパソコンでも、すぐ遊べます！」 1.12x (best of three takes)
+- vo_orus/n7c: 「基盤はAWSとTerraform。オートスケーリングで、高負荷にも耐える設計です。」 natural speed
+- No x_rule in vo_orus. The 16:32Z takes (merged n7d/n7c, x_rule) are kept in vo_orus_v3/.
