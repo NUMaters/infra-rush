@@ -1,22 +1,102 @@
-{"duration": 176.5,
- "vo": [{"id":"n1","t":1.3},{"id":"n2","t":10.9},{"id":"n3a","t":28.0},{"id":"n3b","t":38.6},{"id":"n3c","t":47.6},
-  {"id":"n4a","t":55.7},{"id":"n4b","t":61.6},{"id":"n4c","t":74.5},{"id":"n5a","t":84.9},{"id":"n5b","t":97.8},
-  {"id":"n6a","t":104.9},{"id":"n6b","t":108.9},{"id":"n6c","t":119.8},{"id":"n7a","t":125.6},{"id":"n7b","t":131.9},
-  {"id":"n7d","t":139.3},{"id":"n7c","t":145.8},{"id":"n8a","t":154.6},{"id":"n8b","t":159.3},{"id":"n8c","t":164.1},{"id":"n9","t":169.0}],
- "sfx": [
-  {"kind":"mine","t":4.2,"g":0.9},{"kind":"attack","t":6.7,"g":1.1},{"kind":"complete","t":6.8,"g":0.8},
-  {"kind":"ui","t":9.75,"g":0.6},
-  {"kind":"ui","t":26.85,"g":0.6},{"kind":"select","t":27.1},{"kind":"ui","t":29.4},
-  {"kind":"mine","t":32.0},{"kind":"resource","t":33.2,"g":0.8},{"kind":"mine","t":34.4},{"kind":"resource","t":35.6,"g":0.8},
-  {"kind":"build","t":36.8},{"kind":"build","t":39.3,"g":0.8},{"kind":"complete","t":43.0},
-  {"kind":"attack","t":50.3},{"kind":"return","t":52.3},
-  {"kind":"ui","t":55.0,"g":0.6},{"kind":"complete","t":61.9,"g":0.8},{"kind":"build","t":66.9},
-  {"kind":"embank","t":70.2},{"kind":"clear","t":71.8},{"kind":"destroy","t":76.9},
-  {"kind":"warning","t":77.9},{"kind":"earthquake","t":78.6},{"kind":"collapse","t":79.2},{"kind":"build","t":82.0,"g":0.8},
-  {"kind":"ui","t":84.4,"g":0.6},{"kind":"select","t":88.4,"g":0.7},{"kind":"mine","t":93.9,"g":0.7},
-  {"kind":"ui","t":98.5},{"kind":"ui","t":99.6},{"kind":"ui","t":100.7},
-  {"kind":"ui","t":104.6,"g":0.6},{"kind":"ui","t":108.2},{"kind":"ui","t":112.4},{"kind":"select","t":113.3},
-  {"kind":"build","t":116.0,"g":0.7},{"kind":"warning","t":120.4,"g":0.6},{"kind":"complete","t":123.3,"g":0.7},
-  {"kind":"ui","t":125.2,"g":0.5},
-  {"kind":"end","t":168.4,"g":1.0},{"kind":"return","t":172.8,"g":0.8},{"kind":"complete","t":173.2,"g":0.8}
- ]}
+{
+ "duration": 177.3,
+ "vo": [
+  {
+   "id": "n1",
+   "t": 1.3
+  },
+  {
+   "id": "p1",
+   "t": 10.25
+  },
+  {
+   "id": "p2",
+   "t": 15.2
+  },
+  {
+   "id": "n2",
+   "t": 20.65
+  },
+  {
+   "id": "n3a",
+   "t": 34.9
+  },
+  {
+   "id": "n3b",
+   "t": 43.5
+  },
+  {
+   "id": "n3c",
+   "t": 52.5
+  },
+  {
+   "id": "n4a",
+   "t": 60.0
+  },
+  {
+   "id": "n4b",
+   "t": 65.9
+  },
+  {
+   "id": "n4c",
+   "t": 77.6
+  },
+  {
+   "id": "n5a",
+   "t": 87.4
+  },
+  {
+   "id": "n5b",
+   "t": 96.1
+  },
+  {
+   "id": "n6a",
+   "t": 103.2
+  },
+  {
+   "id": "n6b",
+   "t": 107.2
+  },
+  {
+   "id": "n6c",
+   "t": 116.9
+  },
+  {
+   "id": "n6d",
+   "t": 122.7
+  },
+  {
+   "id": "n7a",
+   "t": 129.7
+  },
+  {
+   "id": "n7b",
+   "t": 135.3
+  },
+  {
+   "id": "n7d",
+   "t": 142.6
+  },
+  {
+   "id": "n7c",
+   "t": 149.0
+  },
+  {
+   "id": "n8a",
+   "t": 155.8
+  },
+  {
+   "id": "n8b",
+   "t": 160.5
+  },
+  {
+   "id": "n8c",
+   "t": 165.3
+  },
+  {
+   "id": "n9",
+   "t": 169.8
+  }
+ ],
+ "note": "v3 narration start times (from intro-video/narration.srt). Every id, including p1/p2/n6d, is used in the video. Last line must end by 175.3s."
+}
