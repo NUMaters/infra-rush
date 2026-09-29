@@ -8,3 +8,5 @@ UPDATE 16:32Z (supersedes 16:30Z): RioSato wants the ORIGINAL content kept AND t
 - x_rule: vo_orus_extra/x_rule.wav placed at 27.0s (no re-render).
 - n7d (slot 6.1s) and n7c (slot 6.5s): merged old+new text in lines_voicevox.tsv — re-render ONLY these two with Orus into vo_orus/ (speed up to fit if needed).
 - n9: keep x_close as the closing line.
+
+UPDATE 16:33Z: final n7d/n7c text is in lines_voicevox.tsv (n7d includes PWA). n2 as rendered in 9eafc89 is final; no x_rule line.
