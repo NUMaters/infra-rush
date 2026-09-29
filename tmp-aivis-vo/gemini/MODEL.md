@@ -22,3 +22,8 @@ The video side decides where they go; rerun with a cue in cues.json and `TSV=ext
 | x_scale | サーバーはオートスケーリングに対応。アクセスが集中しても、快適に対戦できる設計です。 | 6.7 | auto scaling under heavy traffic |
 | x_rule | ルールはシンプル。相手の城にダメージを与えて、先に落とした方の勝ち！ | 5.6 | win condition |
 | x_close | 遊んで知ろう、土木のしくみ。INFRA RUSH！ぜひ遊んでみてください！ | 5.6 | closing screen (could replace n9) |
+
+## 2026-09-29 rewrite of n2 / n7d / n7c
+
+vo_orus/n2, n7d, n7c now follow the updated lines_voicevox.tsv (win condition, no install / no sign-up, auto-scaling); all three fit at natural speed.
+The previous takes of those three lines are kept in vo_orus_v1/ (with their text in vo_orus_v1/vo.json).
