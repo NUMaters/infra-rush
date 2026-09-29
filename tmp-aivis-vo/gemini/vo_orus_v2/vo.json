@@ -1,0 +1,21 @@
+{
+ "speaker": "Gemini TTS Orus (gemini-3.8-flash-tts)",
+ "note": "16:26Z wording of n2/n7d/n7c (new points only), superseded by the merged text",
+ "lines": {
+  "n2": {
+   "text": "INFRA RUSHは、5体の作業Botに指示を出して、相手の城を目指す3D対戦ゲーム！城にダメージを与えて、先に相手の城を落とした方が勝ちです！",
+   "dur": 10.825,
+   "speed": 1.0
+  },
+  "n7d": {
+   "text": "アプリのインストールも、会員登録も不要。ブラウザを開けば、すぐに遊べます！",
+   "dur": 5.815,
+   "speed": 1.0
+  },
+  "n7c": {
+   "text": "ゲーム基盤はTerraformで管理。オートスケーリングで、高負荷の対戦にも耐えられる設計です。",
+   "dur": 5.737,
+   "speed": 1.0
+  }
+ }
+}

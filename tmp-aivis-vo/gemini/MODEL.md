@@ -27,3 +27,10 @@ The video side decides where they go; rerun with a cue in cues.json and `TSV=ext
 
 vo_orus/n2, n7d, n7c now follow the updated lines_voicevox.tsv (win condition, no install / no sign-up, auto-scaling); all three fit at natural speed.
 The previous takes of those three lines are kept in vo_orus_v1/ (with their text in vo_orus_v1/vo.json).
+
+## 16:32Z: original content kept + new points merged
+
+- vo_orus/n2: back to the original wording (the v1 take).
+- vo_orus/n7d, n7c: merged old+new text from lines_voicevox.tsv. The merged lines are long, so they are time-stretched: n7d 1.21x, n7c 1.23x (best of three takes each). Both fit their slots.
+- vo_orus/x_rule: fresh Orus take of the win-condition line (the script now includes it); vo_orus_extra/x_rule.wav is the earlier take of the same text.
+- vo_orus_v2/: the 16:26Z takes of n2/n7d/n7c (new points only), kept for reference.
