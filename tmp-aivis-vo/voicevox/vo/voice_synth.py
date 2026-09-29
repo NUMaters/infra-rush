@@ -4,7 +4,7 @@ Each line is fitted to its slot in ../audio/cues.json: if the natural take runs 
 it is re-synthesized a little faster (up to MAX_SPEED). Writes <out_dir>/<id>.wav and <out_dir>/vo.json."""
 import json, sys, os, io, wave, subprocess, urllib.request, urllib.parse, numpy as np
 URL, NAME, OUT = sys.argv[1].rstrip('/'), sys.argv[2], sys.argv[3]; STYLE = sys.argv[4] if len(sys.argv) > 4 else 'ノーマル'
-MAX_SPEED, GAP, BASE = 1.2, 0.35, 1.05
+MAX_SPEED, GAP, BASE, INTONATION = 1.3, 0.35, 1.1, 1.25
 os.makedirs(OUT, exist_ok=True)
 def get(path): return json.loads(urllib.request.urlopen(URL + path, timeout=60).read())
 def post(path, params, body=None):
@@ -15,7 +15,7 @@ sty = next((s for s in sp['styles'] if s['name'] == STYLE), sp['styles'][0]); SI
 print('speaker', NAME, sty['name'], SID)
 def synth(text, speed):
     q = json.loads(post('/audio_query', {'text': text, 'speaker': SID}))
-    q.update(speedScale=speed, prePhonemeLength=0.05, postPhonemeLength=0.1, outputSamplingRate=48000, outputStereo=False)
+    q.update(speedScale=speed, intonationScale=INTONATION, prePhonemeLength=0.05, postPhonemeLength=0.1, outputSamplingRate=48000, outputStereo=False)
     w = wave.open(io.BytesIO(post('/synthesis', {'speaker': SID}, json.dumps(q).encode())))
     x = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32); sr = w.getframerate()
     env = np.convolve(np.abs(x), np.ones(480) / 480, 'same'); idx = np.where(env > env.max() * 0.02)[0]
@@ -28,7 +28,8 @@ out = {}
 for line in open(f'{here}/lines_voicevox.tsv', encoding='utf8'):
     i, spoken, shown = line.rstrip('\n').split('\t'); s = BASE
     y, sr = synth(spoken, s)
-    if len(y) / sr > slot[i]:
+    for _ in range(3):
+        if len(y) / sr <= slot[i] or s >= MAX_SPEED: break
         s = min(MAX_SPEED, s * (len(y) / sr) / slot[i] * 1.03); y, sr = synth(spoken, s)
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 's16le', '-ar', str(sr), '-ac', '1', '-i', '-', '-ar', '48000', f'{OUT}/{i}.wav'], input=y.astype(np.int16).tobytes(), check=True)
     d = round(len(y) / sr, 3); out[i] = {'text': shown, 'dur': d, 'speed': round(s, 3)}
