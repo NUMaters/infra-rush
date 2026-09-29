@@ -5,3 +5,5 @@ Revised script (lines_voicevox.tsv) for the 麒ヶ島宗麟 / †聖騎士 紅�
 Commit vo_sourin/ and vo_benizakura/ (wav + vo.json) to this branch. Mixing and muxing happen in the cloud.
 
 UPDATE 14:10Z: lines_voicevox.tsv now = RioSato's hand-edited SCRIPT (SCRIPT_user_edit.md), with p1/n8a shortened to fit, n8c removed (n8b gets its slot), and n9 ending 「ぜひ遊んでみてください！」. Use this file as-is.
+
+UPDATE 14:40Z: new line `logo` 「インフララッシュ！」 at 7.2s (the logo appears ~7s). Only logo.wav is needed for both voices (vo_sourin/logo.wav, vo_benizakura/logo.wav); other lines unchanged.
