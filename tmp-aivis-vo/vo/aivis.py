@@ -20,10 +20,11 @@ out = {}
 for line in open('lines_aivis.tsv', encoding='utf8'):
     i, text = line.rstrip('\n').split('\t'); sp = BASE_SPEED
     y, sr = synth(text, sp)
-    if len(y) / sr > slot[i]:
-        sp = min(MAX_SPEED, sp * (len(y) / sr) / slot[i] * 1.02); y, sr = synth(text, sp)
+    for _ in range(3):
+        if len(y) / sr <= slot.get(i, 99) or sp >= MAX_SPEED: break
+        sp = min(MAX_SPEED, sp * (len(y) / sr) / slot.get(i, 99) * 1.02); y, sr = synth(text, sp)
     wave_path = f'{i}.wav'
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 's16le', '-ar', str(sr), '-ac', '1', '-i', '-', '-ar', '48000', wave_path], input=y.astype(np.int16).tobytes(), check=True)
     d = round(len(y) / sr, 3); out[i] = {'text': text, 'dur': d, 'speed': round(sp, 3)}
-    print(i, d, 'slot', round(slot[i], 2), 'speed', round(sp, 3), 'OVER' if d > slot[i] else '')
+    print(i, d, 'slot', round(slot.get(i, 99), 2), 'speed', round(sp, 3), 'OVER' if d > slot.get(i, 99) else '')
 json.dump(out, open('vo.json', 'w'), ensure_ascii=False, indent=1)
