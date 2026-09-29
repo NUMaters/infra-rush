@@ -39,13 +39,13 @@ def tts(text):
     x = np.frombuffer(pcm, np.int16).astype(np.float32)
     env = np.convolve(np.abs(x), np.ones(480) / 480, 'same'); idx = np.where(env > env.max() * 0.02)[0]
     return x[max(0, idx[0] - int(0.03 * SR)): idx[-1] + int(0.08 * SR)]
-for line in open(f'{base}/vo/lines_voicevox.tsv', encoding='utf8'):
+for line in open(os.environ.get('TSV', f'{base}/vo/lines_voicevox.tsv'), encoding='utf8'):
     i, spoken, shown = line.rstrip('\n').split('\t'); wav = f'{OUT}/{i}.wav'
     if os.path.exists(wav) and i in out: continue
     y = tts(spoken); natural = len(y) / SR; tempo = 1.0
-    if natural > slot[i]: tempo = min(MAX_TEMPO, natural / slot[i] * 1.02)
+    if natural > slot.get(i, 99): tempo = min(MAX_TEMPO, natural / slot[i] * 1.02)
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 's16le', '-ar', str(SR), '-ac', '1', '-i', '-', *(['-af', f'atempo={tempo:.4f}'] if tempo > 1 else []), wav],
                    input=y.astype(np.int16).tobytes(), check=True)
     d = round(natural / tempo, 3); out[i] = {'text': shown, 'dur': d, 'speed': round(tempo, 3)}
     json.dump({'speaker': f'Gemini TTS {VOICE} ({MODEL})', 'lines': out}, open(vo_path, 'w'), ensure_ascii=False, indent=1)
-    print(i, d, 'slot', round(slot[i], 2), 'tempo', round(tempo, 3), 'OVER' if d > slot[i] else '', flush=True)
+    print(i, d, 'slot', round(slot.get(i, 99), 2), 'tempo', round(tempo, 3), 'OVER' if d > slot.get(i, 99) else '', flush=True)
