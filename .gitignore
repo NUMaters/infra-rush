@@ -16,3 +16,4 @@ test-results/
 *.tsbuildinfo
 *.blend1
 assets/opening-reference/renders/
+.launcher-stamp.json
