@@ -48,7 +48,7 @@ Web App Manifestとサービスワーカーを備え、対応ブラウザでは�
    - Node.js: <https://nodejs.org/>
    - Go: <https://go.dev/dl/>
 2. このリポジトリをZIPでダウンロードして展開するか、`git clone https://github.com/NUMaters/infra-rush.git` します。
-3. フォルダ内の **`start.bat`**（Windows）または **`start.command`**（Mac）をダブルクリックします。初回だけ自動で準備（数分）をしてから、ブラウザで <http://localhost:8080/> が開きます。終了するときは黒いウィンドウを閉じてください。
+3. フォルダ内の **`start.bat`**（Windows）または **`start.command`**（Mac）をダブルクリックします。初回（と更新後）は自動で準備（数分）をし、サーバーが起動してからブラウザで <http://localhost:8080/> が開きます。終了するときは黒いウィンドウを閉じてください。
 
 Windowsで「WindowsによってPCが保護されました」と出たときは「詳細情報」→「実行」を選びます。ファイアウォールの確認が出たら「許可」を選びます。ポート8080が使用中だと起動できないので、使っているソフトを終了してください。Macで開けないときは、右クリック →「開く」を選びます。
 
