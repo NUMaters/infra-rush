@@ -2715,3 +2715,103 @@ h1 {
   box-shadow: 0 2px 8px #23415816;
   pointer-events: none;
 }
+
+/* Keep the title artwork and menu in one vertical flow. The artwork responds
+   to the space left above the menu, including the taller solo selection. */
+#title {
+  display: grid;
+  grid-template-columns: minmax(0, 355px) minmax(0, 1fr);
+  grid-template-rows: 44px minmax(120px, 1fr) auto 16px;
+  gap: 16px 0;
+  padding: 24px 6%;
+  overflow-y: auto;
+}
+.title-top {
+  grid-column: 1 / -1;
+}
+#title .title-copy {
+  position: relative;
+  top: auto;
+  left: auto;
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+  max-width: 100%;
+  container-type: size;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+#title .logo {
+  font-size: clamp(28px, min(100px, 18vw, 30cqh), 100px);
+  margin-bottom: clamp(12px, 3cqh, 26px);
+  letter-spacing: -0.05em;
+  flex-shrink: 0;
+}
+#title .logo > b {
+  font-size: 1.13em;
+}
+#title .title-tagline-art {
+  width: min(205px, 50vw, 60cqh);
+  max-width: 80%;
+  margin: 0 0 0 6px;
+}
+#title .start-card {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  width: 100%;
+  grid-column: 1;
+  grid-row: 3;
+}
+#title .title-footer {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  grid-column: 1 / -1;
+  grid-row: 4;
+}
+#title.solo-open .title-copy .logo {
+  scale: 1;
+}
+@media (max-width: 800px) {
+  #title {
+    grid-template-columns: minmax(0, 355px);
+    justify-content: center;
+    padding: 20px;
+    gap: 12px 0;
+    grid-template-rows: 44px minmax(120px, 1fr) auto 12px;
+  }
+  .title-top {
+    width: calc(100vw - 40px);
+    justify-self: center;
+  }
+}
+@media (max-height: 520px) {
+  #title {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    gap: 10px 0;
+    pointer-events: auto;
+  }
+  #title .primary,
+  #title .secondary {
+    min-height: 44px;
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+  #title .secondary {
+    margin-top: 8px;
+  }
+  #title .title-trivia-button {
+    min-height: 44px;
+    padding: 6px 12px;
+    margin-top: 8px;
+    font-size: 13px;
+  }
+  #title .title-menu > p {
+    margin: 6px 0;
+  }
+}
