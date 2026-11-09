@@ -147,6 +147,15 @@ const useOpeningFallback = () => {
   openingVideo.classList.add("opening-video-fallback");
   releaseOpeningVideo();
 };
+openingFallbackImage.addEventListener("error", () => {
+  if (!openingFallback || openingClosed) return;
+  // A best-effort precache can fail (network/quota), or an older installation
+  // may not have the sharper animation yet. Keep the cached alternatives usable.
+  if (openingFallbackImage.src.endsWith("-fallback-v2.webp"))
+    openingFallbackImage.src = `${openingMediaRoot}-low-power.webp`;
+  else if (openingFallbackImage.src.endsWith("-low-power.webp"))
+    openingFallbackImage.src = `${openingMediaRoot}-hd-poster.webp`;
+});
 const playOpening = (quality: OpeningQuality) => {
   const attempt = ++openingAttempt;
   openingQuality = quality;
