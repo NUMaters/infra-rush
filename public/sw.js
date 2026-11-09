@@ -9,6 +9,10 @@ const OPENING_ANIMATION = new URL(
   "media/opening-gemini-77f0d820-low-power.webp",
   ROOT,
 ).href;
+const OPENING_HIGH_ANIMATION = new URL(
+  "media/opening-gemini-77f0d820-fallback-v2.webp",
+  ROOT,
+).href;
 const TITLE_TAGLINE = new URL("ui/title/civil-tagline-v2.webp", ROOT).href;
 
 async function cacheOne(cache, url) {
@@ -52,6 +56,7 @@ async function cacheGameAssets() {
     ].map((name) => new URL(`audio/${name}.mp3`, ROOT).href),
     OPENING_POSTER,
     OPENING_ANIMATION,
+    OPENING_HIGH_ANIMATION,
     TITLE_TAGLINE,
   ];
   for (let i = 0; i < assets.length; i += 4)
@@ -70,9 +75,12 @@ self.addEventListener("install", (event) => {
         new URL("icons/icon-512.png", ROOT).href,
       ]);
       await Promise.all(
-        [OPENING_POSTER, OPENING_ANIMATION, TITLE_TAGLINE].map((url) =>
-          cacheOne(cache, url),
-        ),
+        [
+          OPENING_POSTER,
+          OPENING_ANIMATION,
+          OPENING_HIGH_ANIMATION,
+          TITLE_TAGLINE,
+        ].map((url) => cacheOne(cache, url)),
       );
       const html = await (await cache.match(ROOT.href)).text();
       const entrypoints = [
