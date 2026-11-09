@@ -67,12 +67,18 @@ export class Sound {
     this.unlock();
     const existing = this.tracks.get(scene);
     if (existing) return existing;
-    const music = new Audio(
-      new URL(
-        `${import.meta.env.BASE_URL}audio/${musicFiles[scene]}`,
-        document.baseURI,
-      ).href,
+    const prepared = document.getElementById(
+      scene === "game" ? "bgm" : `bgm-${scene}`,
     );
+    const music =
+      prepared instanceof HTMLAudioElement
+        ? prepared
+        : new Audio(
+            new URL(
+              `${import.meta.env.BASE_URL}audio/${musicFiles[scene]}`,
+              document.baseURI,
+            ).href,
+          );
     music.preload = "auto";
     music.loop = true;
     music.id = scene === "game" ? "bgm" : `bgm-${scene}`;
@@ -125,8 +131,11 @@ export class Sound {
     if (this.musicSuspended) return;
     if (!this.scene) return;
     const music = this.tracks.get(this.scene)?.music;
-    if (!music || !music.paused) return;
+    if (!music) return;
+    // Media may already be "playing" while the separate Web Audio context is
+    // suspended by autoplay policy. Always unlock it on the user's gesture.
     this.unlock();
+    if (!music.paused) return;
     void music.play().catch(() => {
       // Keep the screen usable when the browser declines autoplay.
     });

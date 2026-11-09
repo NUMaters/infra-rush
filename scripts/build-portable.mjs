@@ -1,13 +1,22 @@
 // Builds a self-contained static distribution without Vite dependency prebundling.
 import { execFileSync } from "node:child_process";
-import { mkdir, copyFile, cp, writeFile, rename } from "node:fs/promises";
+import {
+  mkdir,
+  copyFile,
+  cp,
+  writeFile,
+  rename,
+  readFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 const atomicCopy = async (source, dest) => {
   await copyFile(source, dest + ".tmp");
   await rename(dest + ".tmp", dest);
 };
-const qa = process.argv.includes("--qa"),
-  out = qa ? ".qa-preview" : "dist";
+const qa = process.argv.includes("--qa");
+const outputArgument = process.argv.find((arg) => arg.startsWith("--outdir="));
+const out =
+  outputArgument?.slice("--outdir=".length) || (qa ? ".qa-preview" : "dist");
 const platform = process.platform === "win32" ? "win32" : process.platform;
 const binary = join(
   "node_modules",
@@ -55,14 +64,30 @@ for (const name of [
     `${out}/vendor/addons/${name}`,
   );
 await cp("public/audio", `${out}/audio`, { recursive: true });
+await cp("public/media", `${out}/media`, { recursive: true });
 await cp("public/models", `${out}/models`, { recursive: true });
 await cp("public/ui", `${out}/ui`, { recursive: true });
 await cp("public/icons", `${out}/icons`, { recursive: true });
 await atomicCopy("public/manifest.webmanifest", `${out}/manifest.webmanifest`);
 await atomicCopy("public/sw.js", `${out}/sw.js`);
+// Share the actual shell (opening media and early BGM included) with Vite.
+// A separate minimal shell silently drifted and omitted required media nodes.
+const moduleScript = '<script type="module" src="/src/main.ts"></script>';
+const shell = await readFile("index.html", "utf8");
+if (!shell.includes(moduleScript))
+  throw new Error("Cannot locate the game entry script");
 await writeFile(
   `${out}/index.html`,
-  '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#168cd0"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png"><link rel="icon" type="image/png" sizes="48x48" href="./icons/favicon-48.png"><link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png"><link rel="manifest" href="./manifest.webmanifest"><title>INFRA RUSH — 勝利への道をつくろう。</title><link rel="stylesheet" href="./assets/main.css"><script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script></head><body><div id="app"></div><script type="module" src="./assets/main.js"></script></body></html>',
+  shell
+    .replaceAll("%BASE_URL%", "./")
+    .replace(
+      "</head>",
+      '<link rel="stylesheet" href="./assets/main.css"></head>',
+    )
+    .replace(
+      moduleScript,
+      '<script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script><script type="module" src="./assets/main.js"></script>',
+    ),
 );
 console.log(
   `${out}/ is ready (${qa ? "development QA" : "production, no QA hooks"}).`,

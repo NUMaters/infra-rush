@@ -93,7 +93,6 @@ button svg {
 }
 .opening-video {
   object-fit: contain;
-  transform: scale(1.28);
 }
 .opening-video-fallback {
   opacity: 0;

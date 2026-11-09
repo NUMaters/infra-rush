@@ -21,19 +21,34 @@ test("movie opens once, fits the viewport, closes and reopens with a fresh playe
     exact: true,
   });
   await trigger.click();
+  await expect(
+    page.getByText("動画を読み込んでいます…", { exact: true }),
+  ).toHaveCount(0);
   await expect
-    .poll(() =>
-      page
-        .locator("#intro-movie-video")
-        .evaluate(
-          (video: HTMLVideoElement) =>
-            !video.paused &&
-            video.currentTime > 0.2 &&
-            video.videoWidth > 0 &&
-            video.getVideoPlaybackQuality().totalVideoFrames > 0,
-        ),
+    .poll(
+      () =>
+        page
+          .locator("#intro-movie-video")
+          .evaluate(
+            (video: HTMLVideoElement) =>
+              !video.paused &&
+              video.currentTime > 0.2 &&
+              video.videoWidth > 0 &&
+              video.getVideoPlaybackQuality().totalVideoFrames > 0,
+          ),
+      { timeout: 30000 },
     )
     .toBe(true);
+  expect(
+    await page.evaluate(async () => {
+      const video =
+        document.querySelector<HTMLVideoElement>("#intro-movie-video")!;
+      const poster = new Image();
+      poster.src = video.poster;
+      await poster.decode();
+      return poster.naturalWidth;
+    }),
+  ).toBeGreaterThan(0);
   await trigger.evaluate((button: HTMLButtonElement) => {
     button.click();
     button.click();
