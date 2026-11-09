@@ -42,6 +42,7 @@ export class Sound {
   >();
   private scene: MusicScene | null = null;
   private isMuted = false;
+  private musicSuspended = false;
   get muted() {
     return this.isMuted;
   }
@@ -121,6 +122,7 @@ export class Sound {
     if (this.scene) this.tracks.get(this.scene)?.music.pause();
   }
   resumeMusic() {
+    if (this.musicSuspended) return;
     if (!this.scene) return;
     const music = this.tracks.get(this.scene)?.music;
     if (!music || !music.paused) return;
@@ -136,6 +138,23 @@ export class Sound {
       track.gain.gain.value = 0;
     }
     this.scene = null;
+  }
+  // Temporarily yield to an external player without changing the user's mute
+  // preference or restarting a track that was already paused/autoplay-blocked.
+  suspendMusic() {
+    const scene = this.scene;
+    const music = scene ? this.tracks.get(scene)?.music : undefined;
+    const wasPlaying = !!music && !music.paused;
+    this.musicSuspended = true;
+    music?.pause();
+    let restored = false;
+    return () => {
+      if (restored) return;
+      restored = true;
+      this.musicSuspended = false;
+      if (wasPlaying && this.scene === scene)
+        void music?.play().catch(() => {});
+    };
   }
   updateWork(active: readonly WorkSound[], enabled: boolean) {
     if (!enabled || this.isMuted || !this.ctx || this.ctx.state !== "running") {

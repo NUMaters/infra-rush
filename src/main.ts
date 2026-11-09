@@ -15,6 +15,7 @@ import type {
 } from "./game/types";
 import { World } from "./render/world";
 import { Sound } from "./ui/audio";
+import { setupIntroMovie } from "./ui/intro-movie";
 import type { WorkSound } from "./ui/audio";
 import { icon } from "./ui/icons";
 import { OnlineClient } from "./net/client";
@@ -44,7 +45,7 @@ app.insertAdjacentHTML(
   `<main id="world"></main><div id="vignette"></div>
 <section id="title" class="hidden">
  <div class="title-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
- <div class="title-top"><span class="edition">CIVIL ENGINEERING STRATEGY</span><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
+ <div class="title-top"><div class="title-intro"><span class="edition">CIVIL ENGINEERING STRATEGY</span><button id="title-movie-open" class="title-movie-button" type="button" aria-haspopup="dialog" aria-controls="intro-movie" aria-expanded="false"><span class="movie-play-icon" aria-hidden="true">▶</span><span>紹介ムービー</span></button></div><div class="title-actions"><button id="title-sound" class="circle" aria-label="音楽を再生・停止" aria-pressed="false">${icon("sound")}</button><button class="circle help" aria-label="遊び方">?</button></div></div>
  <div class="title-copy"><div class="logo"><span>INFRA</span><b>RUSH<span class="logo-dot">!</span></b></div><img class="title-tagline-art" src="${import.meta.env.BASE_URL}ui/title/civil-tagline-v2.webp" alt="遊んで知ろう、土木のしくみ"></div>
  <div class="start-card"><div id="title-modes" class="title-menu"><button id="start" class="primary">${icon("helmet")}<span>ひとりで遊ぶ</span>${icon("march")}</button><button id="online-start" class="secondary online-entry">${icon("users")}<span>みんなで遊ぶ</span>${icon("march")}</button><button id="title-trivia-open" class="title-trivia-button" type="button">${icon("book")}<span>土木の豆知識をみる</span>${icon("march")}</button><p>1ゲーム 5分 · 先に城を${M.castle.hp}回たたけば勝ち</p></div><div id="solo-menu" class="title-menu hidden"><div class="solo-heading"><button id="solo-back" type="button" aria-label="モード選択に戻る">← 戻る</button><strong>ひとりで遊ぶ</strong></div><button id="tutorial-start" class="solo-choice tutorial-choice">${icon("helmet")}<span>チュートリアル<small>はじめてプレイする人はこちら</small></span>${icon("march")}</button><button id="cpu-start" class="solo-choice cpu-choice">${icon("castle")}<span>CPU戦<small>今すぐ遊ぶ</small></span>${icon("march")}</button><fieldset class="difficulty-field"><legend>CPUの強さ</legend><div class="difficulty-options"><button data-difficulty="easy">かんたん</button><button data-difficulty="normal" class="active">ふつう</button><button data-difficulty="hard">むずかしい</button></div></fieldset></div></div>
  <div class="title-footer"><span>BUILD. CONNECT. RUSH.</span></div>
@@ -65,6 +66,7 @@ app.insertAdjacentHTML(
 <section id="tutorial" class="hidden" aria-live="polite" aria-label="操作チュートリアル"><div id="tutorial-guide" aria-hidden="true"></div><div id="tutorial-card"></div></section>
 <section id="modal" class="overlay hidden"></section>
 <section id="online-lobby" class="overlay hidden" aria-label="オンライン対戦"></section>
+<dialog id="intro-movie" aria-label="INFRA RUSH 紹介ムービー"><div class="intro-movie-panel"><button id="intro-movie-close" type="button" aria-label="紹介ムービーを閉じる">×</button><div class="intro-movie-player"></div></div></dialog>
 <section id="title-trivia" class="overlay hidden" role="dialog" aria-modal="true" aria-label="土木の豆知識"><article class="dialog title-trivia-dialog"><button id="title-trivia-close" class="circle close-online" type="button" aria-label="豆知識を閉じる">${icon("close")}</button><section id="title-trivia-content" class="result-trivia" aria-label="土木の豆知識"></section></article></section>
 <section id="result" class="overlay hidden"></section><div id="map-review" class="hidden" aria-label="試合終了時のマップ"><div class="map-review-bar"><span>試合終了時のマップ</span><button id="review-back" type="button">結果へ戻る</button></div><p>ドラッグで移動 · ピンチで拡大・回転</p></div><div id="scene-wipe" aria-hidden="true"></div>`,
 );
@@ -309,6 +311,9 @@ function showOpponentConnection(visible: boolean) {
 }
 const visualPositions = new Map<string, Point>();
 const sound = new Sound();
+setupIntroMovie(sound, () => {
+  audioGestureSeen = true;
+});
 let world: World;
 const labels: Record<Action, string> = {
   mine: "掘る",
@@ -1693,8 +1698,15 @@ function syncSoundButtons() {
 for (const event of ["pointerdown", "keydown"]) {
   document.addEventListener(
     event,
-    () => {
-      if (!sound.muted) sound.resumeMusic();
+    ({ target: eventTarget }) => {
+      if (
+        !sound.muted &&
+        !(
+          eventTarget instanceof Element &&
+          eventTarget.closest("#title-movie-open, #intro-movie")
+        )
+      )
+        sound.resumeMusic();
     },
     { capture: true },
   );

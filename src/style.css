@@ -2815,3 +2815,196 @@ h1 {
     margin: 6px 0;
   }
 }
+
+/* The intro is a secondary title action; gameplay menus retain their layout. */
+#title {
+  grid-template-rows: 82px minmax(120px, 1fr) auto 16px;
+}
+.title-top {
+  align-items: flex-start;
+}
+.title-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+}
+#title .title-movie-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 3px 17px 3px 5px;
+  border: 3px solid #fffdf2;
+  border-radius: 999px;
+  background: #ffd34c;
+  color: #624709;
+  box-shadow:
+    0 4px 0 #b88a3266,
+    0 5px 12px #27546626;
+  font: inherit;
+  font-size: clamp(14px, 1.5vw, 18px);
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background 160ms ease;
+}
+.title-movie-button:hover {
+  background: #ffe071;
+  transform: translateY(-2px);
+}
+.movie-play-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fffdf5;
+  font-size: 18px;
+  padding-left: 2px;
+}
+#title-movie-open:focus-visible,
+#intro-movie-close:focus-visible {
+  outline: 3px solid #175b82;
+  outline-offset: 4px;
+}
+#intro-movie {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: max(28px, env(safe-area-inset-top))
+    max(8px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom))
+    max(8px, env(safe-area-inset-left));
+  border: 0;
+  overflow: auto;
+  background: transparent;
+  color: #164f68;
+}
+#intro-movie[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#intro-movie::backdrop {
+  background: #071c24b8;
+  animation: intro-backdrop-in 200ms ease both;
+}
+.intro-movie-panel {
+  position: relative;
+  width: min(1280px, 100%, calc((100dvh - 96px) * 16 / 9));
+  flex-shrink: 0;
+  border-radius: 18px;
+  box-shadow: 0 18px 65px #041b2966;
+  animation: intro-panel-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.intro-movie-player {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: inherit;
+  background: #102f3b;
+}
+.intro-movie-player iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+#intro-movie-close {
+  position: absolute;
+  z-index: 1;
+  top: -22px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0 0 3px;
+  border: 3px solid #e4f5f5;
+  border-radius: 50%;
+  background: #fffdf5;
+  color: #164f68;
+  box-shadow: 0 3px 7px #071c2440;
+  font: 800 36px/1 sans-serif;
+  cursor: pointer;
+}
+#intro-movie.is-closing .intro-movie-panel {
+  animation: intro-panel-out 180ms ease both;
+}
+#intro-movie.is-closing::backdrop {
+  animation: intro-backdrop-out 180ms ease both;
+}
+@keyframes intro-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes intro-panel-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@keyframes intro-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes intro-backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (max-width: 800px) {
+  #title {
+    grid-template-rows: 82px minmax(120px, 1fr) auto 12px;
+  }
+  .title-intro .edition {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+  }
+  .title-intro {
+    gap: 7px;
+  }
+}
+@media (max-height: 520px) {
+  #title {
+    grid-template-rows: 72px minmax(120px, 1fr) auto 12px;
+  }
+  .title-intro {
+    gap: 4px;
+  }
+  #title .title-movie-button {
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #intro-movie::backdrop,
+  #intro-movie .intro-movie-panel {
+    animation: none;
+  }
+  #title .title-movie-button {
+    transition: none;
+  }
+}
