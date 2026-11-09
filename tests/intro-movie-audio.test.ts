@@ -22,6 +22,13 @@ function titleSound(playing: boolean, muted = false) {
 }
 
 describe("intro movie music handoff", () => {
+  it("unlocks the audio context even when the media element already reports playing", () => {
+    const { sound, music } = titleSound(true);
+    const unlock = vi.spyOn(sound, "unlock").mockImplementation(() => {});
+    sound.resumeMusic();
+    expect(unlock).toHaveBeenCalledTimes(1);
+    expect(music.play).not.toHaveBeenCalled();
+  });
   it("pauses playing music, blocks gesture resumes, then restores it only once", () => {
     const { sound, music } = titleSound(true);
     const restore = sound.suspendMusic();

@@ -89,17 +89,14 @@ const saveData = (
   navigator as Navigator & { connection?: { saveData?: boolean } }
 ).connection?.saveData;
 const cores = navigator.hardwareConcurrency ?? 8;
-const mobile = window.matchMedia("(max-width: 700px)").matches;
+// Screen width does not imply a low-resolution display: modern phones often
+// have 2x/3x density. Reserve lite for explicit data/low-memory constraints.
 let openingQuality: OpeningQuality =
-  mobile ||
-  saveData ||
-  (deviceMemory !== undefined && deviceMemory <= 2) ||
-  cores <= 2 ||
-  (mobile && cores <= 3)
+  saveData || (deviceMemory !== undefined && deviceMemory <= 2) || cores <= 2
     ? "lite"
-    : (deviceMemory !== undefined && deviceMemory <= 4) || cores <= 4
-      ? "md"
-      : "hd";
+    : "hd";
+const lowerOpeningQuality = (quality: OpeningQuality): OpeningQuality =>
+  quality === "hd" ? "md" : "lite";
 let openingClosed = false;
 let openingFallback = false;
 let openingAttempt = 0;
@@ -146,7 +143,7 @@ const useOpeningFallback = () => {
   openingPlaybackAt = performance.now();
   if (openingWatchdog) clearInterval(openingWatchdog);
   if (!openingReducedMotion)
-    openingFallbackImage.src = `${openingMediaRoot}-low-power.webp`;
+    openingFallbackImage.src = `${openingMediaRoot}-${openingQuality === "lite" ? "low-power" : "fallback-v2"}.webp`;
   openingVideo.classList.add("opening-video-fallback");
   releaseOpeningVideo();
 };
@@ -164,13 +161,13 @@ const playOpening = (quality: OpeningQuality) => {
     if (error instanceof DOMException && error.name === "NotAllowedError")
       useOpeningFallback();
     else if (quality === "lite") useOpeningFallback();
-    else playOpening("lite");
+    else playOpening(lowerOpeningQuality(quality));
   });
 };
 openingVideo.addEventListener("error", () => {
   if (openingClosed || openingFallback) return;
   if (openingQuality === "lite") useOpeningFallback();
-  else playOpening("lite");
+  else playOpening(lowerOpeningQuality(openingQuality));
 });
 const stopOpening = () => {
   openingClosed = true;
@@ -212,9 +209,7 @@ const firstQuality: OpeningQuality = firstSource.includes("-lite.mp4")
     ? "md"
     : firstSource.includes("-hd.mp4")
       ? "hd"
-      : mobile
-        ? "lite"
-        : "hd";
+      : "hd";
 if (openingReducedMotion) {
   useOpeningFallback();
 } else {
@@ -235,7 +230,7 @@ if (openingReducedMotion) {
           return;
         if (error instanceof DOMException && error.name === "NotAllowedError")
           useOpeningFallback();
-        else playOpening("lite");
+        else playOpening(lowerOpeningQuality(openingQuality));
       });
     }, 700);
   } else playOpening(openingQuality);
@@ -250,7 +245,7 @@ if (openingReducedMotion) {
       openingVideo.classList.add("opening-video-moving");
     } else if (performance.now() - lastOpeningAdvance > 3000) {
       if (openingQuality === "lite") useOpeningFallback();
-      else playOpening("lite");
+      else playOpening(lowerOpeningQuality(openingQuality));
     }
   }, 1000);
 }

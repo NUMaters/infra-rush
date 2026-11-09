@@ -1,4 +1,4 @@
-const CACHE = "infra-rush-v15";
+const CACHE = "infra-rush-v16";
 const PREVIOUS_SHELL = `${CACHE}-previous-shell`;
 const ROOT = new URL(self.registration.scope);
 const OPENING_POSTER = new URL(
@@ -144,7 +144,7 @@ self.addEventListener("fetch", (event) => {
   // Let the browser stream and seek video directly. Buffering whole MP4 files
   // inside the worker can stall low-memory devices while models are loading.
   if (
-    url.pathname.startsWith(new URL("media/opening-", ROOT).pathname) &&
+    url.pathname.startsWith(new URL("media/", ROOT).pathname) &&
     url.pathname.endsWith(".mp4")
   )
     return;

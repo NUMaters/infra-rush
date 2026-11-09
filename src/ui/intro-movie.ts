@@ -59,7 +59,7 @@ export function setupIntroMovie(sound: Sound, onOpen: () => void) {
     const status = document.createElement("p");
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
-    status.textContent = "動画を読み込んでいます…";
+    feedback.hidden = true;
     const retry = document.createElement("button");
     retry.id = "intro-movie-play";
     retry.type = "button";
@@ -71,14 +71,16 @@ export function setupIntroMovie(sound: Sound, onOpen: () => void) {
     const active = () => video === movie && !closing;
     const start = () => {
       if (!active()) return;
-      feedback.hidden = false;
+      feedback.hidden = true;
       retry.hidden = true;
-      status.textContent = "動画を読み込んでいます…";
+      status.textContent = "";
+      movie.setAttribute("aria-busy", "true");
       if (movie.error) movie.load();
       // Keep play() inside the original tap/key activation: no network await,
       // timer, or third-party iframe between the user's gesture and playback.
       void movie.play().catch(() => {
         if (!active()) return;
+        movie.setAttribute("aria-busy", "false");
         status.textContent = movie.error
           ? "動画を読み込めませんでした。もう一度お試しください。"
           : "再生ボタンを押して動画をお楽しみください。";
@@ -89,16 +91,17 @@ export function setupIntroMovie(sound: Sound, onOpen: () => void) {
     };
     retry.addEventListener("click", start);
     movie.addEventListener("playing", () => {
-      if (active()) feedback.hidden = true;
+      if (!active()) return;
+      movie.setAttribute("aria-busy", "false");
+      feedback.hidden = true;
     });
     movie.addEventListener("waiting", () => {
       if (!active()) return;
-      status.textContent = "動画を読み込んでいます…";
-      retry.hidden = true;
-      feedback.hidden = false;
+      movie.setAttribute("aria-busy", "true");
     });
     movie.addEventListener("error", () => {
       if (!active()) return;
+      movie.setAttribute("aria-busy", "false");
       status.textContent =
         "動画を読み込めませんでした。もう一度お試しください。";
       retry.textContent = "もう一度読み込む";
