@@ -6,14 +6,6 @@ test.beforeEach(async ({ page }) => {
     window.requestAnimationFrame = (callback) =>
       raf((time) => window.setTimeout(() => callback(time), 100));
   });
-  // Real Drive playback is checked separately; keep interaction tests independent
-  // of the third-party player's network speed and cookie prompts.
-  await page.route("https://drive.google.com/file/d/*/preview", (route) =>
-    route.fulfill({
-      contentType: "text/html",
-      body: "<button>動画を再生</button>",
-    }),
-  );
   await page.goto("/");
   await expect(page.locator("#title")).not.toHaveClass(/hidden/, {
     timeout: 60000,
@@ -28,13 +20,26 @@ test("movie opens once, fits the viewport, closes and reopens with a fresh playe
     name: "INFRA RUSH 紹介ムービー",
     exact: true,
   });
+  await trigger.click();
+  await expect
+    .poll(() =>
+      page
+        .locator("#intro-movie-video")
+        .evaluate(
+          (video: HTMLVideoElement) =>
+            !video.paused &&
+            video.currentTime > 0.2 &&
+            video.videoWidth > 0 &&
+            video.getVideoPlaybackQuality().totalVideoFrames > 0,
+        ),
+    )
+    .toBe(true);
   await trigger.evaluate((button: HTMLButtonElement) => {
-    button.click();
     button.click();
     button.click();
   });
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator("iframe")).toHaveCount(1);
+  await expect(dialog.locator("video")).toHaveCount(1);
   await expect(page.locator("#intro-movie-close")).toBeFocused();
   const bounds = await dialog.locator(".intro-movie-panel").boundingBox();
   const viewport = page.viewportSize()!;
@@ -43,12 +48,13 @@ test("movie opens once, fits the viewport, closes and reopens with a fresh playe
   expect(bounds!.width).toBeGreaterThan(viewport.width * 0.8);
   await expect(page.locator("#intro-movie-close")).toBeInViewport();
   await page.locator("#intro-movie-close").dblclick();
-  await expect(dialog.locator("iframe")).toHaveCount(0);
+  await expect(dialog.locator("video")).toHaveCount(0);
   await expect(dialog).not.toBeVisible();
   await expect(trigger).toBeFocused();
   await trigger.press("Enter");
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator("iframe")).toHaveCount(1);
+  await expect(dialog.locator("video")).toHaveCount(1);
+  await dialog.locator("video").focus();
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
   await trigger.press("Space");
@@ -75,7 +81,7 @@ test("keyboard stays in the modal and music resumes only when it was playing", a
     .toBe(true);
   await page.keyboard.press("Shift+Tab");
   expect(await page.evaluate(() => document.activeElement?.tagName)).toBe(
-    "IFRAME",
+    "VIDEO",
   );
   await page.locator("#intro-movie-close").click();
   await expect
@@ -98,4 +104,56 @@ test("keyboard stays in the modal and music resumes only when it was playing", a
   await expect
     .poll(() => music.evaluate((el: HTMLAudioElement) => el.paused))
     .toBe(true);
+});
+
+test("a blocked autoplay offers a working play button", async ({ page }) => {
+  await page.evaluate(() => {
+    const play = HTMLMediaElement.prototype.play;
+    let rejectOnce = true;
+    HTMLMediaElement.prototype.play = function () {
+      if (this.id === "intro-movie-video" && rejectOnce) {
+        rejectOnce = false;
+        return Promise.reject(
+          new DOMException("Playback blocked", "NotAllowedError"),
+        );
+      }
+      return play.call(this);
+    };
+  });
+  await page.locator("#title-movie-open").click();
+  await expect(page.locator("#intro-movie-play")).toBeVisible();
+  await page.locator("#intro-movie-play").click();
+  await expect
+    .poll(() =>
+      page
+        .locator("#intro-movie-video")
+        .evaluate(
+          (video: HTMLVideoElement) => !video.paused && video.currentTime > 0.2,
+        ),
+    )
+    .toBe(true);
+  await expect(page.locator(".intro-movie-feedback")).toBeHidden();
+  await page.locator("#intro-movie-close").click();
+  await expect(page.locator("#intro-movie")).not.toBeVisible();
+});
+
+test("a failed download stays closable and can retry", async ({ page }) => {
+  await page.route("**/media/intro-v1.mp4", (route) => route.abort());
+  await page.locator("#title-movie-open").click();
+  await expect(page.locator("#intro-movie-play")).toHaveText(
+    "もう一度読み込む",
+  );
+  await page.unroute("**/media/intro-v1.mp4");
+  await page.locator("#intro-movie-play").click();
+  await expect
+    .poll(() =>
+      page
+        .locator("#intro-movie-video")
+        .evaluate(
+          (video: HTMLVideoElement) => !video.paused && video.currentTime > 0.2,
+        ),
+    )
+    .toBe(true);
+  await page.locator("#intro-movie-close").click();
+  await expect(page.locator("#intro-movie")).not.toBeVisible();
 });

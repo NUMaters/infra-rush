@@ -1,7 +1,7 @@
 import type { Sound } from "./audio";
 
-const previewUrl =
-  "https://drive.google.com/file/d/14miX34VEFc2IfsU7Cb0NvnIXvG2Z_Cj4/preview";
+const movieUrl = `${import.meta.env.BASE_URL}media/intro-v1.mp4`;
+const posterUrl = `${import.meta.env.BASE_URL}media/intro-v1-poster.jpg`;
 
 export function setupIntroMovie(sound: Sound, onOpen: () => void) {
   const trigger =
@@ -10,6 +10,7 @@ export function setupIntroMovie(sound: Sound, onOpen: () => void) {
   const player = dialog.querySelector<HTMLElement>(".intro-movie-player")!;
   const close = dialog.querySelector<HTMLButtonElement>("#intro-movie-close")!;
   let restoreMusic: (() => void) | undefined;
+  let video: HTMLVideoElement | undefined;
   let closing = false;
   let closeTimer: ReturnType<typeof setTimeout> | undefined;
   let backdropPointer = false;
@@ -28,8 +29,11 @@ export function setupIntroMovie(sound: Sound, onOpen: () => void) {
   const requestClose = () => {
     if (!dialog.open || closing) return;
     closing = true;
-    // Removing the browsing context stops video/audio immediately, even during
-    // the closing animation. A fresh context is created on each subsequent open.
+    const previous = video;
+    video = undefined;
+    previous?.pause();
+    previous?.removeAttribute("src");
+    previous?.load();
     player.replaceChildren();
     dialog.classList.add("is-closing");
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) finishClose();
@@ -40,16 +44,71 @@ export function setupIntroMovie(sound: Sound, onOpen: () => void) {
     if (dialog.open) return;
     onOpen();
     restoreMusic = sound.suspendMusic();
-    const frame = document.createElement("iframe");
-    frame.src = previewUrl;
-    frame.title = "INFRA RUSH 紹介ムービー";
-    frame.allow = "autoplay; fullscreen";
-    frame.allowFullscreen = true;
-    frame.referrerPolicy = "strict-origin-when-cross-origin";
-    player.replaceChildren(frame);
+    const movie = document.createElement("video");
+    video = movie;
+    movie.id = "intro-movie-video";
+    movie.src = movieUrl;
+    movie.poster = posterUrl;
+    movie.controls = true;
+    movie.playsInline = true;
+    movie.preload = "metadata";
+    movie.setAttribute("aria-label", "INFRA RUSH 紹介ムービー");
+    movie.tabIndex = 0;
+    const feedback = document.createElement("div");
+    feedback.className = "intro-movie-feedback";
+    const status = document.createElement("p");
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    status.textContent = "動画を読み込んでいます…";
+    const retry = document.createElement("button");
+    retry.id = "intro-movie-play";
+    retry.type = "button";
+    retry.textContent = "動画を再生";
+    retry.hidden = true;
+    feedback.append(status, retry);
+    player.replaceChildren(movie, feedback);
+
+    const active = () => video === movie && !closing;
+    const start = () => {
+      if (!active()) return;
+      feedback.hidden = false;
+      retry.hidden = true;
+      status.textContent = "動画を読み込んでいます…";
+      if (movie.error) movie.load();
+      // Keep play() inside the original tap/key activation: no network await,
+      // timer, or third-party iframe between the user's gesture and playback.
+      void movie.play().catch(() => {
+        if (!active()) return;
+        status.textContent = movie.error
+          ? "動画を読み込めませんでした。もう一度お試しください。"
+          : "再生ボタンを押して動画をお楽しみください。";
+        retry.textContent = movie.error ? "もう一度読み込む" : "動画を再生";
+        retry.hidden = false;
+        feedback.hidden = false;
+      });
+    };
+    retry.addEventListener("click", start);
+    movie.addEventListener("playing", () => {
+      if (active()) feedback.hidden = true;
+    });
+    movie.addEventListener("waiting", () => {
+      if (!active()) return;
+      status.textContent = "動画を読み込んでいます…";
+      retry.hidden = true;
+      feedback.hidden = false;
+    });
+    movie.addEventListener("error", () => {
+      if (!active()) return;
+      status.textContent =
+        "動画を読み込めませんでした。もう一度お試しください。";
+      retry.textContent = "もう一度読み込む";
+      retry.hidden = false;
+      feedback.hidden = false;
+    });
     dialog.showModal();
     trigger.setAttribute("aria-expanded", "true");
     close.focus({ preventScroll: true });
+    start();
   });
   close.addEventListener("click", requestClose);
   dialog.addEventListener("cancel", (event) => {
@@ -64,15 +123,22 @@ export function setupIntroMovie(sound: Sound, onOpen: () => void) {
     if (event.target === dialog && backdropPointer) requestClose();
     backdropPointer = false;
   });
-  // Keep the close control reachable when tabbing out of the embedded player.
   dialog.addEventListener("keydown", (event) => {
+    // Handle Escape in our own document, including when the video has focus.
+    if (event.key === "Escape" && !document.fullscreenElement) {
+      event.preventDefault();
+      requestClose();
+    }
     if (
       event.key === "Tab" &&
       event.shiftKey &&
       document.activeElement === close
     ) {
       event.preventDefault();
-      player.querySelector("iframe")?.focus();
+      const retry = player.querySelector<HTMLButtonElement>(
+        "button:not([hidden])",
+      );
+      (retry ?? video)?.focus();
     }
     event.stopPropagation();
   });
